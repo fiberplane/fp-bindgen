@@ -36,3 +36,16 @@ fn my_complex_imported_function(a: ComplexImported) -> ComplexExported;
 
 #[fp_export]
 async fn my_async_exported_function() -> ComplexExported;
+
+fn main() {
+    let cmd = std::env::args().nth(1).expect("no command given");
+    if cmd != "generate" {
+        println!("Usage: cargo run generate <bindings-type>");
+        return;
+    }
+
+    let bindings_type = std::env::args().nth(2).expect("no bindings type given");
+    let output_path = format!("bindings/{}", bindings_type);
+
+    fp_bindgen!(&bindings_type, &output_path);
+}

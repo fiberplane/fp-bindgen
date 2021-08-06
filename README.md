@@ -27,7 +27,7 @@ called by the runtime and may be implemented by the plugin.
 Example:
 
 ```rust
-#[fp-import]
+#[fp_import]
 fn my_imported_function(a: u32, b: u32) -> u32;
 
 #[fp_export]
@@ -51,7 +51,7 @@ pub struct MyStruct {
     pub bar: String,
 }
 
-#[fp-import]
+#[fp_import]
 fn my_function(data: MyStruct) -> MyStruct;
 ```
 
@@ -64,7 +64,7 @@ keyword in front of the function declaration.
 Example:
 
 ```rust
-#[fp-import]
+#[fp_import]
 async fn my_async_function(data: MyStruct) -> Result<MyStruct, MyError>;
 ```
 
