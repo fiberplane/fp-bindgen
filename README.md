@@ -19,9 +19,9 @@ Macros for generating WebAssembly bindings.
 Before you can generate bindings using this library, you first define a protocol of functions that
 can be called by the _runtime_ (the Wasm host) and functions that can be called by the _plugin_ (the
 Wasm guest module). The protocol specifies the function declarations, annotated using `fp-bindgen`
-macros: `fp-import` and `fp-export`. These macros specify which functions can be imported and which
-can be exported, _from the perspective of the plugin_. In other words, `fp-import` functions can be
-called by the plugin and must be implemented by the runtime, while `fp-export` functions can be
+macros: `fp_import` and `fp_export`. These macros specify which functions can be imported and which
+can be exported, _from the perspective of the plugin_. In other words, `fp_import` functions can be
+called by the plugin and must be implemented by the runtime, while `fp_export` functions can be
 called by the runtime and may be implemented by the plugin.
 
 Example:
@@ -38,9 +38,9 @@ Functions can pass Rust `struct`s as their arguments and return value, but only 
 a reference across the Wasm bridge is currently not supported) and only for structs that implement
 either `Serialize` or `Deserialize`. Whether to use `Serialize` or `Deserialize` is again determined
 from the perspective of the plugin. If the plugin needs to serialize a value (arguments to
-`fp-import` functions and return values of `fp-export` functions), its type must implement
-`Serialize`. If the plugin needs to deserialize a value (arguments to `fp-export` functions and
-return values of `fp-import` functions), its type must implement `Deserialize`.
+`fp_import` functions and return values of `fp_export` functions), its type must implement
+`Serialize`. If the plugin needs to deserialize a value (arguments to `fp_export` functions and
+return values of `fp_import` functions), its type must implement `Deserialize`.
 
 Example:
 
