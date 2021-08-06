@@ -1,20 +1,19 @@
 use fp_bindgen::prelude::*;
 use std::collections::BTreeMap;
 
-#[fp_import]
-#[fp_export]
+#[derive(Deserialize, Serialize)]
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
 }
 
-#[fp_import]
+#[derive(Deserialize)]
 pub struct ComplexImported {
     pub simple: Simple,
     pub list: Vec<f64>,
 }
 
-#[fp_export]
+#[derive(Serialize)]
 pub struct ComplexExported {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
