@@ -88,6 +88,11 @@ Currently, we support the following binding types:
 - `"rust-wasmer-runtime"`: Generates runtime bindings for use with Wasmer.
 - `"ts-runtime"`: Generates bindings for a TypeScript runtime.
 
+**Important caveat:** The functions annotated with `fp_import` and `fp_export` must be in the same
+source file as where you invoke `fp_bindgen!()`. Splitting declarations over multiple files is prone
+to lead to unexpected results due to limitations surrounding macro invocations and incremental
+compilation!
+
 ## Examples
 
 For examples, please look at the `example/` folder. This contains various examples on how to use
