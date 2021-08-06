@@ -24,7 +24,7 @@ can be exported, _from the perspective of the plugin_. In other words, `fp_impor
 called by the plugin and must be implemented by the runtime, while `fp_export` functions can be
 called by the runtime and may be implemented by the plugin.
 
-Example:
+**Example:**
 
 ```rust
 #[fp_import]
@@ -42,7 +42,7 @@ from the perspective of the plugin. If the plugin needs to serialize a value (ar
 `Serialize`. If the plugin needs to deserialize a value (arguments to `fp_export` functions and
 return values of `fp_import` functions), its type must implement `Deserialize`.
 
-Example:
+**Example:**
 
 ```rust
 #[derive(Deserialize, Serialize)]
@@ -61,7 +61,7 @@ such as `Option`, `Box`, and `Result`.
 Functions can also be `async`, which can be achieved by nothing more than putting the `async`
 keyword in front of the function declaration.
 
-Example:
+**Example:**
 
 ```rust
 #[fp_import]
