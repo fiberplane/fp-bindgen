@@ -1,5 +1,5 @@
 [package]
-name = "example"
+name = "fp-bindgen"
 version = "0.1.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
