@@ -1,66 +1,64 @@
-use std::convert::TryFrom;
-
+use fp_bindgen_common::{DataStructureItem, FunctionMap};
 use proc_macro::TokenStream;
 use quote::quote;
+use std::convert::TryFrom;
 use syn::Item;
-
-mod datastructures;
-use datastructures::{
-    DataStructureItem, DESERIALIZABLE_DATA_STRUCTURES, SERIALIZABLE_DATA_STRUCTURES,
-};
-
-mod functions;
-use functions::{FunctionItem, FUNCTION_EXPORTS, FUNCTION_IMPORTS};
 
 mod generator;
 mod generators;
 
 #[proc_macro_derive(Deserialize)]
 pub fn derive_deserialize(item: TokenStream) -> TokenStream {
-    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-
-    let ds = DESERIALIZABLE_DATA_STRUCTURES.lock().unwrap();
-    ds.insert(item.name(), item);
+    let _item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
 
     TokenStream::new()
 }
 
 #[proc_macro_derive(Serialize)]
 pub fn derive_serialize(item: TokenStream) -> TokenStream {
-    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-
-    let ds = SERIALIZABLE_DATA_STRUCTURES.lock().unwrap();
-    ds.insert(item.name(), item);
-
-    TokenStream::new()
-}
-
-#[proc_macro_attribute]
-pub fn fp_import(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item = FunctionItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-
-    let ds = FUNCTION_IMPORTS.lock().unwrap();
-    ds.insert(item.name(), item);
-
-    TokenStream::new()
-}
-
-#[proc_macro_attribute]
-pub fn fp_export(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item = FunctionItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-
-    let ds = FUNCTION_EXPORTS.lock().unwrap();
-    ds.insert(item.name(), item);
+    let _item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
 
     TokenStream::new()
 }
 
 #[proc_macro]
+pub fn fp_import(block: TokenStream) -> TokenStream {
+    let functions = FunctionMap::from_stream(block.into());
+    let function_name = functions.keys();
+    let function_decl = functions.values();
+    let replacement = quote! {
+        fn __fp_declare_import_fns() -> FunctionMap {
+            let mut map = FunctionMap::new();
+            #( map.insert_str(#function_name, #function_decl); )*
+            map
+        }
+    };
+    replacement.into()
+}
+
+#[proc_macro]
+pub fn fp_export(block: TokenStream) -> TokenStream {
+    let functions = FunctionMap::from_stream(block.into());
+    let function_name = functions.keys();
+    let function_decl = functions.values();
+    let replacement = quote! {
+        fn __fp_declare_export_fns() -> FunctionMap {
+            let mut map = FunctionMap::new();
+            #( map.insert_str(#function_name, #function_decl); )*
+            map
+        }
+    };
+    replacement.into()
+}
+
+#[proc_macro]
 pub fn fp_bindgen(_args: TokenStream) -> TokenStream {
-    let tokens = TokenStream::new();
-    tokens.
+    let replacement = quote! {
+        let import_functions = __fp_declare_import_fns();
+        println!("Import: {:?}", import_functions);
 
-    let generator = RustPluginGenerator
-
-    quote!("");
+        let export_functions = __fp_declare_export_fns();
+        println!("Export: {:?}", export_functions);
+    };
+    replacement.into()
 }

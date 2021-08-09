@@ -1,12 +1,5 @@
-use once_cell::unsync::Lazy;
-use std::{collections::BTreeMap, convert::TryFrom, sync::Mutex};
+use std::convert::TryFrom;
 use syn::{Item, ItemEnum, ItemStruct};
-
-pub static DESERIALIZABLE_DATA_STRUCTURES: Lazy<Mutex<BTreeMap<String, DataStructureItem>>> =
-    Lazy::new(|| Mutex::new(BTreeMap::new()));
-
-pub static SERIALIZABLE_DATA_STRUCTURES: Lazy<Mutex<BTreeMap<String, DataStructureItem>>> =
-    Lazy::new(|| Mutex::new(BTreeMap::new()));
 
 pub enum DataStructureItem {
     Enum(ItemEnum),

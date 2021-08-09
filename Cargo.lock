@@ -25,14 +25,26 @@ dependencies = [
 name = "example"
 version = "0.1.0"
 dependencies = [
- "fp-bindgen-macros",
+ "fp-bindgen",
 ]
 
 [[package]]
 name = "fp-bindgen"
 version = "0.1.0"
 dependencies = [
+ "fp-bindgen-common",
  "fp-bindgen-macros",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "fp-bindgen-common"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -40,6 +52,7 @@ name = "fp-bindgen-macros"
 version = "0.1.0"
 dependencies = [
  "Inflector",
+ "fp-bindgen-common",
  "once_cell",
  "proc-macro2",
  "quote",

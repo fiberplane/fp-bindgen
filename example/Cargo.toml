@@ -5,4 +5,4 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [dependencies]
-fp-bindgen-macros = { path = "../macros" }
+fp-bindgen = { path = "../fp-bindgen" }
