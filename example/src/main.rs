@@ -1,22 +1,23 @@
 use fp_bindgen::prelude::*;
+use std::collections::BTreeMap;
 
-// #[derive(Deserialize, Serialize)]
-// pub struct Simple {
-//     pub foo: i32,
-//     pub bar: String,
-// }
+#[derive(Deserialize, Serialize)]
+pub struct Simple {
+    pub foo: i32,
+    pub bar: String,
+}
 
-// #[derive(Deserialize)]
-// pub struct ComplexDeserializable {
-//     pub simple: Simple,
-//     pub list: Vec<f64>,
-// }
+#[derive(Deserialize)]
+pub struct ComplexDeserializable {
+    pub simple: Simple,
+    pub list: Vec<f64>,
+}
 
-// #[derive(Serialize)]
-// pub struct ComplexSerializable {
-//     pub simple: Simple,
-//     pub map: BTreeMap<String, Simple>,
-// }
+#[derive(Serialize)]
+pub struct ComplexSerializable {
+    pub simple: Simple,
+    pub map: BTreeMap<String, Simple>,
+}
 
 fp_import! {
     fn my_plain_imported_function(a: u32, b: u32) -> u32;

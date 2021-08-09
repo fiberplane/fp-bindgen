@@ -2,23 +2,31 @@ use fp_bindgen_common::{DataStructureItem, FunctionMap};
 use proc_macro::TokenStream;
 use quote::quote;
 use std::convert::TryFrom;
-use syn::Item;
+use syn::{Ident, Item};
 
 mod generator;
 mod generators;
 
 #[proc_macro_derive(Deserialize)]
 pub fn derive_deserialize(item: TokenStream) -> TokenStream {
-    let _item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
+    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
+    let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
 
-    TokenStream::new()
+    let implementation = quote! {
+        impl Deserialize for #item_name {}
+    };
+    implementation.into()
 }
 
 #[proc_macro_derive(Serialize)]
 pub fn derive_serialize(item: TokenStream) -> TokenStream {
-    let _item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
+    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
+    let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
 
-    TokenStream::new()
+    let implementation = quote! {
+        impl Serialize for #item_name {}
+    };
+    implementation.into()
 }
 
 #[proc_macro]
