@@ -8,34 +8,32 @@ pub struct Simple {
 }
 
 #[derive(Deserialize)]
-pub struct ComplexImported {
+pub struct ComplexDeserializable {
     pub simple: Simple,
     pub list: Vec<f64>,
 }
 
 #[derive(Serialize)]
-pub struct ComplexExported {
+pub struct ComplexSerializable {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
 }
 
-#[fp_import]
-fn my_plain_imported_function(a: u32, b: u32) -> u32;
+fp_import! {
+    fn my_plain_imported_function(a: u32, b: u32) -> u32;
 
-#[fp_import]
-fn my_complex_imported_function(a: ComplexExported) -> ComplexImported;
+    fn my_complex_imported_function(a: ComplexSerializable) -> ComplexDeserializable;
 
-#[fp_import]
-async fn my_async_imported_function() -> ComplexImported;
+    async fn my_async_imported_function() -> ComplexDeserializable;
+}
 
-#[fp_export]
-fn my_plain_exported_function(a: u32, b: u32) -> u32;
+fp_export! {
+    fn my_plain_exported_function(a: u32, b: u32) -> u32;
 
-#[fp_export]
-fn my_complex_imported_function(a: ComplexImported) -> ComplexExported;
+    fn my_complex_exported_function(a: ComplexDeserializable) -> ComplexSerializable;
 
-#[fp_export]
-async fn my_async_exported_function() -> ComplexExported;
+    async fn my_async_exported_function() -> ComplexSerializable;
+}
 
 fn main() {
     let cmd = std::env::args().nth(1).expect("no command given");
