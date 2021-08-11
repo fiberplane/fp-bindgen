@@ -40,7 +40,7 @@ pub fn generate_bindings(import_functions: FunctionMap, export_functions: Functi
                 .collect::<Vec<_>>()
                 .join(", ");
             format!(
-                "export {}function {}({}) {{\n    // TODO: Impl body\n}}",
+                "{}function {}({}) {{\n    // TODO: Impl body\n}}",
                 modifiers, fn_name, args
             )
         })
