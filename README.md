@@ -36,18 +36,14 @@ fp_export! {
 }
 ```
 
-Functions can pass Rust `struct`s as their arguments and return value, but only by value (passing
-a reference across the Wasm bridge is currently not supported) and only for structs that implement
-either `Serialize` or `Deserialize`. Whether to use `Serialize` or `Deserialize` is again determined
-from the perspective of the plugin. If the plugin needs to serialize a value (arguments to
-`fp_import` functions and return values of `fp_export` functions), its type must implement
-`Serialize`. If the plugin needs to deserialize a value (arguments to `fp_export` functions and
-return values of `fp_import` functions), its type must implement `Deserialize`.
+Functions can pass Rust `struct`s and `enum`s as their arguments and return value, but only by value
+(passing a reference across the Wasm bridge is currently not supported) and only for types that
+implement either `Serializable`.
 
 **Example:**
 
 ```rust
-#[derive(Deserialize, Serialize)]
+#[derive(Serializable)]
 pub struct MyStruct {
     pub foo: i32,
     pub bar: String,
@@ -101,3 +97,26 @@ should create an empty block for the other.
 For examples, please look at the `example/` folder. This contains various examples on how to use
 the macros. You can run the project using `cargo run generate <bindings-type>`, where
 `<bindings-type>` should be replaced with one of the types mentioned above.
+
+## FAQ
+
+### Why not utilize [`ts-rs`](https://github.com/Aleph-Alpha/ts-rs) for the TypeScript generator?
+
+The `derive` macro exported by `ts-rs` parses Rust data structures into a `DerivedTS` struct. As the
+name suggests, this struct is highly TypeScript-specific, so if we were to integrate this, it would
+exist in parallel to code for generating the other Rust bindings. However, because we need to
+perform type extraction at a very early stage in our pipeline, this would basically result in two
+disjoint pipelines: one for Rust and one for TS.
+
+So while utilizing `ts-rs` would help us get the TS bindings off the ground fast, it wouldn't help
+us with the Rust side of things at all. If anything, it would likely complicate long-term
+maintenance as developers now need to understand two completely separate pipelines, and the needs of
+`ts-rs` and this crate would need to be tightly synchronized (there would be pretty tight coupling
+between the two).
+
+As a final nail in the coffin, the Rust pipeline would need to be generic anyway, because it will be
+used for generating both the runtime and the plugin bindings. Extending it so the TypeScript
+generator can also work on top of the same pipeline was only a small step at that point.
+
+Even so, having previously contributed to the `ts-rs` project, we'd like to extend our thanks to
+everyone who has contributed to it for the inspiration it gave us.

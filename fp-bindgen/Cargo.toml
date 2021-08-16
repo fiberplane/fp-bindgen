@@ -7,5 +7,6 @@ edition = "2018"
 [dependencies]
 fp-bindgen-common = { version = "0.1.0", path = "../common" }
 fp-bindgen-macros = { version = "0.1.0", path = "../macros" }
+proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full", "extra-traits"] }

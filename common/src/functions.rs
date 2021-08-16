@@ -18,8 +18,7 @@ impl FunctionMap {
 
                     let stream = current_item_tokens.into_iter().collect::<TokenStream>();
                     let function =
-                        FunctionItem::try_from(syn::parse2::<ForeignItem>(stream).unwrap())
-                            .unwrap();
+                        Function::try_from(syn::parse2::<ForeignItem>(stream).unwrap()).unwrap();
                     functions.insert(function.name(), function.to_token_stream().to_string());
                     current_item_tokens = Vec::new();
                 }
@@ -59,52 +58,44 @@ impl IntoIterator for FunctionMap {
     }
 }
 
-pub enum FunctionItem {
-    Function(ForeignItemFn),
-}
+pub struct Function(ForeignItemFn);
 
-impl FunctionItem {
+impl Function {
     pub fn name(&self) -> String {
-        match self {
-            Self::Function(item) => item.sig.ident.to_string(),
-        }
+        self.0.sig.ident.to_string()
     }
 
     pub fn args(&self) -> Vec<FunctionArg> {
-        match self {
-            Self::Function(item) => item
-                .sig
-                .inputs
-                .iter()
-                .map(|input| match input {
-                    FnArg::Receiver(_) => panic!(
-                        "Methods are not supported. Found `self` in function declaration: {:?}",
-                        item
-                    ),
-                    FnArg::Typed(arg) => FunctionArg {
-                        name: arg.pat.to_token_stream().to_string(),
-                        type_path: match arg.ty.as_ref() {
-                            Type::Path(path) if path.qself.is_none() => path.path.clone(),
-                            _ => panic!(
-                                "Only plain value types are supported. \
+        self.0
+            .sig
+            .inputs
+            .iter()
+            .map(|input| match input {
+                FnArg::Receiver(_) => panic!(
+                    "Methods are not supported. Found `self` in function declaration: {:?}",
+                    self.0
+                ),
+                FnArg::Typed(arg) => FunctionArg {
+                    name: arg.pat.to_token_stream().to_string(),
+                    type_path: match arg.ty.as_ref() {
+                        Type::Path(path) if path.qself.is_none() => path.path.clone(),
+                        _ => panic!(
+                            "Only plain value types are supported. \
                                     Incompatible type in function declaration: {:?}",
-                                item
-                            ),
-                        },
+                            self.0
+                        ),
                     },
-                })
-                .collect(),
-        }
+                },
+            })
+            .collect()
     }
 
     pub fn is_async(&self) -> bool {
-        match self {
-            Self::Function(item) => item.sig.asyncness.is_some(),
-        }
+        self.0.sig.asyncness.is_some()
     }
 }
 
-impl FromStr for FunctionItem {
+impl FromStr for Function {
     type Err = String;
 
     fn from_str(function_decl: &str) -> Result<Self, Self::Err> {
@@ -112,20 +103,18 @@ impl FromStr for FunctionItem {
     }
 }
 
-impl ToTokens for FunctionItem {
+impl ToTokens for Function {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match self {
-            Self::Function(item) => item.to_tokens(tokens),
-        }
+        self.0.to_tokens(tokens)
     }
 }
 
-impl TryFrom<ForeignItem> for FunctionItem {
+impl TryFrom<ForeignItem> for Function {
     type Error = String;
 
-    fn try_from(value: ForeignItem) -> Result<Self, Self::Error> {
-        match value {
-            ForeignItem::Fn(item) => Ok(Self::Function(item)),
+    fn try_from(item: ForeignItem) -> Result<Self, Self::Error> {
+        match item {
+            ForeignItem::Fn(item) => Ok(Self(item)),
             item => Err(format!(
                 "Only functions can be imported or exported. Found: {:?}",
                 item

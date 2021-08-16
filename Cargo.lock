@@ -34,6 +34,7 @@ version = "0.1.0"
 dependencies = [
  "fp-bindgen-common",
  "fp-bindgen-macros",
+ "proc-macro2",
  "quote",
  "syn",
 ]

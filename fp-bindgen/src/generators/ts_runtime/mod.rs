@@ -1,11 +1,17 @@
-use fp_bindgen_common::{FunctionItem, FunctionMap};
+use fp_bindgen_common::{Function, FunctionMap, Type};
 use std::{fs, str::FromStr};
 
-pub fn generate_bindings(import_functions: FunctionMap, export_functions: FunctionMap, path: &str) {
+pub fn generate_bindings(
+    import_functions: FunctionMap,
+    export_functions: FunctionMap,
+    serializable_types: Vec<Type>,
+    deserializable_types: Vec<Type>,
+    path: &str,
+) {
     let import_defs = import_functions
         .into_iter()
         .map(|(fn_name, fn_decl)| {
-            let function = FunctionItem::from_str(&fn_decl).unwrap();
+            let function = Function::from_str(&fn_decl).unwrap();
             let modifiers = if function.is_async() { "async " } else { "" };
             let args = function
                 .args()
@@ -31,7 +37,7 @@ pub fn generate_bindings(import_functions: FunctionMap, export_functions: Functi
     let export_defs = export_functions
         .into_iter()
         .map(|(fn_name, fn_decl)| {
-            let function = FunctionItem::from_str(&fn_decl).unwrap();
+            let function = Function::from_str(&fn_decl).unwrap();
             let modifiers = if function.is_async() { "async " } else { "" };
             let args = function
                 .args()

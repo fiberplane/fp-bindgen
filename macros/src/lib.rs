@@ -1,28 +1,14 @@
-use fp_bindgen_common::{DataStructureItem, FunctionMap};
+use fp_bindgen_common::{FunctionMap, Primitive, Type};
 use proc_macro::TokenStream;
 use quote::quote;
 use std::convert::TryFrom;
 use syn::{Ident, Item};
 
-#[proc_macro_derive(Deserializable)]
-pub fn derive_deserialize(item: TokenStream) -> TokenStream {
-    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-    let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
-    let item_name_str = item_name.to_string();
-
-    let implementation = quote! {
-        impl Deserializable for #item_name {
-            fn name() -> String {
-                #item_name_str.to_owned()
-            }
-        }
-    };
-    implementation.into()
-}
-
+/// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable)]
-pub fn derive_serialize(item: TokenStream) -> TokenStream {
-    let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
+pub fn derive_serializable(item: TokenStream) -> TokenStream {
+    let item_str = item.to_string();
+    let item = Type::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
     let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
     let item_name_str = item_name.to_string();
 
@@ -31,11 +17,26 @@ pub fn derive_serialize(item: TokenStream) -> TokenStream {
             fn name() -> String {
                 #item_name_str.to_owned()
             }
+
+            fn item() -> Type {
+                use std::str::FromStr;
+                fp_bindgen::prelude::Type::from_str(#item_str).unwrap()
+            }
+
+            fn is_primitive() -> bool {
+                false
+            }
+
+            fn dependencies() -> Vec<fp_bindgen::prelude::Type> {
+                // TODO
+                vec![]
+            }
         }
     };
     implementation.into()
 }
 
+/// Declares functions the plugin can import from the host runtime.
 #[proc_macro]
 pub fn fp_import(block: TokenStream) -> TokenStream {
     let functions = FunctionMap::from_stream(block.into());
@@ -51,6 +52,7 @@ pub fn fp_import(block: TokenStream) -> TokenStream {
     replacement.into()
 }
 
+/// Declares functions the plugin may export to the host runtime.
 #[proc_macro]
 pub fn fp_export(block: TokenStream) -> TokenStream {
     let functions = FunctionMap::from_stream(block.into());
@@ -66,6 +68,7 @@ pub fn fp_export(block: TokenStream) -> TokenStream {
     replacement.into()
 }
 
+/// Generates bindings for the functions declared in the `fp_import!{}` and `fp_export!{}` blocks.
 #[proc_macro]
 pub fn fp_bindgen(args: TokenStream) -> TokenStream {
     let args: proc_macro2::TokenStream = args.into();
@@ -76,4 +79,12 @@ pub fn fp_bindgen(args: TokenStream) -> TokenStream {
         fp_bindgen::generate_bindings(import_functions, export_functions, #args);
     };
     replacement.into()
+}
+
+#[doc(hidden)]
+#[proc_macro]
+pub fn primitive_impls(_: TokenStream) -> TokenStream {
+    let mut token_stream = proc_macro2::TokenStream::new();
+    token_stream.extend(Primitive::Bool.gen_impl().into_iter());
+    token_stream.into()
 }
