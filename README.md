@@ -38,7 +38,7 @@ fp_export! {
 
 Functions can pass Rust `struct`s and `enum`s as their arguments and return value, but only by value
 (passing a reference across the Wasm bridge is currently not supported) and only for types that
-implement either `Serializable`.
+implement `Serializable`.
 
 **Example:**
 
