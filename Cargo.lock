@@ -33,7 +33,6 @@ name = "fp-bindgen"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen-macros",
- "proc-macro2",
  "syn",
 ]
 
