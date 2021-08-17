@@ -1,4 +1,7 @@
+use std::str::FromStr;
+
 /// Type of primitive that is supported out-of-the-box.
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Primitive {
     Bool,
     F32,
@@ -8,14 +11,12 @@ pub enum Primitive {
     I32,
     I64,
     I128,
-    Str,
     String,
     U8,
     U16,
     U32,
     U64,
     U128,
-    Unit,
 }
 
 impl Primitive {
@@ -30,15 +31,38 @@ impl Primitive {
             I32 => "i32",
             I64 => "i64",
             I128 => "i128",
-            Str => "&'static str",
             String => "String",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
             U64 => "u64",
             U128 => "u128",
-            Unit => "()",
         };
         string.to_owned()
+    }
+}
+
+impl FromStr for Primitive {
+    type Err = String;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let primitive = match string {
+            "bool" => Primitive::Bool,
+            "f32" => Primitive::F32,
+            "f64" => Primitive::F64,
+            "i8" => Primitive::I8,
+            "i16" => Primitive::I16,
+            "i32" => Primitive::I32,
+            "i64" => Primitive::I64,
+            "i128" => Primitive::I128,
+            "String" => Primitive::String,
+            "u8" => Primitive::U8,
+            "u16" => Primitive::U16,
+            "u32" => Primitive::U32,
+            "u64" => Primitive::U64,
+            "u128" => Primitive::U128,
+            string => return Err(format!("Unknown primitive type: \"{}\"", string)),
+        };
+        Ok(primitive)
     }
 }

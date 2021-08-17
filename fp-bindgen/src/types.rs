@@ -2,6 +2,7 @@ use crate::primitives::Primitive;
 use std::{convert::TryFrom, str::FromStr};
 use syn::{Item, ItemEnum, ItemStruct};
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Enum(ItemEnum),
     Primitive(Primitive),
@@ -22,7 +23,22 @@ impl FromStr for Type {
     type Err = String;
 
     fn from_str(type_decl: &str) -> Result<Self, Self::Err> {
-        Self::try_from(syn::parse_str::<Item>(type_decl).unwrap())
+        match Primitive::from_str(type_decl) {
+            Ok(primitive) => Ok(Self::Primitive(primitive)),
+            Err(_) => Self::try_from(syn::parse_str::<Item>(type_decl).unwrap()),
+        }
+    }
+}
+
+impl Ord for Type {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name().cmp(&other.name())
+    }
+}
+
+impl PartialOrd for Type {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.name().partial_cmp(&other.name())
     }
 }
 

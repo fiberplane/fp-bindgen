@@ -22,17 +22,17 @@ pub struct ComplexGuestToHost {
 fp_import! {
     fn my_plain_imported_function(a: u32, b: u32) -> u32;
 
-    fn my_complex_imported_function(a: ComplexSerializable) -> ComplexDeserializable;
+    fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest;
 
-    async fn my_async_imported_function() -> ComplexDeserializable;
+    async fn my_async_imported_function() -> ComplexHostToGuest;
 }
 
 fp_export! {
     fn my_plain_exported_function(a: u32, b: u32) -> u32;
 
-    fn my_complex_exported_function(a: ComplexDeserializable) -> ComplexSerializable;
+    fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost;
 
-    async fn my_async_exported_function() -> ComplexSerializable;
+    async fn my_async_exported_function() -> ComplexGuestToHost;
 }
 
 fn main() {

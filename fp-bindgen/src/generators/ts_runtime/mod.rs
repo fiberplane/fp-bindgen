@@ -1,14 +1,33 @@
+use syn::__private::ToTokens;
+use syn::{ItemEnum, ItemStruct};
+
 use crate::functions::{Function, FunctionMap};
 use crate::types::Type;
+use std::collections::BTreeSet;
 use std::{fs, str::FromStr};
 
 pub fn generate_bindings(
     import_functions: FunctionMap,
     export_functions: FunctionMap,
-    serializable_types: Vec<Type>,
-    deserializable_types: Vec<Type>,
+    serializable_types: BTreeSet<Type>,
+    mut deserializable_types: BTreeSet<Type>,
     path: &str,
 ) {
+    let mut all_types = serializable_types;
+    all_types.append(&mut deserializable_types);
+
+    let type_defs = all_types
+        .into_iter()
+        .map(|ty| {
+            match ty {
+                Type::Enum(ty) => create_enum_declaration(ty),
+                Type::Primitive(_) => "".to_owned(), // Primitives don't require special processing.
+                Type::Struct(ty) => create_struct_declaration(ty),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
     let import_defs = import_functions
         .into_iter()
         .map(|(fn_name, fn_decl)| {
@@ -55,6 +74,39 @@ pub fn generate_bindings(
         .join("\n\n");
 
     let file_path = format!("{}/index.ts", path);
-    let contents = format!("{}\n\n{}\n", import_defs, export_defs);
+    let contents = format!("{}\n\n{}\n\n{}\n", type_defs, import_defs, export_defs);
     fs::write(&file_path, &contents).expect("Could not write bindings file");
+}
+
+fn create_enum_declaration(ty: ItemEnum) -> String {
+    "TODO".to_owned() // TODO
+}
+
+fn create_struct_declaration(ty: ItemStruct) -> String {
+    let name = ty.ident.to_string();
+    let fields = ty
+        .fields
+        .into_iter()
+        .map(|field| {
+            let name = field
+                .ident
+                .as_ref()
+                .expect("Struct fields must be named")
+                .to_string();
+            let ty = match field.ty {
+                syn::Type::Path(path) if path.qself.is_none() => {
+                    path.path.to_token_stream().to_string()
+                }
+                _ => panic!(
+                    "Only plain value types are supported. \
+                            Incompatible type in struct field: {:?}",
+                    field
+                ),
+            };
+            format!("    {}: {};", name, ty)
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+
+    format!("export type {} = {{\n{}\n}};", name, fields)
 }

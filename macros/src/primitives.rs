@@ -14,14 +14,12 @@ pub enum Primitive {
     I32,
     I64,
     I128,
-    Str,
     String,
     U8,
     U16,
     U32,
     U64,
     U128,
-    Unit,
 }
 
 impl Primitive {
@@ -35,7 +33,7 @@ impl Primitive {
                     #ty_str.to_owned()
                 }
 
-                fn item() -> Type {
+                fn ty() -> Type {
                     Type::Primitive(Primitive::#self)
                 }
 
@@ -62,14 +60,12 @@ impl Primitive {
             I32 => "i32",
             I64 => "i64",
             I128 => "i128",
-            Str => return Type::Reference(parse_str("&'static str")),
             String => "String",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
             U64 => "u64",
             U128 => "u128",
-            Unit => return Type::Tuple(parse_str("()")),
         };
         Type::Path(parse_str(string))
     }
@@ -87,14 +83,12 @@ impl ToTokens for Primitive {
             I32 => "I32",
             I64 => "I64",
             I128 => "I128",
-            Str => "Str",
             String => "String",
             U8 => "U8",
             U16 => "U16",
             U32 => "U32",
             U64 => "U64",
             U128 => "U128",
-            Unit => "Unit",
         };
         let ident = Ident::new(ident_str, Span::call_site());
         tokens.extend(vec![TokenTree::Ident(ident)].into_iter());

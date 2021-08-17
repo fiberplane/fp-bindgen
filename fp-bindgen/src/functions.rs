@@ -28,6 +28,15 @@ impl IntoIterator for FunctionMap {
     }
 }
 
+impl<'a> IntoIterator for &'a FunctionMap {
+    type Item = (&'a String, &'a String);
+    type IntoIter = std::collections::btree_map::Iter<'a, String, String>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 pub struct Function(ForeignItemFn);
 
 impl Function {
