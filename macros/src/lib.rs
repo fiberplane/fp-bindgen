@@ -1,15 +1,16 @@
-use fp_bindgen_common::{FunctionMap, Primitive, Type};
-use proc_macro::TokenStream;
-use quote::quote;
-use std::convert::TryFrom;
-use syn::{Ident, Item};
+mod primitives;
+
+use crate::primitives::Primitive;
+use proc_macro::{TokenStream, TokenTree};
+use quote::{quote, ToTokens};
+use std::collections::BTreeMap;
+use syn::{ForeignItemFn, Ident, Item};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable)]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
-    let item = Type::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
-    let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
+    let (item_name, _item) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
     let implementation = quote! {
@@ -36,10 +37,22 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     implementation.into()
 }
 
+fn parse_type_item(item: TokenStream) -> (Ident, Item) {
+    let item = syn::parse::<Item>(item).unwrap();
+    match item {
+        Item::Enum(item) => (item.ident.clone(), Item::Enum(item)),
+        Item::Struct(item) => (item.ident.clone(), Item::Struct(item)),
+        item => panic!(
+            "Only struct and enum types can be constructed from an item. Found: {:?}",
+            item
+        ),
+    }
+}
+
 /// Declares functions the plugin can import from the host runtime.
 #[proc_macro]
-pub fn fp_import(block: TokenStream) -> TokenStream {
-    let functions = FunctionMap::from_stream(block.into());
+pub fn fp_import(token_stream: TokenStream) -> TokenStream {
+    let functions = parse_functions(token_stream);
     let function_name = functions.keys();
     let function_decl = functions.values();
     let replacement = quote! {
@@ -54,8 +67,8 @@ pub fn fp_import(block: TokenStream) -> TokenStream {
 
 /// Declares functions the plugin may export to the host runtime.
 #[proc_macro]
-pub fn fp_export(block: TokenStream) -> TokenStream {
-    let functions = FunctionMap::from_stream(block.into());
+pub fn fp_export(token_stream: TokenStream) -> TokenStream {
+    let functions = parse_functions(token_stream);
     let function_name = functions.keys();
     let function_decl = functions.values();
     let replacement = quote! {
@@ -81,10 +94,53 @@ pub fn fp_bindgen(args: TokenStream) -> TokenStream {
     replacement.into()
 }
 
+fn parse_functions(token_stream: TokenStream) -> BTreeMap<String, String> {
+    let mut functions = BTreeMap::new();
+    let mut current_item_tokens = Vec::<TokenTree>::new();
+    for token in token_stream.into_iter() {
+        match token {
+            TokenTree::Punct(punct) if punct.as_char() == ';' => {
+                current_item_tokens.push(TokenTree::Punct(punct));
+
+                let stream = current_item_tokens.into_iter().collect::<TokenStream>();
+                let function = syn::parse::<ForeignItemFn>(stream).unwrap();
+                functions.insert(
+                    function.sig.ident.to_string(),
+                    function.into_token_stream().to_string(),
+                );
+                current_item_tokens = Vec::new();
+            }
+            other => current_item_tokens.push(other),
+        }
+    }
+    functions
+}
+
 #[doc(hidden)]
 #[proc_macro]
 pub fn primitive_impls(_: TokenStream) -> TokenStream {
-    let mut token_stream = proc_macro2::TokenStream::new();
-    token_stream.extend(Primitive::Bool.gen_impl().into_iter());
-    token_stream.into()
+    let primitives = [
+        Primitive::Bool,
+        Primitive::F32,
+        Primitive::F64,
+        Primitive::I8,
+        Primitive::I16,
+        Primitive::I32,
+        Primitive::I64,
+        Primitive::I128,
+        Primitive::Str,
+        Primitive::String,
+        Primitive::U8,
+        Primitive::U16,
+        Primitive::U32,
+        Primitive::U64,
+        Primitive::U128,
+        Primitive::Unit,
+    ];
+
+    let mut token_stream = TokenStream::new();
+    for primitive in primitives {
+        token_stream.extend(primitive.gen_impl().into_iter());
+    }
+    token_stream
 }

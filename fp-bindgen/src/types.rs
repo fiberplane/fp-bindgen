@@ -1,5 +1,4 @@
 use crate::primitives::Primitive;
-use quote::ToTokens;
 use std::{convert::TryFrom, str::FromStr};
 use syn::{Item, ItemEnum, ItemStruct};
 
@@ -13,7 +12,7 @@ impl Type {
     pub fn name(&self) -> String {
         match self {
             Self::Enum(item) => item.ident.to_string(),
-            Self::Primitive(primitive) => primitive.ty().to_token_stream().to_string(),
+            Self::Primitive(primitive) => primitive.name(),
             Self::Struct(item) => item.ident.to_string(),
         }
     }
@@ -24,16 +23,6 @@ impl FromStr for Type {
 
     fn from_str(type_decl: &str) -> Result<Self, Self::Err> {
         Self::try_from(syn::parse_str::<Item>(type_decl).unwrap())
-    }
-}
-
-impl ToTokens for Type {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match self {
-            Self::Enum(item) => item.to_tokens(tokens),
-            Self::Primitive(primitive) => primitive.to_tokens(tokens),
-            Self::Struct(item) => item.to_tokens(tokens),
-        }
     }
 }
 

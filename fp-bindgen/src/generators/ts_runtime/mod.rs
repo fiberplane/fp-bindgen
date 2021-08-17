@@ -1,4 +1,5 @@
-use fp_bindgen_common::{Function, FunctionMap, Type};
+use crate::functions::{Function, FunctionMap};
+use crate::types::Type;
 use std::{fs, str::FromStr};
 
 pub fn generate_bindings(

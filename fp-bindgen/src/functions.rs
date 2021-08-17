@@ -1,33 +1,11 @@
-use proc_macro2::{TokenStream, TokenTree};
-use quote::ToTokens;
 use std::{collections::BTreeMap, convert::TryFrom, str::FromStr};
-use syn::{FnArg, ForeignItem, ForeignItemFn, Path, Type};
+use syn::{FnArg, ForeignItem, ForeignItemFn, Path, Type, __private::ToTokens};
 
 /// Maps from function name to the stringified function declaration.
 #[derive(Debug, Default)]
 pub struct FunctionMap(BTreeMap<String, String>);
 
 impl FunctionMap {
-    pub fn from_stream(stream: TokenStream) -> Self {
-        let mut functions = Self::new();
-        let mut current_item_tokens = Vec::<TokenTree>::new();
-        for token in stream.into_iter() {
-            match token {
-                TokenTree::Punct(punct) if punct.as_char() == ';' => {
-                    current_item_tokens.push(TokenTree::Punct(punct));
-
-                    let stream = current_item_tokens.into_iter().collect::<TokenStream>();
-                    let function =
-                        Function::try_from(syn::parse2::<ForeignItem>(stream).unwrap()).unwrap();
-                    functions.insert(function.name(), function.to_token_stream().to_string());
-                    current_item_tokens = Vec::new();
-                }
-                other => current_item_tokens.push(other),
-            }
-        }
-        functions
-    }
-
     pub fn insert(&mut self, key: String, value: String) {
         self.0.insert(key, value);
     }
@@ -36,16 +14,8 @@ impl FunctionMap {
         self.0.insert(key.to_owned(), value.to_owned());
     }
 
-    pub fn keys(&self) -> std::collections::btree_map::Keys<String, String> {
-        self.0.keys()
-    }
-
     pub fn new() -> Self {
         Self(BTreeMap::new())
-    }
-
-    pub fn values(&self) -> std::collections::btree_map::Values<String, String> {
-        self.0.values()
     }
 }
 
@@ -100,12 +70,6 @@ impl FromStr for Function {
 
     fn from_str(function_decl: &str) -> Result<Self, Self::Err> {
         Self::try_from(syn::parse_str::<ForeignItem>(function_decl).unwrap())
-    }
-}
-
-impl ToTokens for Function {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        self.0.to_tokens(tokens)
     }
 }
 

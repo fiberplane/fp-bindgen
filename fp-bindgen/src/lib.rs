@@ -1,9 +1,16 @@
+mod functions;
 mod generators;
+mod primitives;
+mod serializable;
+mod types;
 
 pub mod prelude;
 
-use fp_bindgen_common::{FunctionMap, Type};
+use fp_bindgen_macros::primitive_impls;
+use prelude::*;
 use std::{fs, str::FromStr};
+
+primitive_impls!();
 
 enum BindingsType {
     TsRuntime,

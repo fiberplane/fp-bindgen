@@ -1,7 +1,8 @@
-use proc_macro2::{Span, TokenStream, TokenTree};
+use proc_macro::TokenStream;
+use proc_macro2::{Ident, Span, TokenTree};
 use quote::{quote, ToTokens};
 use std::str::FromStr;
-use syn::{Ident, Type};
+use syn::Type;
 
 /// Type of primitive that is supported out-of-the-box.
 pub enum Primitive {
@@ -28,28 +29,29 @@ impl Primitive {
         let ty = self.ty();
         let ty_str = ty.to_token_stream().to_string();
 
-        quote! {
-            impl fp_bindgen_common::Serializable for #ty {
+        let implementation = quote! {
+            impl Serializable for #ty {
                 fn name() -> String {
                     #ty_str.to_owned()
                 }
 
                 fn item() -> Type {
-                    fp_bindgen_common::Type::Primitive(fp_bindgen_common::Primitive::#self)
+                    Type::Primitive(Primitive::#self)
                 }
 
                 fn is_primitive() -> bool {
                     true
                 }
 
-                fn dependencies() -> Vec<fp_bindgen_common::Type> {
+                fn dependencies() -> Vec<Type> {
                     vec![]
                 }
             }
-        }
+        };
+        implementation.into()
     }
 
-    pub fn ty(&self) -> Type {
+    fn ty(&self) -> Type {
         use Primitive::*;
         let string = match self {
             Bool => "bool",
@@ -67,7 +69,7 @@ impl Primitive {
             U32 => "u32",
             U64 => "u64",
             U128 => "u128",
-            Unit => "()",
+            Unit => return Type::Tuple(parse_str("()")),
         };
         Type::Path(parse_str(string))
     }
@@ -100,5 +102,5 @@ impl ToTokens for Primitive {
 }
 
 fn parse_str<T: syn::parse::Parse>(string: &str) -> T {
-    syn::parse::<T>(TokenStream::from_str(string).unwrap().into()).unwrap()
+    syn::parse::<T>(TokenStream::from_str(string).unwrap()).unwrap()
 }
