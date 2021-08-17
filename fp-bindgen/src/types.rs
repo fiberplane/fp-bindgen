@@ -5,6 +5,9 @@ use syn::{Item, ItemEnum, ItemStruct};
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
     Enum(ItemEnum),
+    List(&'static str, Box<Type>),
+    Map(&'static str, Box<Type>, Box<Type>),
+    Option(Box<Type>),
     Primitive(Primitive),
     Struct(ItemStruct),
 }
@@ -13,8 +16,21 @@ impl Type {
     pub fn name(&self) -> String {
         match self {
             Self::Enum(item) => item.ident.to_string(),
+            Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
+            Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
+            Self::Option(ty) => format!("Option<{}>", ty.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::Struct(item) => item.ident.to_string(),
+        }
+    }
+
+    /// Whether the type is transparent. Transparent types don't need their own type definition,
+    /// because they can be represented at the language level or by the standard library, but they
+    /// do have dependencies (generic arguments).
+    pub fn is_transparent(&self) -> bool {
+        match self {
+            Self::List(_, _) | Self::Map(_, _, _) | Self::Option(_) => true,
+            Self::Enum(_) | Self::Primitive(_) | Self::Struct(_) => false,
         }
     }
 }

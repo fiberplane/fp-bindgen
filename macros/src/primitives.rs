@@ -41,8 +41,8 @@ impl Primitive {
                     true
                 }
 
-                fn dependencies() -> Vec<Type> {
-                    vec![]
+                fn dependencies() -> BTreeSet<Type> {
+                    BTreeSet::new()
                 }
             }
         };

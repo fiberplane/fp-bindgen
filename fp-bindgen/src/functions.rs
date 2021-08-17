@@ -59,7 +59,7 @@ impl Function {
                     type_path: match arg.ty.as_ref() {
                         Type::Path(path) if path.qself.is_none() => path.path.clone(),
                         _ => panic!(
-                            "Only plain value types are supported. \
+                            "Only value types are supported. \
                                     Incompatible type in function declaration: {:?}",
                             self.0
                         ),

@@ -21,6 +21,9 @@ pub fn generate_bindings(
         .map(|ty| {
             match ty {
                 Type::Enum(ty) => create_enum_declaration(ty),
+                Type::List(_, _) => "".to_owned(), // Lists are transparent.
+                Type::Map(_, _, _) => "".to_owned(), // Maps are transparent.
+                Type::Option(_) => "".to_owned(),  // Options are transparent.
                 Type::Primitive(_) => "".to_owned(), // Primitives don't require special processing.
                 Type::Struct(ty) => create_struct_declaration(ty),
             }
@@ -98,8 +101,7 @@ fn create_struct_declaration(ty: ItemStruct) -> String {
                     path.path.to_token_stream().to_string()
                 }
                 _ => panic!(
-                    "Only plain value types are supported. \
-                            Incompatible type in struct field: {:?}",
+                    "Only value types are supported. Incompatible type in struct field: {:?}",
                     field
                 ),
             };

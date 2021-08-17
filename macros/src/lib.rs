@@ -4,20 +4,45 @@ use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 use std::collections::{BTreeMap, HashSet};
-use syn::parse::{Parse, ParseStream};
-use syn::{
-    parse_macro_input, FnArg, ForeignItemFn, Ident, Item, Path, Result, ReturnType, Token, Type,
-};
+use syn::{FnArg, ForeignItemFn, Ident, Item, Path, PathArguments, ReturnType, Type};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable)]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
-    let (item_name, _item) = parse_type_item(item);
+    let (item_name, item) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
+    let dependencies = match item {
+        syn::Item::Enum(ty) => {
+            // TODO
+            vec![]
+        }
+        syn::Item::Struct(ty) => ty
+            .fields
+            .into_iter()
+            .map(|field| match field.ty {
+                syn::Type::Path(path) if path.qself.is_none() => {
+                    let mut path = path.path;
+                    for segment in &mut path.segments {
+                        if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
+                            // Inject turbofish:
+                            args.colon2_token = Some(syn::parse_quote!(::));
+                        }
+                    }
+                    path
+                }
+                _ => panic!(
+                    "Only value types are supported. Incompatible type in struct field: {:?}",
+                    field
+                ),
+            })
+            .collect::<Vec<_>>(),
+        _ => vec![],
+    };
+
     let implementation = quote! {
-        impl Serializable for #item_name {
+        impl fp_bindgen::prelude::Serializable for #item_name {
             fn name() -> String {
                 #item_name_str.to_owned()
             }
@@ -31,9 +56,11 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                 false
             }
 
-            fn dependencies() -> Vec<fp_bindgen::prelude::Type> {
-                // TODO
-                vec![]
+            fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
+                use std::str::FromStr;
+                let mut dependencies = std::collections::BTreeSet::new();
+                #( #dependencies::add_type_with_dependencies(&mut dependencies); )*
+                dependencies
             }
         }
     };
@@ -66,10 +93,10 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
             #( map.insert_str(#function_name, #function_decl); )*
 
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( add_type_recursively!(serializable_import_types, #serializable_types); )*
+            #( #serializable_types::add_type_with_dependencies(&mut serializable_import_types); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( add_type_recursively!(deserializable_import_types, #deserializable_types); )*
+            #( #deserializable_types::add_type_with_dependencies(&mut deserializable_import_types); )*
 
             (map, serializable_import_types, deserializable_import_types)
         }
@@ -91,51 +118,15 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
             #( map.insert_str(#function_name, #function_decl); )*
 
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( add_type_recursively!(serializable_export_types, #serializable_types); )*
+            #( #serializable_types::add_type_with_dependencies(&mut serializable_export_types); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( add_type_recursively!(deserializable_export_types, #deserializable_types); )*
+            #( #deserializable_types::add_type_with_dependencies(&mut deserializable_export_types); )*
 
             (map, serializable_export_types, deserializable_export_types)
         }
     };
     replacement.into()
-}
-
-struct AddTypeArgs {
-    type_set: Ident,
-    _comma_token: Token![,],
-    type_path: Path,
-}
-
-impl Parse for AddTypeArgs {
-    fn parse(input: ParseStream) -> Result<Self> {
-        Ok(Self {
-            type_set: input.parse()?,
-            _comma_token: input.parse()?,
-            type_path: input.parse()?,
-        })
-    }
-}
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn add_type_recursively(token_stream: TokenStream) -> TokenStream {
-    let args: AddTypeArgs = parse_macro_input!(token_stream);
-    let type_path = args.type_path;
-    let type_set = args.type_set;
-
-    let implementation = quote!({
-        type Type = #type_path;
-        if !Type::is_primitive() {
-            #type_set.insert(Type::ty());
-            for dependency in Type::dependencies() {
-                // FIXME: This isn't really recursive and only adds dependencies one level deep.
-                #type_set.insert(dependency);
-            }
-        }
-    });
-    implementation.into()
 }
 
 /// Parses function declarations and returns a map with all functions keyed by name.
@@ -168,7 +159,7 @@ fn parse_functions(
                                 serializable_type_names.insert(path.path.clone());
                             }
                             _ => panic!(
-                                "Only plain value types are supported. \
+                                "Only value types are supported. \
                                         Incompatible argument type in function declaration: {:?}",
                                 function.sig
                             ),
@@ -183,7 +174,7 @@ fn parse_functions(
                             deserializable_type_names.insert(path.path.clone());
                         }
                         _ => panic!(
-                            "Only plain value types are supported. \
+                            "Only value types are supported. \
                                     Incompatible return type in function declaration: {:?}",
                             function.sig
                         ),
