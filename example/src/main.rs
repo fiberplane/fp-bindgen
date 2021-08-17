@@ -2,6 +2,11 @@ use fp_bindgen::prelude::*;
 use std::collections::BTreeMap;
 
 #[derive(Serializable)]
+pub struct DeadCode {
+    pub you_wont_see_this: bool,
+}
+
+#[derive(Serializable)]
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
