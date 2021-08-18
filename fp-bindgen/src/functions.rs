@@ -1,102 +1,132 @@
-use std::{collections::BTreeMap, convert::TryFrom, str::FromStr};
-use syn::{FnArg, ForeignItem, ForeignItemFn, Path, Type, __private::ToTokens};
+use crate::{prelude::Primitive, types::Type};
+use quote::ToTokens;
+use std::{collections::BTreeSet, str::FromStr};
+use syn::{FnArg, ForeignItemFn, ReturnType};
 
 /// Maps from function name to the stringified function declaration.
 #[derive(Debug, Default)]
-pub struct FunctionMap(BTreeMap<String, String>);
+pub struct FunctionList(BTreeSet<Function>);
 
-impl FunctionMap {
-    pub fn insert(&mut self, key: String, value: String) {
-        self.0.insert(key, value);
-    }
-
-    pub fn insert_str(&mut self, key: &str, value: &str) {
-        self.0.insert(key.to_owned(), value.to_owned());
+impl FunctionList {
+    pub fn add_function(
+        &mut self,
+        function_decl: &str,
+        serializable_types: &BTreeSet<Type>,
+        deserializable_types: &BTreeSet<Type>,
+    ) {
+        self.0.insert(Function::new(
+            function_decl,
+            serializable_types,
+            deserializable_types,
+        ));
     }
 
     pub fn new() -> Self {
-        Self(BTreeMap::new())
+        Self(BTreeSet::new())
     }
 }
 
-impl IntoIterator for FunctionMap {
-    type Item = (String, String);
-    type IntoIter = std::collections::btree_map::IntoIter<String, String>;
+impl IntoIterator for FunctionList {
+    type Item = Function;
+    type IntoIter = std::collections::btree_set::IntoIter<Function>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
 
-impl<'a> IntoIterator for &'a FunctionMap {
-    type Item = (&'a String, &'a String);
-    type IntoIter = std::collections::btree_map::Iter<'a, String, String>;
+impl<'a> IntoIterator for &'a FunctionList {
+    type Item = &'a Function;
+    type IntoIter = std::collections::btree_set::Iter<'a, Function>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
     }
 }
 
-pub struct Function(ForeignItemFn);
+#[derive(Debug, Eq, PartialEq)]
+pub struct Function {
+    pub name: String,
+    pub args: Vec<FunctionArg>,
+    pub return_type: Option<Type>,
+    pub is_async: bool,
+}
 
 impl Function {
-    pub fn name(&self) -> String {
-        self.0.sig.ident.to_string()
-    }
+    pub fn new(
+        decl: &str,
+        serializable_types: &BTreeSet<Type>,
+        deserializable_types: &BTreeSet<Type>,
+    ) -> Self {
+        let item =
+            syn::parse_str::<ForeignItemFn>(decl).expect("Cannot parse function declaration");
 
-    pub fn args(&self) -> Vec<FunctionArg> {
-        self.0
+        let name = item.sig.ident.to_string();
+        let args = item
             .sig
             .inputs
             .iter()
             .map(|input| match input {
                 FnArg::Receiver(_) => panic!(
                     "Methods are not supported. Found `self` in function declaration: {:?}",
-                    self.0
+                    item
                 ),
                 FnArg::Typed(arg) => FunctionArg {
                     name: arg.pat.to_token_stream().to_string(),
-                    type_path: match arg.ty.as_ref() {
-                        Type::Path(path) if path.qself.is_none() => path.path.clone(),
-                        _ => panic!(
-                            "Only value types are supported. \
-                                    Incompatible type in function declaration: {:?}",
-                            self.0
-                        ),
-                    },
+                    ty: resolve_type(arg.ty.as_ref(), serializable_types)
+                        .expect("Function argument type was not among the serializable types"),
                 },
             })
-            .collect()
-    }
+            .collect();
+        let return_type = match &item.sig.output {
+            ReturnType::Default => None,
+            ReturnType::Type(_, return_type) => Some(
+                resolve_type(return_type.as_ref(), deserializable_types)
+                    .expect("Function return type was not among the deserializable types"),
+            ),
+        };
+        let is_async = item.sig.asyncness.is_some();
 
-    pub fn is_async(&self) -> bool {
-        self.0.sig.asyncness.is_some()
-    }
-}
-
-impl FromStr for Function {
-    type Err = String;
-
-    fn from_str(function_decl: &str) -> Result<Self, Self::Err> {
-        Self::try_from(syn::parse_str::<ForeignItem>(function_decl).unwrap())
-    }
-}
-
-impl TryFrom<ForeignItem> for Function {
-    type Error = String;
-
-    fn try_from(item: ForeignItem) -> Result<Self, Self::Error> {
-        match item {
-            ForeignItem::Fn(item) => Ok(Self(item)),
-            item => Err(format!(
-                "Only functions can be imported or exported. Found: {:?}",
-                item
-            )),
+        Self {
+            name,
+            args,
+            return_type,
+            is_async,
         }
     }
 }
 
+impl Ord for Function {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for Function {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.name.partial_cmp(&other.name)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct FunctionArg {
     pub name: String,
-    pub type_path: Path,
+    pub ty: Type,
+}
+
+/// Resolves a type based on its type path and a set of user-defined types to match against.
+fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
+    match ty {
+        syn::Type::Path(path) if path.qself.is_none() => {
+            let path = path.path.to_token_stream().to_string();
+            match Primitive::from_str(&path) {
+                Ok(primitive) => Some(Type::Primitive(primitive)),
+                Err(_) => types.iter().find(|ty| ty.name() == path).cloned(),
+            }
+        }
+        _ => panic!(
+            "Only value types are supported. Incompatible type: {:?}",
+            ty
+        ),
+    }
 }

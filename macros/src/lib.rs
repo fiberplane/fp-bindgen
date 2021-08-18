@@ -83,22 +83,20 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item) {
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let function_name = functions.keys();
-    let function_decl = functions.values();
     let serializable_types = serializable_types.iter();
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
-        fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionMap, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
-            let mut map = fp_bindgen::prelude::FunctionMap::new();
-            #( map.insert_str(#function_name, #function_decl); )*
-
+        fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
             #( #serializable_types::add_type_with_dependencies(&mut serializable_import_types); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
             #( #deserializable_types::add_type_with_dependencies(&mut deserializable_import_types); )*
 
-            (map, serializable_import_types, deserializable_import_types)
+            let mut list = fp_bindgen::prelude::FunctionList::new();
+            #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
+
+            (list, serializable_import_types, deserializable_import_types)
         }
     };
     replacement.into()
@@ -108,35 +106,31 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let function_name = functions.keys();
-    let function_decl = functions.values();
     let serializable_types = serializable_types.iter();
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
-        fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionMap, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
-            let mut map = fp_bindgen::prelude::FunctionMap::new();
-            #( map.insert_str(#function_name, #function_decl); )*
-
+        fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
             #( #serializable_types::add_type_with_dependencies(&mut serializable_export_types); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
             #( #deserializable_types::add_type_with_dependencies(&mut deserializable_export_types); )*
 
-            (map, serializable_export_types, deserializable_export_types)
+            let mut list = fp_bindgen::prelude::FunctionList::new();
+            #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
+
+            (list, serializable_export_types, deserializable_export_types)
         }
     };
     replacement.into()
 }
 
-/// Parses function declarations and returns a map with all functions keyed by name.
-/// In addition, it returns two sets: one with all the names for types that may need serialization
-/// to call the functions, and one with all the names for types that may need deserialization to
+/// Parses function declarations and returns them in a list.
+/// In addition, it returns two sets: one with all the paths for types that may need serialization
+/// to call the functions, and one with all the paths for types that may need deserialization to
 /// call the functions.
-fn parse_functions(
-    token_stream: TokenStream,
-) -> (BTreeMap<String, String>, HashSet<Path>, HashSet<Path>) {
-    let mut functions = BTreeMap::new();
+fn parse_functions(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
+    let mut functions = Vec::new();
     let mut serializable_type_names = HashSet::new();
     let mut deserializable_type_names = HashSet::new();
     let mut current_item_tokens = Vec::<TokenTree>::new();
@@ -160,7 +154,7 @@ fn parse_functions(
                             }
                             _ => panic!(
                                 "Only value types are supported. \
-                                        Incompatible argument type in function declaration: {:?}",
+                                    Incompatible argument type in function declaration: {:?}",
                                 function.sig
                             ),
                         },
@@ -175,16 +169,13 @@ fn parse_functions(
                         }
                         _ => panic!(
                             "Only value types are supported. \
-                                    Incompatible return type in function declaration: {:?}",
+                                Incompatible return type in function declaration: {:?}",
                             function.sig
                         ),
                     },
                 }
 
-                functions.insert(
-                    function.sig.ident.to_string(),
-                    function.into_token_stream().to_string(),
-                );
+                functions.push(function.into_token_stream().to_string());
 
                 current_item_tokens = Vec::new();
             }

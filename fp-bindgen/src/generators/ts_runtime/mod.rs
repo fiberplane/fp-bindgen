@@ -1,14 +1,14 @@
 use quote::ToTokens;
 use syn::{ItemEnum, ItemStruct};
 
-use crate::functions::{Function, FunctionMap};
+use crate::functions::FunctionList;
 use crate::types::Type;
 use std::collections::BTreeSet;
-use std::{fs, str::FromStr};
+use std::fs;
 
 pub fn generate_bindings(
-    import_functions: FunctionMap,
-    export_functions: FunctionMap,
+    import_functions: FunctionList,
+    export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     mut deserializable_types: BTreeSet<Type>,
     path: &str,
@@ -18,6 +18,7 @@ pub fn generate_bindings(
 
     let type_defs = all_types
         .into_iter()
+        .filter(|ty| matches!(ty, Type::Enum(_) | Type::Struct(_)))
         .map(|ty| {
             match ty {
                 Type::Enum(ty) => create_enum_declaration(ty),
@@ -33,24 +34,21 @@ pub fn generate_bindings(
 
     let import_defs = import_functions
         .into_iter()
-        .map(|(fn_name, fn_decl)| {
-            let function = Function::from_str(&fn_decl).unwrap();
-            let modifiers = if function.is_async() { "async " } else { "" };
+        .map(|function| {
+            let modifiers = if function.is_async { "async " } else { "" };
             let args = function
-                .args()
+                .args
                 .iter()
-                // FIXME: This works so long as we only care about printing the identifier, but it's
-                //        too late to try to resolve the type_path to do something actually useful.
-                //        The reason it's too late is because we have the type path in a variable,
-                //        only known at runtime, while we need to query the type information at
-                //        compile time. So instead, we should resolve them when we're still inside
-                //        the macro and pass something smarter down here.
-                .map(|arg| format!("{}: {}", arg.name, arg.type_path.segments[0].ident))
+                .map(|arg| format!("{}: {}", arg.name, arg.ty.name()))
                 .collect::<Vec<_>>()
                 .join(", ");
+            let return_type = match function.return_type {
+                None => "".to_owned(),
+                Some(ty) => format!(": {}", ty.name()),
+            };
             format!(
-                "export {}function {}({}) {{\n    // TODO: Impl body\n}}",
-                modifiers, fn_name, args
+                "export {}function {}({}){} {{\n    // TODO: Impl body\n}}",
+                modifiers, function.name, args, return_type
             )
         })
         .collect::<Vec<_>>()
@@ -59,18 +57,21 @@ pub fn generate_bindings(
     // FIXME: This is just a copy of import_defs...
     let export_defs = export_functions
         .into_iter()
-        .map(|(fn_name, fn_decl)| {
-            let function = Function::from_str(&fn_decl).unwrap();
-            let modifiers = if function.is_async() { "async " } else { "" };
+        .map(|function| {
+            let modifiers = if function.is_async { "async " } else { "" };
             let args = function
-                .args()
+                .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name, arg.type_path.segments[0].ident))
+                .map(|arg| format!("{}: {}", arg.name, arg.ty.name()))
                 .collect::<Vec<_>>()
                 .join(", ");
+            let return_type = match function.return_type {
+                None => "".to_owned(),
+                Some(ty) => format!(": {}", ty.name()),
+            };
             format!(
-                "{}function {}({}) {{\n    // TODO: Impl body\n}}",
-                modifiers, fn_name, args
+                "{}function {}({}){} {{\n    // TODO: Impl body\n}}",
+                modifiers, function.name, args, return_type
             )
         })
         .collect::<Vec<_>>()
@@ -108,7 +109,7 @@ fn create_struct_declaration(ty: ItemStruct) -> String {
             format!("    {}: {};", name, ty)
         })
         .collect::<Vec<_>>()
-        .join("\n\n");
+        .join("\n");
 
     format!("export type {} = {{\n{}\n}};", name, fields)
 }

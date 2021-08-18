@@ -31,8 +31,8 @@ impl FromStr for BindingsType {
 }
 
 pub fn generate_bindings(
-    import_functions: FunctionMap,
-    export_functions: FunctionMap,
+    import_functions: FunctionList,
+    export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
     bindings_type: &str,
