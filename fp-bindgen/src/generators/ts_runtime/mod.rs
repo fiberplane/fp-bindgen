@@ -1,4 +1,4 @@
-use syn::__private::ToTokens;
+use quote::ToTokens;
 use syn::{ItemEnum, ItemStruct};
 
 use crate::functions::{Function, FunctionMap};

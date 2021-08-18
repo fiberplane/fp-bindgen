@@ -6,4 +6,5 @@ edition = "2018"
 
 [dependencies]
 fp-bindgen-macros = { version = "0.1.0", path = "../macros" }
+quote = "1"
 syn = { version = "1", features = ["full", "extra-traits"] }
