@@ -54,8 +54,8 @@ fp_import! {
 }
 ```
 
-Note that `Serialize` and `Deserialize` are implemented by default for some common standard types,
-such as `Option`, `Box`, and `Result`.
+Note that `Serializable` is implemented by default for some common standard types, such as
+`Option`, `Vec`, and other container types.
 
 Functions can also be `async`, which can be achieved by nothing more than putting the `async`
 keyword in front of the function declaration.
@@ -99,6 +99,17 @@ the macros. You can run the project using `cargo run generate <bindings-type>`, 
 `<bindings-type>` should be replaced with one of the types mentioned above.
 
 ## FAQ
+
+### I added a `Serializable` derive to my type, why don't I see it included in the bindings?
+
+Are you using the type in one of the `fp_import!` or `fp_export!` functions? Deriving `Serializable`
+makes it possible to use the type as part of your protocol, but it won't become part of the
+generated bindings until it is actually used. Note that usage can be either direct (referenced
+directly by one of the `fp_import!` or `fp_export!` functions), or indirect when it is referenced
+by another type that is already in use.
+
+Are you using the type and you believe the omission is in error? Please
+[file an issue](https://github.com/fiberplane/fp-bindgen/issues).
 
 ### Why not utilize [`ts-rs`](https://github.com/Aleph-Alpha/ts-rs) for the TypeScript generator?
 
