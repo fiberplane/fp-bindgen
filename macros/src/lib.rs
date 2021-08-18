@@ -4,27 +4,34 @@ use quote::quote;
 use std::convert::TryFrom;
 use syn::{Ident, Item};
 
-mod generator;
-mod generators;
-
-#[proc_macro_derive(Deserialize)]
+#[proc_macro_derive(Deserializable)]
 pub fn derive_deserialize(item: TokenStream) -> TokenStream {
     let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
     let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
+    let item_name_str = item_name.to_string();
 
     let implementation = quote! {
-        impl Deserialize for #item_name {}
+        impl Deserializable for #item_name {
+            fn name() -> String {
+                #item_name_str.to_owned()
+            }
+        }
     };
     implementation.into()
 }
 
-#[proc_macro_derive(Serialize)]
+#[proc_macro_derive(Serializable)]
 pub fn derive_serialize(item: TokenStream) -> TokenStream {
     let item = DataStructureItem::try_from(syn::parse::<Item>(item).unwrap()).unwrap();
     let item_name = syn::parse_str::<Ident>(&item.name()).unwrap();
+    let item_name_str = item_name.to_string();
 
     let implementation = quote! {
-        impl Serialize for #item_name {}
+        impl Serializable for #item_name {
+            fn name() -> String {
+                #item_name_str.to_owned()
+            }
+        }
     };
     implementation.into()
 }
@@ -60,13 +67,13 @@ pub fn fp_export(block: TokenStream) -> TokenStream {
 }
 
 #[proc_macro]
-pub fn fp_bindgen(_args: TokenStream) -> TokenStream {
+pub fn fp_bindgen(args: TokenStream) -> TokenStream {
+    let args: proc_macro2::TokenStream = args.into();
     let replacement = quote! {
         let import_functions = __fp_declare_import_fns();
-        println!("Import: {:?}", import_functions);
-
         let export_functions = __fp_declare_export_fns();
-        println!("Export: {:?}", export_functions);
+
+        fp_bindgen::generate_bindings(import_functions, export_functions, #args);
     };
     replacement.into()
 }
