@@ -36,7 +36,13 @@ pub fn generate_bindings(
                 .join(", ");
             let return_type = match function.return_type {
                 None => "".to_owned(),
-                Some(ty) => format!(": {}", format_type(&ty)),
+                Some(ty) => {
+                    if function.is_async {
+                        format!(": Promise<{}>", format_type(&ty))
+                    } else {
+                        format!(": {}", format_type(&ty))
+                    }
+                }
             };
             format!(
                 "export {}function {}({}){} {{\n    // TODO: Impl body\n}}",
@@ -59,7 +65,13 @@ pub fn generate_bindings(
                 .join(", ");
             let return_type = match function.return_type {
                 None => "".to_owned(),
-                Some(ty) => format!(": {}", format_type(&ty)),
+                Some(ty) => {
+                    if function.is_async {
+                        format!(": Promise<{}>", format_type(&ty))
+                    } else {
+                        format!(": {}", format_type(&ty))
+                    }
+                }
             };
             format!(
                 "{}function {}({}){} {{\n    // TODO: Impl body\n}}",
