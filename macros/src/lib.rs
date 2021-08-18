@@ -3,7 +3,7 @@ mod primitives;
 use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use syn::{FnArg, ForeignItemFn, Ident, Item, Path, PathArguments, ReturnType, Type};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
@@ -26,7 +26,8 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     let mut path = path.path;
                     for segment in &mut path.segments {
                         if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
-                            // Inject turbofish:
+                            // When calling it a static function on `Vec<T>`, it gets invoked
+                            // as `Vec::<T>::some_func()`, so we need to insert extra colons:
                             args.colon2_token = Some(syn::parse_quote!(::));
                         }
                     }
@@ -48,12 +49,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn ty() -> Type {
-                use std::str::FromStr;
-                fp_bindgen::prelude::Type::from_str(#item_str).unwrap()
-            }
-
-            fn is_primitive() -> bool {
-                false
+                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {

@@ -41,7 +41,7 @@ where
     }
 
     fn ty() -> Type {
-        Type::Map("BTreeMap", Box::new(K::ty()), Box::new(V::ty()))
+        Type::Map("BTreeMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -61,7 +61,7 @@ where
     }
 
     fn ty() -> Type {
-        Type::List("BTreeSet", Box::new(T::ty()))
+        Type::List("BTreeSet".to_owned(), Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -81,7 +81,7 @@ where
     }
 
     fn ty() -> Type {
-        Type::Map("HashMap", Box::new(K::ty()), Box::new(V::ty()))
+        Type::Map("HashMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -101,7 +101,26 @@ where
     }
 
     fn ty() -> Type {
-        Type::List("HashSet", Box::new(T::ty()))
+        Type::List("HashSet".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
+    }
+}
+
+impl<T> Serializable for Option<T>
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("Option<{}>", T::name())
+    }
+
+    fn ty() -> Type {
+        Type::Option(Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -120,7 +139,7 @@ where
     }
 
     fn ty() -> Type {
-        Type::List("Vec", Box::new(T::ty()))
+        Type::List("Vec".to_owned(), Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {

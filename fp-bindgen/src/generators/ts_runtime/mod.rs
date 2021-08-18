@@ -1,9 +1,6 @@
-use quote::ToTokens;
-use syn::{ItemEnum, ItemStruct};
-
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::Type;
+use crate::types::{Field, Type, Variant};
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -19,16 +16,10 @@ pub fn generate_bindings(
 
     let type_defs = all_types
         .into_iter()
-        .filter(|ty| matches!(ty, Type::Enum(_) | Type::Struct(_)))
-        .map(|ty| {
-            match ty {
-                Type::Enum(ty) => create_enum_declaration(ty),
-                Type::List(_, _) => "".to_owned(), // Lists are transparent.
-                Type::Map(_, _, _) => "".to_owned(), // Maps are transparent.
-                Type::Option(_) => "".to_owned(),  // Options are transparent.
-                Type::Primitive(_) => "".to_owned(), // Primitives don't require special processing.
-                Type::Struct(ty) => create_struct_declaration(ty),
-            }
+        .filter_map(|ty| match ty {
+            Type::Enum(name, variants) => Some(create_enum_definition(name, variants)),
+            Type::Struct(name, fields) => Some(create_struct_definition(name, fields)),
+            _ => None,
         })
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -83,32 +74,14 @@ pub fn generate_bindings(
     fs::write(&file_path, &contents).expect("Could not write bindings file");
 }
 
-fn create_enum_declaration(ty: ItemEnum) -> String {
+fn create_enum_definition(name: String, variants: Vec<Variant>) -> String {
     "TODO".to_owned() // TODO
 }
 
-fn create_struct_declaration(ty: ItemStruct) -> String {
-    let name = ty.ident.to_string();
-    let fields = ty
-        .fields
+fn create_struct_definition(name: String, fields: Vec<Field>) -> String {
+    let fields = fields
         .into_iter()
-        .map(|field| {
-            let name = field
-                .ident
-                .as_ref()
-                .expect("Struct fields must be named")
-                .to_string();
-            let ty = match field.ty {
-                syn::Type::Path(path) if path.qself.is_none() => {
-                    path.path.to_token_stream().to_string()
-                }
-                _ => panic!(
-                    "Only value types are supported. Incompatible type in struct field: {:?}",
-                    field
-                ),
-            };
-            format!("    {}: {};", name, ty)
-        })
+        .map(|field| format!("    {}: {};", field.name, format_type(&field.ty)))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -118,12 +91,12 @@ fn create_struct_declaration(ty: ItemStruct) -> String {
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
-        Type::Enum(item) => item.ident.to_string(),
-        Type::List(_, ty) => format!("Array<{}>", ty.name()),
-        Type::Map(_, k, v) => format!("Record<{}, {}>", k.name(), v.name()),
-        Type::Option(ty) => format!("{} | undefined", ty.name()),
+        Type::Enum(name, _) => name.clone(),
+        Type::List(_, ty) => format!("Array<{}>", format_type(ty)),
+        Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
+        Type::Option(ty) => format!("{} | undefined", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
-        Type::Struct(item) => item.ident.to_string(),
+        Type::Struct(name, _) => name.clone(),
     }
 }
 

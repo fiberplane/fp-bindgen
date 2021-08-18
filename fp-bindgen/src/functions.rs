@@ -1,6 +1,6 @@
-use crate::{prelude::Primitive, types::Type};
+use crate::types::{resolve_type, Type};
 use quote::ToTokens;
-use std::{collections::BTreeSet, str::FromStr};
+use std::collections::BTreeSet;
 use syn::{FnArg, ForeignItemFn, ReturnType};
 
 /// Maps from function name to the stringified function declaration.
@@ -73,16 +73,18 @@ impl Function {
                 ),
                 FnArg::Typed(arg) => FunctionArg {
                     name: arg.pat.to_token_stream().to_string(),
-                    ty: resolve_type(arg.ty.as_ref(), serializable_types)
-                        .expect("Function argument type was not among the serializable types"),
+                    ty: resolve_type(arg.ty.as_ref(), serializable_types).unwrap_or_else(|| {
+                        panic!("Unresolvable argument type: {:?}", arg.ty.as_ref())
+                    }),
                 },
             })
             .collect();
         let return_type = match &item.sig.output {
             ReturnType::Default => None,
             ReturnType::Type(_, return_type) => Some(
-                resolve_type(return_type.as_ref(), deserializable_types)
-                    .expect("Function return type was not among the deserializable types"),
+                resolve_type(return_type.as_ref(), deserializable_types).unwrap_or_else(|| {
+                    panic!("Unresolvable return type: {:?}", return_type.as_ref())
+                }),
             ),
         };
         let is_async = item.sig.asyncness.is_some();
@@ -112,21 +114,4 @@ impl PartialOrd for Function {
 pub struct FunctionArg {
     pub name: String,
     pub ty: Type,
-}
-
-/// Resolves a type based on its type path and a set of user-defined types to match against.
-fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
-    match ty {
-        syn::Type::Path(path) if path.qself.is_none() => {
-            let path = path.path.to_token_stream().to_string();
-            match Primitive::from_str(&path) {
-                Ok(primitive) => Some(Type::Primitive(primitive)),
-                Err(_) => types.iter().find(|ty| ty.name() == path).cloned(),
-            }
-        }
-        _ => panic!(
-            "Only value types are supported. Incompatible type: {:?}",
-            ty
-        ),
-    }
 }
