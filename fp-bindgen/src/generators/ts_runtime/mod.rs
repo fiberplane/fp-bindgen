@@ -2,6 +2,7 @@ use quote::ToTokens;
 use syn::{ItemEnum, ItemStruct};
 
 use crate::functions::FunctionList;
+use crate::prelude::Primitive;
 use crate::types::Type;
 use std::collections::BTreeSet;
 use std::fs;
@@ -39,12 +40,12 @@ pub fn generate_bindings(
             let args = function
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name, arg.ty.name()))
+                .map(|arg| format!("{}: {}", arg.name, format_type(&arg.ty)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match function.return_type {
                 None => "".to_owned(),
-                Some(ty) => format!(": {}", ty.name()),
+                Some(ty) => format!(": {}", format_type(&ty)),
             };
             format!(
                 "export {}function {}({}){} {{\n    // TODO: Impl body\n}}",
@@ -62,12 +63,12 @@ pub fn generate_bindings(
             let args = function
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name, arg.ty.name()))
+                .map(|arg| format!("{}: {}", arg.name, format_type(&arg.ty)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match function.return_type {
                 None => "".to_owned(),
-                Some(ty) => format!(": {}", ty.name()),
+                Some(ty) => format!(": {}", format_type(&ty)),
             };
             format!(
                 "{}function {}({}){} {{\n    // TODO: Impl body\n}}",
@@ -112,4 +113,36 @@ fn create_struct_declaration(ty: ItemStruct) -> String {
         .join("\n");
 
     format!("export type {} = {{\n{}\n}};", name, fields)
+}
+
+/// Formats a type so it's valid TypeScript.
+fn format_type(ty: &Type) -> String {
+    match ty {
+        Type::Enum(item) => item.ident.to_string(),
+        Type::List(_, ty) => format!("Array<{}>", ty.name()),
+        Type::Map(_, k, v) => format!("Record<{}, {}>", k.name(), v.name()),
+        Type::Option(ty) => format!("{} | undefined", ty.name()),
+        Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::Struct(item) => item.ident.to_string(),
+    }
+}
+
+fn format_primitive(primitive: Primitive) -> String {
+    let string = match primitive {
+        Primitive::Bool => "boolean",
+        Primitive::F32 => "number",
+        Primitive::F64 => "number",
+        Primitive::I8 => "number",
+        Primitive::I16 => "number",
+        Primitive::I32 => "number",
+        Primitive::I64 => "number",
+        Primitive::I128 => "number",
+        Primitive::String => "string",
+        Primitive::U8 => "number",
+        Primitive::U16 => "number",
+        Primitive::U32 => "number",
+        Primitive::U64 => "number",
+        Primitive::U128 => "number",
+    };
+    string.to_owned()
 }
