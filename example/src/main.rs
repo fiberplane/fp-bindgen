@@ -51,4 +51,33 @@ fn main() {
     let output_path = format!("bindings/{}", bindings_type);
 
     fp_bindgen!(&bindings_type, &output_path);
+
+    println!("Generated bindings written to `{}/`.", output_path);
+}
+
+#[test]
+fn test_generate_rust_plugin() {
+    fp_bindgen!("rust-plugin", "bindings/rust-plugin");
+
+    let generated_functions = std::fs::read_to_string("bindings/rust-plugin/functions.rs")
+        .expect("Cannot read generated functions");
+    let expected_functions = String::from_utf8_lossy(include_bytes!(
+        "assets/rust_plugin_test/expected_functions.rs"
+    ));
+    tests::assert_lines_eq(&generated_functions, &expected_functions);
+
+    let generated_types = std::fs::read_to_string("bindings/rust-plugin/types.rs")
+        .expect("Cannot read generated types");
+    let expected_types =
+        String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_types.rs"));
+    tests::assert_lines_eq(&generated_types, &expected_types);
+}
+
+#[cfg(test)]
+mod tests {
+    pub fn assert_lines_eq(generated_code: &str, expected_code: &str) {
+        let generated_lines = generated_code.split('\n').collect::<Vec<_>>();
+        let expected_lines = expected_code.split('\n').collect::<Vec<_>>();
+        pretty_assertions::assert_eq!(generated_lines, expected_lines);
+    }
 }

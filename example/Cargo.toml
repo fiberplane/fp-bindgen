@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 fp-bindgen = { path = "../fp-bindgen" }
+pretty_assertions = "0.7"
