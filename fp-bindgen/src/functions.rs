@@ -21,6 +21,10 @@ impl FunctionList {
         ));
     }
 
+    pub fn iter(&self) -> std::collections::btree_set::Iter<'_, Function> {
+        self.0.iter()
+    }
+
     pub fn new() -> Self {
         Self(BTreeSet::new())
     }
