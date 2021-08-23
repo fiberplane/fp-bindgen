@@ -177,6 +177,7 @@ pub fn generate_function_bindings(
     let file_path = format!("{}/functions.rs", path);
     let contents = format!(
         "use super::support::*;\n\
+        use super::types::*;\n\
         \n\
         #[link(wasm_import_module = \"fp\")]\n\
         extern \"C\" {{\n\

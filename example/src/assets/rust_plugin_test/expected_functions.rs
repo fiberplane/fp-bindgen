@@ -1,4 +1,5 @@
 use super::support::*;
+use super::types::*;
 
 #[link(wasm_import_module = "fp")]
 extern "C" {
