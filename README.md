@@ -131,3 +131,8 @@ generator can also work on top of the same pipeline was only a small step at tha
 
 Even so, having previously contributed to the `ts-rs` project, we'd like to extend our thanks to
 everyone who has contributed to it for the inspiration it gave us.
+
+## License
+
+This project is licensed under Apache License, version 2.0
+([LICENSE.txt](https://github.com/fiberplane/fp-bindgen/blob/main/LICENSE.txt)).

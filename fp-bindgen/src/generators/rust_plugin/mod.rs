@@ -34,16 +34,52 @@ pub fn generate_bindings(
     deserializable_types: BTreeSet<Type>,
     path: &str,
 ) {
+    let requires_async = import_functions.iter().any(|function| function.is_async);
+
     generate_type_bindings(serializable_types, deserializable_types, path);
     generate_function_bindings(import_functions, export_functions, path);
 
-    let file_path = format!("{}/support.rs", path);
-    let contents = include_bytes!("assets/support.rs");
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    write_bindings_file(
+        format!("{}/support.rs", path),
+        include_bytes!("assets/support.rs"),
+    );
 
-    let file_path = format!("{}/mod.rs", path);
-    let contents = include_bytes!("assets/mod.rs");
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    if requires_async {
+        write_bindings_file(
+            format!("{}/async.rs", path),
+            include_bytes!("assets/async.rs"),
+        );
+        write_bindings_file(
+            format!("{}/queue.rs", path),
+            include_bytes!("assets/queue.rs"),
+        );
+        write_bindings_file(
+            format!("{}/task.rs", path),
+            include_bytes!("assets/task.rs"),
+        );
+    }
+
+    write_bindings_file(
+        format!("{}/mod.rs", path),
+        format!(
+            "{}mod functions;
+{}mod support;
+{}mod types;
+
+{}pub use functions::*;
+pub use support::{{__fp_free, __fp_malloc}};
+pub use types::*;
+",
+            if requires_async { "mod r#async;\n" } else { "" },
+            if requires_async { "mod queue;\n" } else { "" },
+            if requires_async { "mod task;\n" } else { "" },
+            if requires_async {
+                "pub use r#async::__fp_guest_resolve_async_value;\n"
+            } else {
+                ""
+            }
+        ),
+    );
 }
 
 pub fn generate_type_bindings(
@@ -75,9 +111,10 @@ pub fn generate_type_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    let file_path = format!("{}/types.rs", path);
-    let contents = format!("use serde::{{Deserialize, Serialize}};\n\n{}\n", type_defs);
-    fs::write(&file_path, &contents).expect("Could not write type bindings");
+    write_bindings_file(
+        format!("{}/types.rs", path),
+        format!("use serde::{{Deserialize, Serialize}};\n\n{}\n", type_defs),
+    );
 }
 
 pub fn generate_function_bindings(
@@ -164,7 +201,13 @@ pub fn generate_function_bindings(
             };
             let import_return_value = match &function.return_type {
                 None | Some(Type::Primitive(_)) => "",
-                Some(_) => "    unsafe {\n        import_value_from_host(ret)\n    }\n",
+                Some(_) => {
+                    if function.is_async {
+                        "    unsafe {\n        let result_ptr = HostFuture::new(ret).await();\n        import_value_from_host(result_ptr)\n    }\n"
+                    } else {
+                        "    unsafe {\n        import_value_from_host(ret)\n    }\n"
+                    }
+                }
             };
             format!(
                 "{}pub {}fn {}({}){} {{\n{}{}{}}}",
@@ -181,20 +224,21 @@ pub fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    let file_path = format!("{}/functions.rs", path);
-    let contents = format!(
-        "use super::support::*;\n\
-        use super::types::*;\n\
-        \n\
-        #[link(wasm_import_module = \"fp\")]\n\
-        extern \"C\" {{\n\
-            {}\n\
-        }}\n\
-        \n\
-        {}\n",
-        extern_decls, fn_defs
+    write_bindings_file(
+        format!("{}/functions.rs", path),
+        format!(
+            "use super::support::*;\n\
+            use super::types::*;\n\
+            \n\
+            #[link(wasm_import_module = \"fp\")]\n\
+            extern \"C\" {{\n\
+                {}\n\
+            }}\n\
+            \n\
+            {}\n",
+            extern_decls, fn_defs
+        ),
     );
-    fs::write(&file_path, &contents).expect("Could not write function bindings");
 }
 
 fn create_enum_definition(
@@ -261,4 +305,11 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::U128 => "u128",
     };
     string.to_owned()
+}
+
+fn write_bindings_file<C>(file_path: String, contents: C)
+where
+    C: AsRef<[u8]>,
+{
+    fs::write(&file_path, &contents).expect("Could not write bindings file");
 }
