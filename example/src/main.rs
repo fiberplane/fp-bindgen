@@ -74,6 +74,12 @@ fn test_generate_rust_plugin() {
     let expected_types =
         String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_types.rs"));
     tests::assert_lines_eq(&generated_types, &expected_types);
+
+    let generated_mod = std::fs::read_to_string("bindings/rust-plugin/mod.rs")
+        .expect("Cannot read generated mod.rs");
+    let expected_mod =
+        String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_mod.rs"));
+    tests::assert_lines_eq(&generated_mod, &expected_mod);
 }
 
 #[cfg(test)]

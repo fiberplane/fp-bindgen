@@ -66,8 +66,8 @@ pub fn generate_bindings(
 {}mod support;
 {}mod types;
 
-{}pub use functions::*;
-pub use support::{{__fp_free, __fp_malloc}};
+pub use functions::*;
+{}pub use support::{{__fp_free, __fp_malloc}};
 pub use types::*;
 ",
             if requires_async { "mod r#async;\n" } else { "" },
@@ -203,7 +203,7 @@ pub fn generate_function_bindings(
                 None | Some(Type::Primitive(_)) => "",
                 Some(_) => {
                     if function.is_async {
-                        "    unsafe {\n        let result_ptr = HostFuture::new(ret).await();\n        import_value_from_host(result_ptr)\n    }\n"
+                        "    unsafe {\n        let result_ptr = HostFuture::new(ret).await;\n        import_value_from_host(result_ptr)\n    }\n"
                     } else {
                         "    unsafe {\n        import_value_from_host(ret)\n    }\n"
                     }

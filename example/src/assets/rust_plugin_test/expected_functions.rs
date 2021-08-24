@@ -13,7 +13,8 @@ extern "C" {
 pub async fn my_async_imported_function() -> ComplexHostToGuest {
     let ret = __gen_my_async_imported_function();
     unsafe {
-        import_value_from_host(ret)
+        let result_ptr = HostFuture::new(ret).await;
+        import_value_from_host(result_ptr)
     }
 }
 
