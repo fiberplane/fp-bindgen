@@ -11,13 +11,13 @@ impl FunctionList {
     pub fn add_function(
         &mut self,
         function_decl: &str,
-        doc: Vec<&'static str>,
+        doc_lines: Vec<&'static str>,
         serializable_types: &BTreeSet<Type>,
         deserializable_types: &BTreeSet<Type>,
     ) {
         self.0.insert(Function::new(
             function_decl,
-            doc,
+            doc_lines,
             serializable_types,
             deserializable_types,
         ));
@@ -53,7 +53,7 @@ impl<'a> IntoIterator for &'a FunctionList {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub doc: Vec<&'static str>,
+    pub doc_lines: Vec<&'static str>,
     pub args: Vec<FunctionArg>,
     pub return_type: Option<Type>,
     pub is_async: bool,
@@ -62,7 +62,7 @@ pub struct Function {
 impl Function {
     pub fn new(
         decl: &str,
-        doc: Vec<&'static str>,
+        doc_lines: Vec<&'static str>,
         serializable_types: &BTreeSet<Type>,
         deserializable_types: &BTreeSet<Type>,
     ) -> Self {
@@ -99,7 +99,7 @@ impl Function {
 
         Self {
             name,
-            doc,
+            doc_lines,
             args,
             return_type,
             is_async,

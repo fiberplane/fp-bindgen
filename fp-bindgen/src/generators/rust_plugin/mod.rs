@@ -123,7 +123,7 @@ pub fn generate_function_bindings(
         .map(|function| {
             let name = function.name;
             let doc = function
-                .doc
+                .doc_lines
                 .iter()
                 .map(|line| format!("///{}\n", line))
                 .collect::<Vec<_>>()
