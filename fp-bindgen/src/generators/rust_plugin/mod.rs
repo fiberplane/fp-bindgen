@@ -122,6 +122,12 @@ pub fn generate_function_bindings(
         .into_iter()
         .map(|function| {
             let name = function.name;
+            let doc = function
+                .doc
+                .iter()
+                .map(|line| format!("///{}\n", line))
+                .collect::<Vec<_>>()
+                .join("");
             let modifiers = if function.is_async { "async " } else { "" };
             let args_with_types = function
                 .args
@@ -161,7 +167,8 @@ pub fn generate_function_bindings(
                 Some(_) => "    unsafe {\n        import_value_from_host(ret)\n    }\n",
             };
             format!(
-                "pub {}fn {}({}){} {{\n{}{}{}}}",
+                "{}pub {}fn {}({}){} {{\n{}{}{}}}",
+                doc,
                 modifiers,
                 name,
                 args_with_types,

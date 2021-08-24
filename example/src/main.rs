@@ -25,8 +25,11 @@ pub struct ComplexGuestToHost {
 }
 
 fp_import! {
+    /// This is a very simple function that only uses primitives. Our bindgen should have little
+    /// trouble with this.
     fn my_plain_imported_function(a: u32, b: u32) -> u32;
 
+    /// This one passes complex data types. Things are getting interesting.
     fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest;
 
     async fn my_async_imported_function() -> ComplexHostToGuest;
