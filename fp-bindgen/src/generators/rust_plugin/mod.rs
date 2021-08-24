@@ -224,6 +224,24 @@ pub fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
+    let macro_rules = export_functions
+        .into_iter()
+        .map(|function| {
+            let has_return_value = function.return_type.is_some();
+            format!(
+                "    (fn {}($($param:ident: $ty:ty),+){} $body:block) => {{
+        fn {}($($param: $ty),+){} $body
+    }};",
+                function.name,
+                if has_return_value { " -> $ret:ty" } else { "" },
+                function.name,
+                if has_return_value { " -> $ret" } else { "" }
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    let export_macro = format!("macro_rules! fp_export {{\n{}\n}}", macro_rules);
+
     write_bindings_file(
         format!("{}/functions.rs", path),
         format!(
@@ -235,8 +253,10 @@ pub fn generate_function_bindings(
                 {}\n\
             }}\n\
             \n\
+            {}\n\
+            \n\
             {}\n",
-            extern_decls, fn_defs
+            extern_decls, fn_defs, export_macro
         ),
     );
 }
