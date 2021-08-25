@@ -54,6 +54,13 @@ fn from_fat_ptr(ptr: FatPtr) -> (*const u8, u32) {
     ((ptr >> 32) as *const u8, (ptr & 0xffffffff) as u32)
 }
 
+pub(crate) fn malloc(len: u32) -> *const u8 {
+    let vec = Vec::with_capacity(len as usize);
+    let ptr = vec.as_ptr();
+    std::mem::forget(vec);
+    ptr
+}
+
 #[doc(hidden)]
 #[no_mangle]
 pub fn __fp_malloc(len: u32) -> FatPtr {
