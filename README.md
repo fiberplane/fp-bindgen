@@ -139,6 +139,30 @@ generator can also work on top of the same pipeline was only a small step at tha
 Even so, having previously contributed to the `ts-rs` project, we'd like to extend our thanks to
 everyone who has contributed to it for the inspiration it gave us.
 
+### What about versioning?
+
+Generally, versioning is considered out-of-scope for this project. This means it is your own
+responsibility to verify a plugin you execute was compiled against a compatible version of the
+protocol your runtime provides.
+
+If your protocol ever needs to introduce breaking changes, we advise to include a `version() -> u32`
+export function in the protocol itself that you can call before invoking any other functions.
+
+As for what constitutes a breaking change, we offer the following guidelines:
+
+- All plugin exports are always optional. Because of this, new exports can always be added without
+  breaking existing plugins, unless your runtime performs an explicit check that mandates an
+  export's existence.
+- Adding new imports is always safe, as they will simply be ignored by existing plugins.
+- Adding fields to `struct`s is always safe, unless your runtime mandates the existence of such
+  fields in arguments or return values coming from the plugin.
+- Adding new types is always safe.
+- **Anything else should be considered a breaking change.**
+
+Note that, because of the above guidelines, you should never need to define a versioning function in
+your first iteration. Because plugin exports are optional, the absense of a versioning function can
+simply be interpreted as meaning the plugin is at version 1.
+
 ## License
 
 This project is licensed under Apache License, version 2.0
