@@ -4,18 +4,18 @@ use super::types::*;
 
 #[link(wasm_import_module = "fp")]
 extern "C" {
-    fn __gen_my_async_imported_function() -> FatPtr;
+    fn __fp_gen_my_async_imported_function() -> FatPtr;
 
-    fn __gen_my_complex_imported_function(a: FatPtr) -> FatPtr;
+    fn __fp_gen_my_complex_imported_function(a: FatPtr) -> FatPtr;
 
-    fn __gen_my_plain_imported_function(a: u32, b: u32) -> u32;
+    fn __fp_gen_my_plain_imported_function(a: u32, b: u32) -> u32;
 
     fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
 }
 
 pub async fn my_async_imported_function() -> ComplexHostToGuest {
     unsafe {
-        let ret = __gen_my_async_imported_function();
+        let ret = __fp_gen_my_async_imported_function();
         let result_ptr = HostFuture::new(ret).await;
         import_value_from_host(result_ptr)
     }
@@ -25,7 +25,7 @@ pub async fn my_async_imported_function() -> ComplexHostToGuest {
 pub fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest {
     let a = export_value_to_host(&a);
     unsafe {
-        let ret = __gen_my_complex_imported_function(a);
+        let ret = __fp_gen_my_complex_imported_function(a);
         import_value_from_host(ret)
     }
 }
@@ -33,7 +33,7 @@ pub fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest
 /// This is a very simple function that only uses primitives. Our bindgen should have little
 /// trouble with this.
 pub fn my_plain_imported_function(a: u32, b: u32) -> u32 {
-    unsafe { __gen_my_plain_imported_function(a, b) }
+    unsafe { __fp_gen_my_plain_imported_function(a, b) }
 }
 
 #[doc(hidden)]

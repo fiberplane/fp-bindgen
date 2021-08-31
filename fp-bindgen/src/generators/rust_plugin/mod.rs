@@ -181,7 +181,10 @@ pub fn generate_function_bindings(
                     }
                 ),
             };
-            format!("    fn __gen_{}({}){};", function.name, args, return_type)
+            format!(
+                "    fn __fp_gen_{}({}){};",
+                function.name, args, return_type
+            )
         })
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -226,9 +229,9 @@ pub fn generate_function_bindings(
                 .collect::<Vec<_>>()
                 .join(", ");
             let call_fn = match &function.return_type {
-                None => format!("__gen_{}({});", name, args),
-                Some(Type::Primitive(_)) => format!("__gen_{}({})", name, args),
-                Some(_) => format!("let ret = __gen_{}({});", name, args),
+                None => format!("__fp_gen_{}({});", name, args),
+                Some(Type::Primitive(_)) => format!("__fp_gen_{}({})", name, args),
+                Some(_) => format!("let ret = __fp_gen_{}({});", name, args),
             };
             let import_return_value = match &function.return_type {
                 None | Some(Type::Primitive(_)) => "",

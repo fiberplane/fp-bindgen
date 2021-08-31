@@ -277,7 +277,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 };
 
                 format!(
-                    "__gen_{}: ({}){} => {{
+                    "__fp_gen_{}: ({}){} => {{
 {}    const _async_result_ptr = createAsyncValue();
     importFunctions.{}({})
         .then((result) => {{{}
@@ -313,9 +313,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 };
 
                 format!(
-                    "__gen_{}: ({}){} => {{
-{}    {}
-}},",
+                    "__fp_gen_{}: ({}){} => {{\n{}    {}\n}},",
                     name,
                     args_with_ptr_types,
                     return_type,

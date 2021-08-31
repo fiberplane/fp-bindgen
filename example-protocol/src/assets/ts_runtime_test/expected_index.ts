@@ -107,7 +107,7 @@ export async function createRuntime(
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
             __fp_host_resolve_async_value: resolvePromise,
-            __gen_my_async_imported_function: (): FatPtr => {
+            __fp_gen_my_async_imported_function: (): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.myAsyncImportedFunction()
                     .then((result) => {
@@ -122,11 +122,11 @@ export async function createRuntime(
                     });
                 return _async_result_ptr;
             },
-            __gen_my_complex_imported_function: (a_ptr: FatPtr): FatPtr => {
+            __fp_gen_my_complex_imported_function: (a_ptr: FatPtr): FatPtr => {
                 const a = parseObject<ComplexGuestToHost>(a_ptr);
                 return serializeObject(importFunctions.myComplexImportedFunction(a));
             },
-            __gen_my_plain_imported_function: (a: number, b: number): number => {
+            __fp_gen_my_plain_imported_function: (a: number, b: number): number => {
                 return importFunctions.myPlainImportedFunction(a, b);
             },
         },
