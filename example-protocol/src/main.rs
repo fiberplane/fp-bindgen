@@ -82,6 +82,23 @@ fn test_generate_rust_plugin() {
     tests::assert_lines_eq(&generated_mod, &expected_mod);
 }
 
+#[test]
+fn test_generate_ts_runtime() {
+    fp_bindgen!("ts-runtime", "bindings/ts-runtime");
+
+    let generated_types = std::fs::read_to_string("bindings/ts-runtime/types.ts")
+        .expect("Cannot read generated types");
+    let expected_types =
+        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_types.ts"));
+    tests::assert_lines_eq(&generated_types, &expected_types);
+
+    let generated_index = std::fs::read_to_string("bindings/ts-runtime/index.ts")
+        .expect("Cannot read generated index.ts");
+    let expected_index =
+        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_index.ts"));
+    tests::assert_lines_eq(&generated_index, &expected_index);
+}
+
 #[cfg(test)]
 mod tests {
     pub fn assert_lines_eq(generated_code: &str, expected_code: &str) {

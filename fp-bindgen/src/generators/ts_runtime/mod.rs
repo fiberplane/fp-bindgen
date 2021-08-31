@@ -20,13 +20,24 @@ pub fn generate_bindings(
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
 
+    let type_names = all_types
+        .into_iter()
+        .filter_map(|ty| match ty {
+            Type::Enum(name, _) => Some(name),
+            Type::Struct(name, _) => Some(name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+
     let import_wrappers = format_import_wrappers(&import_functions);
     let export_wrappers = format_export_wrappers(&export_functions);
 
     let contents = format!(
         "import {{ encode, decode }} from \"@msgpack/msgpack\";
 
-import * from \"./types\";
+import type {{
+{}
+}} from \"./types\";
 
 type FatPtr = bigint;
 
@@ -158,10 +169,11 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
     return (BigInt(ptr) << 32n) | BigInt(len);
 }}
 ",
-        join_lines(&import_decls, |line| format!("   {};", line)),
-        join_lines(&export_decls, |line| format!("   {};", line)),
-        join_lines(&import_wrappers, |line| format!("            {},", line)),
-        join_lines(&export_wrappers, |line| format!("        {},", line)),
+        join_lines(&type_names, |line| format!("    {},", line)),
+        join_lines(&import_decls, |line| format!("    {};", line)),
+        join_lines(&export_decls, |line| format!("    {};", line)),
+        join_lines(&import_wrappers, |line| format!("            {}", line)),
+        join_lines(&export_wrappers, |line| format!("        {}", line)),
     );
     write_bindings_file(format!("{}/index.ts", path), &contents);
 }
@@ -187,14 +199,7 @@ fn format_function_declarations(
             let args = function
                 .args
                 .iter()
-                .map(|arg| {
-                    format!(
-                        "{}{}: {}",
-                        arg.name.to_camel_case(),
-                        optional_marker,
-                        format_type(&arg.ty)
-                    )
-                })
+                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_type(&arg.ty)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &function.return_type {
@@ -208,8 +213,9 @@ fn format_function_declarations(
                 }
             };
             format!(
-                "    {}: ({}){},",
+                "{}{}: ({}){}",
                 function.name.to_camel_case(),
+                optional_marker,
                 args,
                 return_type
             )
@@ -220,7 +226,7 @@ fn format_function_declarations(
 fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
     import_functions
         .into_iter()
-        .map(|function| {
+        .flat_map(|function| {
             let name = &function.name;
             let args_with_ptr_types = function
                 .args
@@ -271,53 +277,51 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 };
 
                 format!(
-                    "{}: ({}){} {{
-{}
-    const _async_result_ptr = createAsyncValue();
+                    "__gen_{}: ({}){} => {{
+{}    const _async_result_ptr = createAsyncValue();
     importFunctions.{}({})
         .then((result) => {{{}
             resolveFuture(_async_result_ptr);
         }})
         .catch((error) => {{
             console.error(
-                'Unrecoverable exception trying to call async plugin function \"${}\"',
+                'Unrecoverable exception trying to call async plugin function \"{}\"',
                 error
             );
         }});
     return _async_result_ptr;
-}}",
-                    name.to_camel_case(),
+}},",
+                    name,
                     args_with_ptr_types,
                     return_type,
-                    join_lines(&import_args, |line| format!("    {}", line)),
-                    name,
+                    import_args.iter().map(|line| format!("    {}\n", line)).collect::<Vec<_>>().join(""),
+                    name.to_camel_case(),
                     args,
                     assign_async_value,
                     name
-                )
+                ).split('\n').map(|line| line.to_owned()).collect::<Vec<_>>()
             } else {
                 let fn_call = match &function.return_type {
-                    None => format!("importFunctions.{}({});", name, args),
+                    None => format!("importFunctions.{}({});", name.to_camel_case(), args),
                     Some(Type::Primitive(_)) => {
-                        format!("return importFunctions.{}({});", name, args)
+                        format!("return importFunctions.{}({});", name.to_camel_case(), args)
                     }
                     Some(_) => format!(
                         "return serializeObject(importFunctions.{}({}));",
-                        name, args
+                        name.to_camel_case(), args
                     ),
                 };
 
                 format!(
-                    "{}: ({}){} {{
-{}
-    {}
-}}",
-                    name.to_camel_case(),
+                    "__gen_{}: ({}){} => {{
+{}    {}
+}},",
+                    name,
                     args_with_ptr_types,
                     return_type,
-                    join_lines(&import_args, |line| format!("    {}", line)),
+                    import_args.iter().map(|line| format!("    {}\n", line)).collect::<Vec<_>>().join(""),
                     fn_call
-                )
+                ).split('\n').map(|line| line.to_owned()).collect::<Vec<_>>()
             }
         })
         .collect()
@@ -326,72 +330,91 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
 fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
     import_functions
         .into_iter()
-        .map(|function| {
+        .flat_map(|function| {
             let name = &function.name;
-            let args_with_ptr_types = function
-                .args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(primitive) => format!(
-                        "{}: {}",
-                        arg.name.to_camel_case(),
-                        format_primitive(*primitive)
-                    ),
-                    _ => format!("{}_ptr: FatPtr", arg.name),
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let return_type = match &function.return_type {
-                None => "".to_owned(),
-                Some(Type::Primitive(primitive)) => format!(": {}", format_primitive(*primitive)),
-                Some(_) => ": FatPtr".to_owned(),
-            };
-            let import_args = function
-                .args
-                .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    ty => Some(format!(
-                        "const {} = parseObject<{}>({}_ptr);",
-                        arg.name.to_camel_case(),
-                        format_type(ty),
-                        arg.name
-                    )),
-                })
-                .collect::<Vec<_>>();
             let args = function
                 .args
                 .iter()
                 .map(|arg| arg.name.to_camel_case())
                 .collect::<Vec<_>>()
                 .join(", ");
-            let fn_call = match &function.return_type {
-                None => format!("importFunctions.{}({});", name, args),
-                Some(Type::Primitive(_)) => {
-                    format!("return importFunctions.{}({});", name, args)
+            let export_args = function
+                .args
+                .iter()
+                .filter_map(|arg| match &arg.ty {
+                    Type::Primitive(_) => None,
+                    _ => Some(format!(
+                        "const {}_ptr = serializeObject({});",
+                        arg.name,
+                        arg.name.to_camel_case()
+                    )),
+                })
+                .collect::<Vec<_>>();
+
+            // Trivial functions can simply be returned as is:
+            if export_args.is_empty() && !function.is_async {
+                return vec![format!(
+                    "{}: instance.exports.__fp_gen_{} as any,",
+                    name.to_camel_case(),
+                    name
+                )];
+            }
+
+            let call_args = function
+                .args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Type::Primitive(_) => arg.name.to_camel_case(),
+                    _ => format!("{}_ptr", arg.name),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            let fn_call = if function.is_async {
+                format!(
+                    "return promiseFromPtr<{}>(export_fn({}));",
+                    match &function.return_type {
+                        None => "void".to_owned(),
+                        Some(ty) => format_type(ty),
+                    },
+                    call_args
+                )
+            } else {
+                match &function.return_type {
+                    None => format!("export_fn({});", call_args),
+                    Some(Type::Primitive(_)) => {
+                        format!("return export_fn({});", call_args)
+                    }
+                    Some(ty) => format!(
+                        "return parseObject<{}>(export_fn({}));",
+                        format_type(ty),
+                        call_args
+                    ),
                 }
-                Some(_) => format!(
-                    "return serializeObject(importFunctions.{}({}));",
-                    name, args
-                ),
+            };
+            let return_fn = if export_args.is_empty() {
+                format!("return ({}) => {}", args, fn_call.replace("return ", ""))
+            } else {
+                format!(
+                    "return ({}) => {{\n{}\n        {}\n    }};",
+                    args,
+                    join_lines(&export_args, |line| format!("        {}", line)),
+                    fn_call
+                )
             };
             format!(
                 "{}: (() => {{
-        const fn = instance.exports.{};
-        if (!fn) return;
+    const export_fn = instance.exports.__fp_gen_{} as any;
+    if (!export_fn) return;
 
-{}    ({}){} {{
     {}
-        {}
-    }}
-}})()",
+}})(),",
                 name.to_camel_case(),
                 name,
-                args_with_ptr_types,
-                return_type,
-                join_lines(&import_args, |line| format!("    {}", line)),
-                fn_call
+                return_fn
             )
+            .split('\n')
+            .map(|line| line.to_owned())
+            .collect::<Vec<_>>()
         })
         .collect()
 }
