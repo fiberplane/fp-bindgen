@@ -4,6 +4,8 @@ use super::types::*;
 
 #[link(wasm_import_module = "fp")]
 extern "C" {
+    fn __fp_gen_log(message: FatPtr);
+
     fn __fp_gen_my_async_imported_function() -> FatPtr;
 
     fn __fp_gen_my_complex_imported_function(a: FatPtr) -> FatPtr;
@@ -11,6 +13,12 @@ extern "C" {
     fn __fp_gen_my_plain_imported_function(a: u32, b: u32) -> u32;
 
     fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
+}
+
+/// Logs a message to the (development) console.
+pub fn log(message: String) {
+    let message = export_value_to_host(&message);
+    unsafe { __fp_gen_log(message); }
 }
 
 pub async fn my_async_imported_function() -> ComplexHostToGuest {

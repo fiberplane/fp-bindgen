@@ -9,6 +9,7 @@ pub enum Type {
     Map(String, Box<Type>, Box<Type>),
     Option(Box<Type>),
     Primitive(Primitive),
+    String,
     Struct(String, Vec<Field>),
 }
 
@@ -32,6 +33,7 @@ impl Type {
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
             Self::Option(ty) => format!("Option<{}>", ty.name()),
             Self::Primitive(primitive) => primitive.name(),
+            Self::String => "String".to_owned(),
             Self::Struct(name, _) => name.clone(),
         }
     }
@@ -42,7 +44,7 @@ impl Type {
     pub fn is_transparent(&self) -> bool {
         match self {
             Self::List(_, _) | Self::Map(_, _, _) | Self::Option(_) => true,
-            Self::Enum(_, _) | Self::Primitive(_) | Self::Struct(_, _) => false,
+            Self::Enum(_, _) | Self::Primitive(_) | Self::String | Self::Struct(_, _) => false,
         }
     }
 }
@@ -186,6 +188,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                                     .unwrap_or(false)
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,
+                        Type::String => path_without_args == "String",
                         Type::Struct(name, _) => name == &path_without_args,
                     })
                     .cloned(),

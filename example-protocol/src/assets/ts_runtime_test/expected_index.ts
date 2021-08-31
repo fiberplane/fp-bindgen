@@ -9,6 +9,7 @@ import type {
 type FatPtr = bigint;
 
 export type Imports = {
+    log: (message: string) => void;
     myAsyncImportedFunction: () => Promise<ComplexHostToGuest>;
     myComplexImportedFunction: (a: ComplexGuestToHost) => ComplexHostToGuest;
     myPlainImportedFunction: (a: number, b: number) => number;
@@ -26,7 +27,7 @@ export type Exports = {
  * After this, your only recourse is to create a new runtime, probably with a different WASM plugin.
  */
 export class FPRuntimeError extends Error {
-    constructor(message) {
+    constructor(message: string) {
         super(message);
     }
 }
@@ -107,6 +108,10 @@ export async function createRuntime(
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
             __fp_host_resolve_async_value: resolvePromise,
+            __fp_gen_log: (message_ptr: FatPtr) => {
+                const message = parseObject<string>(message_ptr);
+                importFunctions.log(message);
+            },
             __fp_gen_my_async_imported_function: (): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.myAsyncImportedFunction()
@@ -156,7 +161,7 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_my_complex_exported_function as any;
             if (!export_fn) return;
         
-            return (a) => {
+            return (a: ComplexHostToGuest) => {
                 const a_ptr = serializeObject(a);
                 return parseObject<ComplexGuestToHost>(export_fn(a_ptr));
             };

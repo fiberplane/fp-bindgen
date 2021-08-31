@@ -55,7 +55,7 @@ export type Exports = {{
  * After this, your only recourse is to create a new runtime, probably with a different WASM plugin.
  */
 export class FPRuntimeError extends Error {{
-    constructor(message) {{
+    constructor(message: string) {{
         super(message);
     }}
 }}
@@ -203,7 +203,7 @@ fn format_function_declarations(
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &function.return_type {
-                None => "".to_owned(),
+                None => " => void".to_owned(),
                 Some(ty) => {
                     if function.is_async {
                         format!(" => Promise<{}>", format_type(ty))
@@ -333,7 +333,7 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
             let args = function
                 .args
                 .iter()
-                .map(|arg| arg.name.to_camel_case())
+                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_type(&arg.ty)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let export_args = function
@@ -459,6 +459,7 @@ fn format_type(ty: &Type) -> String {
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
         Type::Option(ty) => format!("{} | undefined", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::String => "string".to_owned(),
         Type::Struct(name, _) => name.clone(),
     }
 }
@@ -473,7 +474,6 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::I32 => "number",
         Primitive::I64 => "bigint",
         Primitive::I128 => "bigint",
-        Primitive::String => "string",
         Primitive::U8 => "number",
         Primitive::U16 => "number",
         Primitive::U32 => "number",

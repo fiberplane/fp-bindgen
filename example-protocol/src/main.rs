@@ -25,6 +25,9 @@ pub struct ComplexGuestToHost {
 }
 
 fp_import! {
+    /// Logs a message to the (development) console.
+    fn log(message: String);
+
     /// This is a very simple function that only uses primitives. Our bindgen should have little
     /// trouble with this.
     fn my_plain_imported_function(a: u32, b: u32) -> u32;
