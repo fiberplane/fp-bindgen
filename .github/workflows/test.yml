@@ -1,0 +1,48 @@
+---
+name: Run tests
+
+on:
+  push:
+    branches: ["*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Cache multiple paths
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-${{ hashFiles('**/*.lock') }}
+
+      - name: Clean cache if it's too big
+        run: |
+          du -hs target || exit 0
+          target_size=$(du -ms target | awk '{print $1}')
+          if [ "$target_size" -gt "5120" ]; then
+            echo "size is ${target_size}, running cargo clean"
+            cargo clean
+          fi
+
+      - name: Lint code
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features
+
+      - name: Run tests
+        run: cargo test
+
+      - name: Verify example-plugin builds
+        run: cargo build
