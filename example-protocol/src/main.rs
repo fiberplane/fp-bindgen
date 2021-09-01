@@ -25,6 +25,9 @@ pub struct ComplexGuestToHost {
 }
 
 fp_import! {
+    /// Logs a message to the (development) console.
+    fn log(message: String);
+
     /// This is a very simple function that only uses primitives. Our bindgen should have little
     /// trouble with this.
     fn my_plain_imported_function(a: u32, b: u32) -> u32;
@@ -44,18 +47,11 @@ fp_export! {
 }
 
 fn main() {
-    let cmd = std::env::args().nth(1).expect("no command given");
-    if cmd != "generate" {
-        println!("Usage: cargo run generate <bindings-type>");
-        return;
+    for bindings_type in ["rust-plugin", "ts-runtime"] {
+        let output_path = format!("bindings/{}", bindings_type);
+        fp_bindgen!(bindings_type, &output_path);
+        println!("Generated bindings written to `{}/`.", output_path);
     }
-
-    let bindings_type = std::env::args().nth(2).expect("no bindings type given");
-    let output_path = format!("bindings/{}", bindings_type);
-
-    fp_bindgen!(&bindings_type, &output_path);
-
-    println!("Generated bindings written to `{}/`.", output_path);
 }
 
 #[test]
@@ -74,6 +70,29 @@ fn test_generate_rust_plugin() {
     let expected_types =
         String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_types.rs"));
     tests::assert_lines_eq(&generated_types, &expected_types);
+
+    let generated_mod = std::fs::read_to_string("bindings/rust-plugin/mod.rs")
+        .expect("Cannot read generated mod.rs");
+    let expected_mod =
+        String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_mod.rs"));
+    tests::assert_lines_eq(&generated_mod, &expected_mod);
+}
+
+#[test]
+fn test_generate_ts_runtime() {
+    fp_bindgen!("ts-runtime", "bindings/ts-runtime");
+
+    let generated_types = std::fs::read_to_string("bindings/ts-runtime/types.ts")
+        .expect("Cannot read generated types");
+    let expected_types =
+        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_types.ts"));
+    tests::assert_lines_eq(&generated_types, &expected_types);
+
+    let generated_index = std::fs::read_to_string("bindings/ts-runtime/index.ts")
+        .expect("Cannot read generated index.ts");
+    let expected_index =
+        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_index.ts"));
+    tests::assert_lines_eq(&generated_index, &expected_index);
 }
 
 #[cfg(test)]

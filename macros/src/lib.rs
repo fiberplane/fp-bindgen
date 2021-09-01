@@ -27,7 +27,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     let mut path = path.path;
                     for segment in &mut path.segments {
                         if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
-                            // When calling it a static function on `Vec<T>`, it gets invoked
+                            // When calling a static function on `Vec<T>`, it gets invoked
                             // as `Vec::<T>::some_func()`, so we need to insert extra colons:
                             args.colon2_token = Some(syn::parse_quote!(::));
                         }
@@ -253,7 +253,6 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
         Primitive::I32,
         Primitive::I64,
         Primitive::I128,
-        Primitive::String,
         Primitive::U8,
         Primitive::U16,
         Primitive::U32,
