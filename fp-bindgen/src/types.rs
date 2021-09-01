@@ -12,7 +12,7 @@ pub struct GenericArgument {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
-    Enum(String, Vec<GenericArgument>, Vec<Variant>),
+    Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
     GenericArgument(Box<GenericArgument>),
     List(String, Box<Type>),
     Map(String, Box<Type>, Box<Type>),
@@ -77,6 +77,11 @@ impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.name().partial_cmp(&other.name())
     }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct EnumOptions {
+    pub content_attr: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

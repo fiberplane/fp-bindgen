@@ -520,11 +520,17 @@ fn create_enum_definition(
     generic_args: Vec<GenericArgument>,
     variants: Vec<Variant>,
     serde_reqs: &SerializationRequirements,
+    opts: EnumOptions,
 ) -> String {
     let derives = match serde_reqs {
         SerializationRequirements::Serialize => "Serialize",
         SerializationRequirements::Deserialize => "Deserialize",
         SerializationRequirements::Both => "Serialize, Deserialize",
+    };
+    let content_attr = if let Some(attr_name) = opts.content_attr {
+        format!("content = \"{}\", ", attr_name)
+    } else {
+        "".to_owned()
     };
     let variants = variants
         .into_iter()
@@ -556,11 +562,12 @@ fn create_enum_definition(
 
     format!(
         "#[derive(Clone, Debug, PartialEq, {})]\n\
-        #[serde(rename_all = \"snake_case\")]\n\
+        #[serde(tag = \"type\", {}rename_all = \"snake_case\")]\n\
         pub enum {} {{\n\
             {}\n\
         }}",
         derives,
+        content_attr,
         format_name_with_generics(&name, &generic_args),
         variants
     )
