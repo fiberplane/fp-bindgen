@@ -25,7 +25,7 @@ impl FromStr for BindingsType {
             "rust-plugin" => Ok(Self::RustPlugin),
             "ts-runtime" => Ok(Self::TsRuntime),
             other => Err(format!(
-                "Bindings type must be one of \"rust-plugin\", \"ts-runtime\", was: \"{}\"",
+                "Bindings type must be one of `rust-plugin`, `ts-runtime`, was: `{}`",
                 other
             )),
         }

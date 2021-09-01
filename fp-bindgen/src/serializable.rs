@@ -130,6 +130,20 @@ where
     }
 }
 
+impl Serializable for String {
+    fn name() -> String {
+        "String".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::String
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        BTreeSet::new()
+    }
+}
+
 impl<T> Serializable for Vec<T>
 where
     T: Serializable,
