@@ -181,7 +181,10 @@ pub fn generate_function_bindings(
                     }
                 ),
             };
-            format!("    fn __gen_{}({}){};", function.name, args, return_type)
+            format!(
+                "    fn __fp_gen_{}({}){};",
+                function.name, args, return_type
+            )
         })
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -226,9 +229,9 @@ pub fn generate_function_bindings(
                 .collect::<Vec<_>>()
                 .join(", ");
             let call_fn = match &function.return_type {
-                None => format!("__gen_{}({});", name, args),
-                Some(Type::Primitive(_)) => format!("__gen_{}({})", name, args),
-                Some(_) => format!("let ret = __gen_{}({});", name, args),
+                None => format!("__fp_gen_{}({});", name, args),
+                Some(Type::Primitive(_)) => format!("__fp_gen_{}({})", name, args),
+                Some(_) => format!("let ret = __fp_gen_{}({});", name, args),
             };
             let import_return_value = match &function.return_type {
                 None | Some(Type::Primitive(_)) => "",
@@ -473,6 +476,7 @@ fn collect_collection_types(ty: &Type) -> BTreeSet<String> {
         }
         Type::Option(ty) => collect_collection_types(ty),
         Type::Primitive(_) => BTreeSet::new(),
+        Type::String => BTreeSet::new(),
         Type::Struct(_, fields) => {
             let mut collection_types = BTreeSet::new();
             for field in fields {
@@ -525,6 +529,7 @@ fn format_type(ty: &Type) -> String {
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
         Type::Option(ty) => format!("Option<{}>", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::String => "String".to_owned(),
         Type::Struct(name, _) => name.clone(),
     }
 }
@@ -539,7 +544,6 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::I32 => "i32",
         Primitive::I64 => "i64",
         Primitive::I128 => "i128",
-        Primitive::String => "String",
         Primitive::U8 => "u8",
         Primitive::U16 => "u16",
         Primitive::U32 => "u32",

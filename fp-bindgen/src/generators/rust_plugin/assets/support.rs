@@ -8,15 +8,25 @@ pub type FatPtr = u64;
 pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
     let mut buffer = Vec::new();
     value
-        .serialize(&mut Serializer::new(&mut buffer))
+        .serialize(&mut Serializer::new(&mut buffer).with_struct_map())
         .expect("Serialization error");
 
-    // We take the capacity rather than the length, because that is the actual
-    // amount of bytes that needs to be deallocated. This does mean our `len`
-    // may be higher than the actual amount of bytes containing serialized data,
-    // but MessagePack *should* not care about that, because it has its own
-    // internal size markers.
-    let len = buffer.capacity();
+    let len = buffer.len();
+
+    if buffer.capacity() > len {
+        buffer.shrink_to_fit();
+
+        // If there is still no exact fit, we will perform a copy to guarantee
+        // the capacity does not exceed the length. This is to make sure we
+        // don't have to lie to `Vec::from_raw_parts()` in `__fp_free()` below:
+        if buffer.capacity() > len {
+            buffer = {
+                let mut exact_buffer = Vec::with_capacity(len);
+                exact_buffer.append(&mut buffer);
+                exact_buffer
+            }
+        }
+    }
 
     // Make sure the length marker does not run into our extension bits:
     if len & 0xff000000 != 0 {
