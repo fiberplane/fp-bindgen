@@ -14,7 +14,7 @@ struct Inner {
     waker: Waker,
 }
 
-pub(crate) struct Task {
+pub struct Task {
     // The actual Future that we're executing as part of this task.
     //
     // This is an Option so that the Future can be immediately dropped when it's
@@ -47,7 +47,7 @@ impl Task {
             return;
         }
 
-        crate::queue::push_task(Rc::clone(this));
+        super::queue::push_task(Rc::clone(this));
     }
 
     /// Creates a standard library `RawWaker` from an `Rc` of ourselves.

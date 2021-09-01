@@ -1,14 +1,20 @@
-use super::support::{from_fat_ptr, to_fat_ptr};
+use super::support::{from_fat_ptr, to_fat_ptr, FatPtr};
+use once_cell::unsync::Lazy;
+use std::collections::BTreeMap;
 use std::future::Future;
+use std::task::{Context, Poll, Waker};
+
+static mut WAKERS: Lazy<BTreeMap<FatPtr, Waker>> = Lazy::new(BTreeMap::new);
 
 const STATUS_PENDING: u32 = 0;
 const STATUS_READY: u32 = 1;
 
+#[doc(hidden)]
 #[repr(C)]
-struct AsyncValue {
-    status: u32,
-    ptr: u32,
-    len: u32,
+pub struct AsyncValue {
+    pub status: u32,
+    pub ptr: u32,
+    pub len: u32,
 }
 
 impl AsyncValue {
@@ -18,7 +24,7 @@ impl AsyncValue {
 }
 
 /// Represents a future value that will be resolved by the host runtime.
-struct HostFuture {
+pub(crate) struct HostFuture {
     ptr: FatPtr,
 }
 

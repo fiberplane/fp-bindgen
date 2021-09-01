@@ -43,3 +43,6 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+      - name: Verify example-plugin builds
+        run: cargo build

@@ -11,7 +11,7 @@ struct QueueState {
     // The queue of Tasks which will be run in order. In practice this is all the
     // synchronous work of futures, and each `Task` represents calling `poll` on
     // a future "at the right time"
-    tasks: RefCell<VecDeque<Rc<crate::task::Task>>>,
+    tasks: RefCell<VecDeque<Rc<super::task::Task>>>,
 
     // This flag indicates whether we're currently executing inside of
     // `run_all` or have scheduled `run_all` to run in the future. This is
@@ -42,7 +42,7 @@ struct Queue {
 }
 
 impl Queue {
-    fn push_task(&self, task: Rc<crate::task::Task>) {
+    fn push_task(&self, task: Rc<super::task::Task>) {
         self.state.tasks.borrow_mut().push_back(task);
 
         // If we're already inside the `run_all` loop then that'll pick up the
@@ -67,6 +67,6 @@ impl Queue {
 
 static mut QUEUE: Lazy<Queue> = Lazy::new(Queue::new);
 
-pub(crate) fn push_task(task: Rc<crate::task::Task>) {
+pub(crate) fn push_task(task: Rc<super::task::Task>) {
     unsafe { QUEUE.push_task(task) }
 }
