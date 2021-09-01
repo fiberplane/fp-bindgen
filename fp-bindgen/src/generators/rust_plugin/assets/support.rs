@@ -8,7 +8,11 @@ pub type FatPtr = u64;
 pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
     let mut buffer = Vec::new();
     value
-        .serialize(&mut Serializer::new(&mut buffer).with_struct_map())
+        .serialize(
+            &mut Serializer::new(&mut buffer)
+                .with_struct_map()
+                .with_string_variants(),
+        )
         .expect("Serialization error");
 
     let len = buffer.len();

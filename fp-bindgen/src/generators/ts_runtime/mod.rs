@@ -1,6 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{Field, Type, Variant};
+use crate::types::{format_name_with_generics, Field, GenericArgument, Type, Variant};
 use inflector::Inflector;
 use std::collections::BTreeSet;
 use std::fs;
@@ -23,8 +23,8 @@ pub fn generate_bindings(
     let type_names = all_types
         .into_iter()
         .filter_map(|ty| match ty {
-            Type::Enum(name, _) => Some(name),
-            Type::Struct(name, _) => Some(name),
+            Type::Enum(name, _, _) => Some(name),
+            Type::Struct(name, _, _) => Some(name),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -202,15 +202,10 @@ fn format_function_declarations(
                 .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_type(&arg.ty)))
                 .collect::<Vec<_>>()
                 .join(", ");
-            let return_type = match &function.return_type {
-                None => " => void".to_owned(),
-                Some(ty) => {
-                    if function.is_async {
-                        format!(" => Promise<{}>", format_type(ty))
-                    } else {
-                        format!(" => {}", format_type(ty))
-                    }
-                }
+            let return_type = if function.is_async {
+                format!(" => Promise<{}>", format_type(&function.return_type))
+            } else {
+                format!(" => {}", format_type(&function.return_type))
             };
             format!(
                 "{}{}: ({}){}",
@@ -242,9 +237,9 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &function.return_type {
-                None => "".to_owned(),
-                Some(Type::Primitive(primitive)) => format!(": {}", format_primitive(*primitive)),
-                Some(_) => ": FatPtr".to_owned(),
+                Type::Unit => "".to_owned(),
+                Type::Primitive(primitive) => format!(": {}", format_primitive(*primitive)),
+                _ => ": FatPtr".to_owned(),
             };
             let import_args = function
                 .args
@@ -267,8 +262,8 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .join(", ");
             if function.is_async {
                 let assign_async_value = match &function.return_type {
-                    None => "",
-                    Some(_) => "\n            assignAsyncValue(_async_result_ptr, result);",
+                    Type::Unit => "",
+                    _ => "\n            assignAsyncValue(_async_result_ptr, result);",
                 };
 
                 format!(
@@ -304,11 +299,11 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
             } else {
                 let fn_call = match &function.return_type {
-                    None => format!("importFunctions.{}({});", name.to_camel_case(), args),
-                    Some(Type::Primitive(_)) => {
+                    Type::Unit => format!("importFunctions.{}({});", name.to_camel_case(), args),
+                    Type::Primitive(_) => {
                         format!("return importFunctions.{}({});", name.to_camel_case(), args)
                     }
-                    Some(_) => format!(
+                    _ => format!(
                         "return serializeObject(importFunctions.{}({}));",
                         name.to_camel_case(),
                         args
@@ -380,19 +375,16 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
             let fn_call = if function.is_async {
                 format!(
                     "return promiseFromPtr<{}>(export_fn({}));",
-                    match &function.return_type {
-                        None => "void".to_owned(),
-                        Some(ty) => format_type(ty),
-                    },
+                    format_type(&function.return_type),
                     call_args
                 )
             } else {
                 match &function.return_type {
-                    None => format!("export_fn({});", call_args),
-                    Some(Type::Primitive(_)) => {
+                    Type::Unit => format!("export_fn({});", call_args),
+                    Type::Primitive(_) => {
                         format!("return export_fn({});", call_args)
                     }
-                    Some(ty) => format!(
+                    ty => format!(
                         "return parseObject<{}>(export_fn({}));",
                         format_type(ty),
                         call_args
@@ -431,8 +423,12 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
-            Type::Enum(name, variants) => Some(create_enum_definition(name, variants)),
-            Type::Struct(name, fields) => Some(create_struct_definition(name, fields)),
+            Type::Enum(name, generic_args, variants) => {
+                Some(create_enum_definition(name, generic_args, variants))
+            }
+            Type::Struct(name, generic_args, fields) => {
+                Some(create_struct_definition(name, generic_args, fields))
+            }
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -441,36 +437,121 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     write_bindings_file(format!("{}/types.ts", path), format!("{}\n", type_defs))
 }
 
-fn create_enum_definition(name: &str, variants: &[Variant]) -> String {
-    "TODO".to_owned() // TODO
+fn create_enum_definition(
+    name: &str,
+    generic_args: &[GenericArgument],
+    variants: &[Variant],
+) -> String {
+    let variants = if variants.iter().all(|variant| variant.ty == Type::Unit) {
+        variants
+            .iter()
+            .map(|variant| format!("    | \"{}\"", variant.name.to_snake_case()))
+            .collect::<Vec<_>>()
+            .join("\n")
+    } else {
+        variants
+            .iter()
+            .map(|field| {
+                if field.ty == Type::Unit {
+                    format!("    | {{ type: \"{}\" }}", field.name.to_snake_case(),)
+                } else {
+                    match &field.ty {
+                        Type::Struct(_, _, fields) => format!(
+                            "    | {{ type: \"{}\"; {} }}",
+                            field.name.to_snake_case(),
+                            format_struct_fields(fields).join("; ")
+                        ),
+                        Type::Tuple(items) if items.len() == 1 => format!(
+                            "    | {{ type: \"{}\" }} & {}",
+                            field.name.to_snake_case(),
+                            format_type(items.first().unwrap())
+                        ),
+                        other => panic!("Unsupported type for enum variant: {:?}", other),
+                    }
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+
+    format!(
+        "export type {} =\n{};",
+        format_name_with_generics(name, generic_args),
+        variants
+    )
 }
 
-fn create_struct_definition(name: &str, fields: &[Field]) -> String {
-    let fields = fields
-        .iter()
-        .map(|field| {
-            format!(
-                "    {}: {};",
-                field.name.to_camel_case(),
-                format_type(&field.ty)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+fn create_struct_definition(
+    name: &str,
+    generic_args: &[GenericArgument],
+    fields: &[Field],
+) -> String {
+    format!(
+        "export type {} = {{\n{}\n}};",
+        format_name_with_generics(name, generic_args),
+        join_lines(&format_struct_fields(fields), |line| format!(
+            "    {};",
+            line
+        ))
+    )
+}
 
-    format!("export type {} = {{\n{}\n}};", name, fields)
+fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
+    if generic_args.is_empty() {
+        name.to_owned()
+    } else {
+        format!(
+            "{}<{}>",
+            name,
+            generic_args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Some(ty) => format_type(ty),
+                    None => arg.name.clone(),
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+    fields
+        .iter()
+        .map(|field| match &field.ty {
+            Type::Option(ty) => format!("{}?: {}", field.name.to_camel_case(), format_type(ty)),
+            ty => format!("{}: {}", field.name.to_camel_case(), format_type(ty)),
+        })
+        .collect()
 }
 
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
-        Type::Enum(name, _) => name.clone(),
-        Type::List(_, ty) => format!("Array<{}>", format_type(ty)),
+        Type::Enum(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::GenericArgument(arg) => arg.name.clone(),
+        Type::List(_, ty) => {
+            if ty.as_ref() == &Type::Primitive(Primitive::U8) {
+                // Special case so `Vec<u8>` becomes `ArrayBuffer` in TS:
+                "ArrayBuffer".to_owned()
+            } else {
+                format!("Array<{}>", format_type(ty))
+            }
+        }
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
-        Type::Option(ty) => format!("{} | undefined", format_type(ty)),
+        Type::Option(ty) => format!("{} | null", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
-        Type::Struct(name, _) => name.clone(),
+        Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Tuple(items) => format!(
+            "[{}]",
+            items
+                .iter()
+                .map(|item| item.name())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Type::Unit => "void".to_owned(),
     }
 }
 

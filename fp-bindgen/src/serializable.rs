@@ -1,4 +1,7 @@
-use crate::Type;
+use crate::{
+    types::{GenericArgument, Variant},
+    Type,
+};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 pub trait Serializable {
@@ -126,6 +129,49 @@ where
     fn dependencies() -> BTreeSet<Type> {
         let mut dependencies = BTreeSet::new();
         T::add_type_with_dependencies(&mut dependencies);
+        dependencies
+    }
+}
+
+impl<T, E> Serializable for Result<T, E>
+where
+    T: Serializable,
+    E: Serializable,
+{
+    fn name() -> String {
+        format!("Result<{}, {}>", T::name(), E::name())
+    }
+
+    fn ty() -> Type {
+        Type::Enum(
+            "Result".to_owned(),
+            vec![
+                GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(T::ty()),
+                },
+                GenericArgument {
+                    name: "E".to_owned(),
+                    ty: Some(E::ty()),
+                },
+            ],
+            vec![
+                Variant {
+                    name: "Ok".to_owned(),
+                    ty: Type::Tuple(vec![Type::named_generic("T")]),
+                },
+                Variant {
+                    name: "Err".to_owned(),
+                    ty: Type::Tuple(vec![Type::named_generic("E")]),
+                },
+            ],
+        )
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        E::add_type_with_dependencies(&mut dependencies);
         dependencies
     }
 }

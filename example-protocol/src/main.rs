@@ -1,5 +1,5 @@
 use fp_bindgen::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Serializable)]
 pub struct DeadCode {
@@ -24,6 +24,39 @@ pub struct ComplexGuestToHost {
     pub map: BTreeMap<String, Simple>,
 }
 
+#[derive(Serializable)]
+pub enum RequestMethod {
+    Delete,
+    Get,
+    Options,
+    Post,
+    Update,
+}
+
+#[derive(Serializable)]
+pub struct RequestOptions {
+    pub url: String,
+    pub method: RequestMethod,
+    pub headers: HashMap<String, String>,
+    pub body: Option<Vec<u8>>,
+}
+
+#[derive(Serializable)]
+pub struct Response {
+    pub headers: HashMap<String, String>,
+    pub body: Vec<u8>,
+}
+
+#[derive(Serializable)]
+pub enum RequestError {
+    Offline,
+    NoRoute,
+    ConnectionRefused,
+    Timeout,
+    ServerError { status_code: u16, response: Vec<u8> },
+    Other { reason: String },
+}
+
 fp_import! {
     /// Logs a message to the (development) console.
     fn log(message: String);
@@ -36,6 +69,8 @@ fp_import! {
     fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest;
 
     async fn my_async_imported_function() -> ComplexHostToGuest;
+
+    async fn make_request(opts: RequestOptions) -> Result<Response, RequestError>;
 }
 
 fp_export! {
@@ -44,6 +79,8 @@ fp_export! {
     fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost;
 
     async fn my_async_exported_function() -> ComplexGuestToHost;
+
+    async fn fetch_data(url: String) -> String;
 }
 
 fn main() {
