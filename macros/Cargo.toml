@@ -8,8 +8,6 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-fp-bindgen-common = { version = "0.1.0", path = "../common" }
-Inflector = "0.11"
 once_cell = "1"
 proc-macro2 = "1"
 quote = "1"

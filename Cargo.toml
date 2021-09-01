@@ -1,2 +1,2 @@
 [workspace]
-members = ["common", "fp-bindgen", "macros", "example"]
+members = ["fp-bindgen", "macros", "example-plugin", "example-protocol"]
