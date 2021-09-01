@@ -47,18 +47,11 @@ fp_export! {
 }
 
 fn main() {
-    let cmd = std::env::args().nth(1).expect("no command given");
-    if cmd != "generate" {
-        println!("Usage: cargo run generate <bindings-type>");
-        return;
+    for bindings_type in ["rust-plugin", "ts-runtime"] {
+        let output_path = format!("bindings/{}", bindings_type);
+        fp_bindgen!(bindings_type, &output_path);
+        println!("Generated bindings written to `{}/`.", output_path);
     }
-
-    let bindings_type = std::env::args().nth(2).expect("no bindings type given");
-    let output_path = format!("bindings/{}", bindings_type);
-
-    fp_bindgen!(&bindings_type, &output_path);
-
-    println!("Generated bindings written to `{}/`.", output_path);
 }
 
 #[test]
