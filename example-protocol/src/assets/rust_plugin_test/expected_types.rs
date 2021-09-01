@@ -1,22 +1,23 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexGuestToHost {
-    simple: Simple,
-    map: BTreeMap<String, Simple>,
+    pub simple: Simple,
+    pub map: BTreeMap<String, Simple>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
-    simple: Simple,
-    list: Vec<f64>,
+    pub simple: Simple,
+    pub list: Vec<f64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Simple {
-    foo: i32,
-    bar: String,
+    pub foo: i32,
+    pub bar: String,
 }
