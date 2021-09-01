@@ -268,12 +268,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
             if function.is_async {
                 let assign_async_value = match &function.return_type {
                     None => "",
-                    Some(Type::Primitive(_)) => {
-                        "\n            assignAsyncValue(_async_result_ptr, result);"
-                    }
-                    Some(_) => {
-                        "\n            assignAsyncValue(_async_result_ptr, serializeObject(result));"
-                    },
+                    Some(_) => "\n            assignAsyncValue(_async_result_ptr, result);",
                 };
 
                 format!(
@@ -285,7 +280,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
         }})
         .catch((error) => {{
             console.error(
-                'Unrecoverable exception trying to call async plugin function \"{}\"',
+                'Unrecoverable exception trying to call async host function \"{}\"',
                 error
             );
         }});
@@ -294,12 +289,19 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                     name,
                     args_with_ptr_types,
                     return_type,
-                    import_args.iter().map(|line| format!("    {}\n", line)).collect::<Vec<_>>().join(""),
+                    import_args
+                        .iter()
+                        .map(|line| format!("    {}\n", line))
+                        .collect::<Vec<_>>()
+                        .join(""),
                     name.to_camel_case(),
                     args,
                     assign_async_value,
                     name
-                ).split('\n').map(|line| line.to_owned()).collect::<Vec<_>>()
+                )
+                .split('\n')
+                .map(|line| line.to_owned())
+                .collect::<Vec<_>>()
             } else {
                 let fn_call = match &function.return_type {
                     None => format!("importFunctions.{}({});", name.to_camel_case(), args),
@@ -308,7 +310,8 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                     }
                     Some(_) => format!(
                         "return serializeObject(importFunctions.{}({}));",
-                        name.to_camel_case(), args
+                        name.to_camel_case(),
+                        args
                     ),
                 };
 
@@ -317,9 +320,16 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                     name,
                     args_with_ptr_types,
                     return_type,
-                    import_args.iter().map(|line| format!("    {}\n", line)).collect::<Vec<_>>().join(""),
+                    import_args
+                        .iter()
+                        .map(|line| format!("    {}\n", line))
+                        .collect::<Vec<_>>()
+                        .join(""),
                     fn_call
-                ).split('\n').map(|line| line.to_owned()).collect::<Vec<_>>()
+                )
+                .split('\n')
+                .map(|line| line.to_owned())
+                .collect::<Vec<_>>()
             }
         })
         .collect()

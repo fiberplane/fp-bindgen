@@ -116,12 +116,12 @@ export async function createRuntime(
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.myAsyncImportedFunction()
                     .then((result) => {
-                        assignAsyncValue(_async_result_ptr, serializeObject(result));
+                        assignAsyncValue(_async_result_ptr, result);
                         resolveFuture(_async_result_ptr);
                     })
                     .catch((error) => {
                         console.error(
-                            'Unrecoverable exception trying to call async plugin function "my_async_imported_function"',
+                            'Unrecoverable exception trying to call async host function "my_async_imported_function"',
                             error
                         );
                     });
