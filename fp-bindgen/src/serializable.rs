@@ -1,5 +1,5 @@
 use crate::{
-    types::{GenericArgument, Variant},
+    types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -165,6 +165,10 @@ where
                     ty: Type::Tuple(vec![Type::named_generic("E")]),
                 },
             ],
+            EnumOptions {
+                content_prop_name: Some("payload".to_owned()),
+                tag_prop_name: Some("type".to_owned()),
+            },
         )
     }
 

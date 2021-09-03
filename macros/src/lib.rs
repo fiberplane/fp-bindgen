@@ -8,7 +8,7 @@ use std::collections::HashSet;
 use syn::{AttrStyle, FnArg, ForeignItemFn, Ident, Item, Path, PathArguments, ReturnType, Type};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
-#[proc_macro_derive(Serializable)]
+#[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item) = parse_type_item(item);

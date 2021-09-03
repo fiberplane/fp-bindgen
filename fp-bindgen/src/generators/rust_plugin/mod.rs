@@ -1,6 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{format_name_with_generics, Field, GenericArgument, Type, Variant};
+use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -126,7 +126,7 @@ pub fn generate_type_bindings(
                 &deserializable_types,
             );
             match ty {
-                Type::Enum(name, generic_args, variants) => {
+                Type::Enum(name, generic_args, variants, opts) => {
                     if name == "Option" || name == "Result" {
                         None // No need to define our own.
                     } else {
@@ -135,6 +135,7 @@ pub fn generate_type_bindings(
                             generic_args,
                             variants,
                             &serde_reqs,
+                            opts,
                         ))
                     }
                 }
@@ -468,7 +469,7 @@ pub unsafe fn _fp_host_resolve_async_value(async_value_ptr: FatPtr) {
 
 fn collect_collection_types(ty: &Type) -> BTreeSet<String> {
     match ty {
-        Type::Enum(_, _, variants) => {
+        Type::Enum(_, _, variants, _) => {
             let mut collection_types = BTreeSet::new();
             for variant in variants {
                 collection_types.append(&mut collect_collection_types(&variant.ty));
@@ -527,11 +528,6 @@ fn create_enum_definition(
         SerializationRequirements::Deserialize => "Deserialize",
         SerializationRequirements::Both => "Serialize, Deserialize",
     };
-    let content_attr = if let Some(attr_name) = opts.content_attr {
-        format!("content = \"{}\", ", attr_name)
-    } else {
-        "".to_owned()
-    };
     let variants = variants
         .into_iter()
         .map(|variant| match variant.ty {
@@ -562,12 +558,12 @@ fn create_enum_definition(
 
     format!(
         "#[derive(Clone, Debug, PartialEq, {})]\n\
-        #[serde(tag = \"type\", {}rename_all = \"snake_case\")]\n\
+        #[serde({})]\n\
         pub enum {} {{\n\
             {}\n\
         }}",
         derives,
-        content_attr,
+        opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
         variants
     )
@@ -587,7 +583,7 @@ fn create_struct_definition(
     let fields = fields
         .into_iter()
         .map(|field| {
-            let skip = if matches!(&field.ty, Type::Enum(name, _, _) if name == "Option") {
+            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _) if name == "Option") {
                 "    #[serde(skip_serializing_if = \"Option::is_none\")]\n"
             } else {
                 ""
@@ -637,7 +633,7 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 /// Formats a type so it's valid Rust again.
 fn format_type(ty: &Type) -> String {
     match ty {
-        Type::Enum(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),

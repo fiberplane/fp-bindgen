@@ -23,7 +23,7 @@ pub fn generate_bindings(
     let type_names = all_types
         .into_iter()
         .filter_map(|ty| match ty {
-            Type::Enum(name, _, _) => Some(name),
+            Type::Enum(name, _, _, _) => Some(name),
             Type::Struct(name, _, _) => Some(name),
             _ => None,
         })
@@ -423,7 +423,7 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
-            Type::Enum(name, generic_args, variants) => {
+            Type::Enum(name, generic_args, variants, _) => {
                 Some(create_enum_definition(name, generic_args, variants))
             }
             Type::Struct(name, generic_args, fields) => {
@@ -528,7 +528,7 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
-        Type::Enum(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(_, ty) => {
             if ty.as_ref() == &Type::Primitive(Primitive::U8) {

@@ -1,6 +1,10 @@
 use crate::primitives::Primitive;
+use quote::ToTokens;
 use std::{collections::BTreeSet, str::FromStr};
-use syn::{GenericParam, Item, ItemEnum, ItemStruct, PathArguments};
+use syn::{
+    ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
+    Ident, Item, ItemEnum, ItemStruct, LitStr, PathArguments, Result, Token,
+};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
@@ -39,7 +43,7 @@ impl Type {
 
     pub fn name(&self) -> String {
         match self {
-            Self::Enum(name, generic_args, _) => format_name_with_generics(name, generic_args),
+            Self::Enum(name, generic_args, _, _) => format_name_with_generics(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
@@ -79,9 +83,62 @@ impl PartialOrd for Type {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EnumOptions {
-    pub content_attr: Option<String>,
+    pub content_prop_name: Option<String>,
+    pub tag_prop_name: Option<String>,
+}
+
+impl EnumOptions {
+    pub fn to_serde_attrs(&self) -> Vec<String> {
+        let mut serde_attrs = vec!["rename_all = \"snake_case\"".to_owned()];
+        if let Some(prop_name) = &self.tag_prop_name {
+            serde_attrs.push(format!("tag = {}", prop_name));
+
+            if let Some(prop_name) = &self.content_prop_name {
+                serde_attrs.push(format!("content = {}", prop_name))
+            }
+        }
+        serde_attrs
+    }
+}
+
+impl Parse for EnumOptions {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        parenthesized!(content in input);
+
+        let mut result = Self::default();
+        loop {
+            let key: Ident = content.call(IdentExt::parse_any)?;
+            match &*key.to_string() {
+                "content" => {
+                    content.parse::<Token![=]>()?;
+                    result.content_prop_name =
+                        Some(content.parse::<LitStr>()?.to_token_stream().to_string());
+                }
+                "tag" => {
+                    content.parse::<Token![=]>()?;
+                    result.tag_prop_name =
+                        Some(content.parse::<LitStr>()?.to_token_stream().to_string());
+                }
+                other => {
+                    return Err(Error::new(
+                        content.span(),
+                        format!("Unexpected attribute: {}", other),
+                    ))
+                }
+            }
+
+            if content.is_empty() {
+                break;
+            }
+
+            content.parse::<Token![,]>()?;
+        }
+
+        Ok(result)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -173,7 +230,18 @@ fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
             Variant { name, ty }
         })
         .collect();
-    Type::Enum(name, generic_args, variants)
+    let opts = parse_enum_options(&item.attrs);
+    Type::Enum(name, generic_args, variants, opts)
+}
+
+fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
+    attrs
+        .iter()
+        .find(|attr| attr.path.is_ident("fp"))
+        .map(|attr| {
+            syn::parse2::<EnumOptions>(attr.tokens.clone()).expect("Could not parse attributes")
+        })
+        .unwrap_or_else(EnumOptions::default)
 }
 
 fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
@@ -240,7 +308,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                 Err(_) => types
                     .iter()
                     .find(|ty| match ty {
-                        Type::Enum(name, generic_args, _) => {
+                        Type::Enum(name, generic_args, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()

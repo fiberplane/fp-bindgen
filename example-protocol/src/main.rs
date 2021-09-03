@@ -48,6 +48,7 @@ pub struct Response {
 }
 
 #[derive(Serializable)]
+#[fp(tag = "type")]
 pub enum RequestError {
     Offline,
     NoRoute,
