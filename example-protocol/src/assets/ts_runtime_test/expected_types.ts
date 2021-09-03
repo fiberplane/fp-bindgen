@@ -17,11 +17,11 @@ export type RequestError =
     | { type: "other"; reason: string };
 
 export type RequestMethod =
-    | "delete"
-    | "get"
-    | "options"
-    | "post"
-    | "update";
+    | "DELETE"
+    | "GET"
+    | "OPTIONS"
+    | "POST"
+    | "UPDATE";
 
 export type RequestOptions = {
     url: string;
@@ -36,8 +36,8 @@ export type Response = {
 };
 
 export type Result<T, E> =
-    | { type: "ok" } & T
-    | { type: "err" } & E;
+    | { Ok: T }
+    | { Err: E };
 
 export type Simple = {
     foo: number;

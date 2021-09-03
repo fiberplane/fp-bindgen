@@ -16,7 +16,7 @@ pub struct ComplexHostToGuest {
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "snake_case", tag = "type")]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
     Offline,
     NoRoute,
@@ -29,7 +29,7 @@ pub enum RequestError {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RequestMethod {
     Delete,
     Get,

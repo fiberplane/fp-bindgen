@@ -1,3 +1,4 @@
+mod casing;
 mod functions;
 mod generators;
 mod primitives;

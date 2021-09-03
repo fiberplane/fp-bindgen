@@ -25,6 +25,7 @@ pub struct ComplexGuestToHost {
 }
 
 #[derive(Serializable)]
+#[fp(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RequestMethod {
     Delete,
     Get,
@@ -48,7 +49,7 @@ pub struct Response {
 }
 
 #[derive(Serializable)]
-#[fp(tag = "type")]
+#[fp(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
     Offline,
     NoRoute,

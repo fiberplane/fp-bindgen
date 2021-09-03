@@ -1,6 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{format_name_with_generics, Field, GenericArgument, Type, Variant};
+use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
 use inflector::Inflector;
 use std::collections::BTreeSet;
 use std::fs;
@@ -423,9 +423,12 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
-            Type::Enum(name, generic_args, variants, _) => {
-                Some(create_enum_definition(name, generic_args, variants))
-            }
+            Type::Enum(name, generic_args, variants, opts) => Some(create_enum_definition(
+                name,
+                generic_args,
+                variants,
+                opts.clone(),
+            )),
             Type::Struct(name, generic_args, fields) => {
                 Some(create_struct_definition(name, generic_args, fields))
             }
@@ -441,38 +444,81 @@ fn create_enum_definition(
     name: &str,
     generic_args: &[GenericArgument],
     variants: &[Variant],
+    opts: EnumOptions,
 ) -> String {
-    let variants = if variants.iter().all(|variant| variant.ty == Type::Unit) {
-        variants
-            .iter()
-            .map(|variant| format!("    | \"{}\"", variant.name.to_snake_case()))
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        variants
-            .iter()
-            .map(|field| {
-                if field.ty == Type::Unit {
-                    format!("    | {{ type: \"{}\" }}", field.name.to_snake_case(),)
-                } else {
-                    match &field.ty {
-                        Type::Struct(_, _, fields) => format!(
-                            "    | {{ type: \"{}\"; {} }}",
-                            field.name.to_snake_case(),
-                            format_struct_fields(fields).join("; ")
-                        ),
-                        Type::Tuple(items) if items.len() == 1 => format!(
-                            "    | {{ type: \"{}\" }} & {}",
-                            field.name.to_snake_case(),
-                            format_type(items.first().unwrap())
-                        ),
-                        other => panic!("Unsupported type for enum variant: {:?}", other),
+    let variants = variants
+        .iter()
+        .map(|variant| {
+            let variant_name = opts.variant_casing.format_string(&variant.name);
+            match &variant.ty {
+                Type::Unit => {
+                    if let Some(tag) = &opts.tag_prop_name {
+                        format!("    | {{ {}: \"{}\" }}", tag, variant_name)
+                    } else {
+                        format!("    | \"{}\"", variant_name)
                     }
                 }
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
+                Type::Struct(_, _, fields) => {
+                    match (&opts.tag_prop_name, &opts.content_prop_name) {
+                        (Some(tag), Some(content)) => {
+                            format!(
+                                "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
+                                tag,
+                                variant_name,
+                                content,
+                                format_struct_fields(fields).join("; ")
+                            )
+                        }
+                        (Some(tag), None) => {
+                            format!(
+                                "    | {{ {}: \"{}\"; {} }}",
+                                tag,
+                                variant_name,
+                                format_struct_fields(fields).join("; ")
+                            )
+                        }
+                        (None, _) => {
+                            format!(
+                                "    | {{ {}: {{ {} }} }}",
+                                variant_name,
+                                format_struct_fields(fields).join("; ")
+                            )
+                        }
+                    }
+                }
+                Type::Tuple(items) if items.len() == 1 => {
+                    match (&opts.tag_prop_name, &opts.content_prop_name) {
+                        (Some(tag), Some(content)) => {
+                            format!(
+                                "    | {{ {}: \"{}\"; {}: {} }}",
+                                tag,
+                                variant_name,
+                                content,
+                                format_type(items.first().unwrap())
+                            )
+                        }
+                        (Some(tag), None) => {
+                            format!(
+                                "    | {{ {}: \"{}\" }} & {}",
+                                tag,
+                                variant_name,
+                                format_type(items.first().unwrap())
+                            )
+                        }
+                        (None, _) => {
+                            format!(
+                                "    | {{ {}: {} }}",
+                                variant_name,
+                                format_type(items.first().unwrap())
+                            )
+                        }
+                    }
+                }
+                other => panic!("Unsupported type for enum variant: {:?}", other),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
 
     format!(
         "export type {} =\n{};",

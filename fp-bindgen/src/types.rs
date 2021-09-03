@@ -1,6 +1,6 @@
-use crate::primitives::Primitive;
+use crate::{casing::Casing, primitives::Primitive};
 use quote::ToTokens;
-use std::{collections::BTreeSet, str::FromStr};
+use std::{collections::BTreeSet, convert::TryFrom, str::FromStr};
 use syn::{
     ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
     Ident, Item, ItemEnum, ItemStruct, LitStr, PathArguments, Result, Token,
@@ -85,19 +85,23 @@ impl PartialOrd for Type {
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EnumOptions {
+    pub variant_casing: Casing,
     pub content_prop_name: Option<String>,
     pub tag_prop_name: Option<String>,
 }
 
 impl EnumOptions {
     pub fn to_serde_attrs(&self) -> Vec<String> {
-        let mut serde_attrs = vec!["rename_all = \"snake_case\"".to_owned()];
+        let mut serde_attrs = vec![];
         if let Some(prop_name) = &self.tag_prop_name {
-            serde_attrs.push(format!("tag = {}", prop_name));
+            serde_attrs.push(format!("tag = \"{}\"", prop_name));
 
             if let Some(prop_name) = &self.content_prop_name {
-                serde_attrs.push(format!("content = {}", prop_name))
+                serde_attrs.push(format!("content = \"{}\"", prop_name));
             }
+        }
+        if let Some(casing) = &self.variant_casing.as_maybe_str() {
+            serde_attrs.push(format!("rename_all = \"{}\"", casing));
         }
         serde_attrs
     }
@@ -114,13 +118,36 @@ impl Parse for EnumOptions {
             match &*key.to_string() {
                 "content" => {
                     content.parse::<Token![=]>()?;
-                    result.content_prop_name =
-                        Some(content.parse::<LitStr>()?.to_token_stream().to_string());
+                    result.content_prop_name = Some(
+                        content
+                            .parse::<LitStr>()?
+                            .to_token_stream()
+                            .to_string()
+                            .trim_matches('"')
+                            .to_owned(),
+                    );
                 }
                 "tag" => {
                     content.parse::<Token![=]>()?;
-                    result.tag_prop_name =
-                        Some(content.parse::<LitStr>()?.to_token_stream().to_string());
+                    result.tag_prop_name = Some(
+                        content
+                            .parse::<LitStr>()?
+                            .to_token_stream()
+                            .to_string()
+                            .trim_matches('"')
+                            .to_owned(),
+                    );
+                }
+                "rename_all" => {
+                    content.parse::<Token![=]>()?;
+                    result.variant_casing = Casing::try_from(
+                        content
+                            .parse::<LitStr>()?
+                            .to_token_stream()
+                            .to_string()
+                            .trim_matches('"'),
+                    )
+                    .map_err(|err| Error::new(content.span(), err))?;
                 }
                 other => {
                     return Err(Error::new(
