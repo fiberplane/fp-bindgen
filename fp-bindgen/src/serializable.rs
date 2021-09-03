@@ -2,7 +2,10 @@ use crate::{
     types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    rc::Rc,
+};
 
 pub trait Serializable {
     /// The name of the type as defined in the protocol.
@@ -31,6 +34,25 @@ pub trait Serializable {
 
         dependencies.insert(ty);
         dependencies.append(&mut Self::dependencies());
+    }
+}
+
+impl<T> Serializable for Box<T>
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("Option<{}>", T::name())
+    }
+
+    fn ty() -> Type {
+        Type::Container("Option".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
     }
 }
 
@@ -123,7 +145,26 @@ where
     }
 
     fn ty() -> Type {
-        Type::Option(Box::new(T::ty()))
+        Type::Container("Option".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
+    }
+}
+
+impl<T> Serializable for Rc<T>
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("Rc<{}>", T::name())
+    }
+
+    fn ty() -> Type {
+        Type::Container("Rc".to_owned(), Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -207,5 +248,25 @@ where
         let mut dependencies = BTreeSet::new();
         T::add_type_with_dependencies(&mut dependencies);
         dependencies
+    }
+}
+
+#[cfg(feature = "chrono-compat")]
+impl for chrono::DateTime<chrono::Utc> {
+    fn name() -> String {
+        "DateTime<Utc>".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            name: "DateTime",
+            type_args: vec!["Utc"],
+            rs_ty: "chrono::DateTime<chrono::Utc>".to_owned(),
+            ts_ty: "string".to_owned()
+        })
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        BTreeSet::new()
     }
 }

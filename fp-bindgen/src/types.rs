@@ -16,11 +16,12 @@ pub struct GenericArgument {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
+    Container(String, Box<Type>),
+    Custom(CustomType),
     Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
     GenericArgument(Box<GenericArgument>),
     List(String, Box<Type>),
     Map(String, Box<Type>, Box<Type>),
-    Option(Box<Type>),
     Primitive(Primitive),
     String,
     Struct(String, Vec<GenericArgument>, Vec<Field>),
@@ -43,11 +44,12 @@ impl Type {
 
     pub fn name(&self) -> String {
         match self {
+            Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
+            Self::Custom(custom) => custom.rs_ty.clone(),
             Self::Enum(name, generic_args, _, _) => format_name_with_generics(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
-            Self::Option(ty) => format!("Option<{}>", ty.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
             Self::Struct(name, generic_args, _) => format_name_with_generics(name, generic_args),
@@ -81,6 +83,13 @@ impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.name().partial_cmp(&other.name())
     }
+}
+
+pub struct CustomType {
+    pub name: String,
+    pub type_args: Vec<String>,
+    pub rs_ty: String,
+    pub ts_ty: String,
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -264,7 +273,7 @@ fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
 fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
     attrs
         .iter()
-        .find(|attr| attr.path.is_ident("fp"))
+        .find(|attr| attr.path.is_ident("fp") || attr.path.is_ident("serde"))
         .map(|attr| {
             syn::parse2::<EnumOptions>(attr.tokens.clone()).expect("Could not parse attributes")
         })
@@ -335,6 +344,17 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                 Err(_) => types
                     .iter()
                     .find(|ty| match ty {
+                        Type::Container(name, ty) => {
+                            name == &path_without_args
+                                && type_args.len() == 1
+                                && type_args
+                                    .first()
+                                    .map(|arg| arg == ty.as_ref())
+                                    .unwrap_or(false)
+                        }
+                        Type::Custom(custom) => {
+                            custom.name == path_without_args && custom.type_args == type_args
+                        }
                         Type::Enum(name, generic_args, _, _) => {
                             name == &path_without_args
                                 && generic_args
@@ -362,13 +382,6 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                                 && type_args
                                     .get(1)
                                     .map(|arg| arg == value.as_ref())
-                                    .unwrap_or(false)
-                        }
-                        Type::Option(ty) => {
-                            path_without_args == "Option"
-                                && type_args
-                                    .first()
-                                    .map(|arg| arg == ty.as_ref())
                                     .unwrap_or(false)
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,

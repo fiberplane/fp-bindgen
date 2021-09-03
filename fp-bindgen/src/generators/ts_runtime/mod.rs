@@ -565,7 +565,15 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
     fields
         .iter()
         .map(|field| match &field.ty {
-            Type::Option(ty) => format!("{}?: {}", field.name.to_camel_case(), format_type(ty)),
+            Type::Container(name, ty) => {
+                let optional = if name == "Option" { "?" } else { "" };
+                format!(
+                    "{}{}: {}",
+                    field.name.to_camel_case(),
+                    optional,
+                    format_type(ty)
+                )
+            }
             ty => format!("{}: {}", field.name.to_camel_case(), format_type(ty)),
         })
         .collect()
@@ -574,6 +582,13 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
+        Type::Container(name, ty) => {
+            if name == "Option" {
+                format!("{} | null", format_type(ty))
+            } else {
+                format_type(ty)
+            }
+        }
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(_, ty) => {
@@ -585,7 +600,6 @@ fn format_type(ty: &Type) -> String {
             }
         }
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
-        Type::Option(ty) => format!("{} | null", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
         Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),

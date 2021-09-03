@@ -4,7 +4,11 @@ version = "0.1.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
+[features]
+chrono-compat = ["chrono"]
+
 [dependencies]
+chrono = { version = "0.4", optional = true }
 fp-bindgen-macros = { version = "0.1.0", path = "../macros" }
 Inflector = "0.11"
 quote = "1"

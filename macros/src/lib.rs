@@ -5,13 +5,15 @@ use proc_macro::{TokenStream, TokenTree};
 use proc_macro2::Literal;
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
-use syn::{AttrStyle, FnArg, ForeignItemFn, Ident, Item, Path, PathArguments, ReturnType, Type};
+use syn::{
+    AttrStyle, FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments, ReturnType, Type,
+};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
-    let (item_name, item) = parse_type_item(item);
+    let (item_name, item, generics) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
     let dependencies = match item {
@@ -44,12 +46,12 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     };
 
     let implementation = quote! {
-        impl fp_bindgen::prelude::Serializable for #item_name {
+        impl fp_bindgen::prelude::Serializable for #item_name#generics {
             fn name() -> String {
                 #item_name_str.to_owned()
             }
 
-            fn ty() -> Type {
+            fn ty() -> fp_bindgen::prelude::Type {
                 fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
             }
 
@@ -81,11 +83,17 @@ fn extract_path_from_type(ty: &Type) -> Option<Path> {
     }
 }
 
-fn parse_type_item(item: TokenStream) -> (Ident, Item) {
+fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
     let item = syn::parse::<Item>(item).unwrap();
     match item {
-        Item::Enum(item) => (item.ident.clone(), Item::Enum(item)),
-        Item::Struct(item) => (item.ident.clone(), Item::Struct(item)),
+        Item::Enum(item) => {
+            let generics = item.generics.clone();
+            (item.ident.clone(), Item::Enum(item), generics)
+        }
+        Item::Struct(item) => {
+            let generics = item.generics.clone();
+            (item.ident.clone(), Item::Struct(item), generics)
+        }
         item => panic!(
             "Only struct and enum types can be constructed from an item. Found: {:?}",
             item
