@@ -473,6 +473,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
             }
             types
         }
+        Type::Custom(_) => BTreeSet::new(),
         Type::Enum(_, _, variants, _) => {
             let mut types = BTreeSet::new();
             for variant in variants {
@@ -637,6 +638,7 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 fn format_type(ty: &Type) -> String {
     match ty {
         Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
+        Type::Custom(custom) => custom.rs_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),

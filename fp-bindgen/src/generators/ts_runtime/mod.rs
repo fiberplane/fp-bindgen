@@ -459,58 +459,66 @@ fn create_enum_definition(
                     }
                 }
                 Type::Struct(_, _, fields) => {
-                    match (&opts.tag_prop_name, &opts.content_prop_name) {
-                        (Some(tag), Some(content)) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
-                                tag,
-                                variant_name,
-                                content,
-                                format_struct_fields(fields).join("; ")
-                            )
-                        }
-                        (Some(tag), None) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {} }}",
-                                tag,
-                                variant_name,
-                                format_struct_fields(fields).join("; ")
-                            )
-                        }
-                        (None, _) => {
-                            format!(
-                                "    | {{ {}: {{ {} }} }}",
-                                variant_name,
-                                format_struct_fields(fields).join("; ")
-                            )
+                    if opts.untagged {
+                        format!("    | {{ {} }}", format_struct_fields(fields).join("; "))
+                    } else {
+                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                            (Some(tag), Some(content)) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
+                                    tag,
+                                    variant_name,
+                                    content,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
+                            (Some(tag), None) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {} }}",
+                                    tag,
+                                    variant_name,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
+                            (None, _) => {
+                                format!(
+                                    "    | {{ {}: {{ {} }} }}",
+                                    variant_name,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
                         }
                     }
                 }
                 Type::Tuple(items) if items.len() == 1 => {
-                    match (&opts.tag_prop_name, &opts.content_prop_name) {
-                        (Some(tag), Some(content)) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {}: {} }}",
-                                tag,
-                                variant_name,
-                                content,
-                                format_type(items.first().unwrap())
-                            )
-                        }
-                        (Some(tag), None) => {
-                            format!(
-                                "    | {{ {}: \"{}\" }} & {}",
-                                tag,
-                                variant_name,
-                                format_type(items.first().unwrap())
-                            )
-                        }
-                        (None, _) => {
-                            format!(
-                                "    | {{ {}: {} }}",
-                                variant_name,
-                                format_type(items.first().unwrap())
-                            )
+                    if opts.untagged {
+                        format!("    | {}", format_type(items.first().unwrap()))
+                    } else {
+                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                            (Some(tag), Some(content)) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {}: {} }}",
+                                    tag,
+                                    variant_name,
+                                    content,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
+                            (Some(tag), None) => {
+                                format!(
+                                    "    | {{ {}: \"{}\" }} & {}",
+                                    tag,
+                                    variant_name,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
+                            (None, _) => {
+                                format!(
+                                    "    | {{ {}: {} }}",
+                                    variant_name,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
                         }
                     }
                 }
@@ -589,6 +597,7 @@ fn format_type(ty: &Type) -> String {
                 format_type(ty)
             }
         }
+        Type::Custom(custom) => custom.ts_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(_, ty) => {

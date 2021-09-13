@@ -85,9 +85,10 @@ impl PartialOrd for Type {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CustomType {
     pub name: String,
-    pub type_args: Vec<String>,
+    pub type_args: Vec<Type>,
     pub rs_ty: String,
     pub ts_ty: String,
 }
@@ -97,20 +98,25 @@ pub struct EnumOptions {
     pub variant_casing: Casing,
     pub content_prop_name: Option<String>,
     pub tag_prop_name: Option<String>,
+    pub untagged: bool,
 }
 
 impl EnumOptions {
     pub fn to_serde_attrs(&self) -> Vec<String> {
         let mut serde_attrs = vec![];
-        if let Some(prop_name) = &self.tag_prop_name {
-            serde_attrs.push(format!("tag = \"{}\"", prop_name));
+        if self.untagged {
+            serde_attrs.push("untagged".to_owned());
+        } else {
+            if let Some(prop_name) = &self.tag_prop_name {
+                serde_attrs.push(format!("tag = \"{}\"", prop_name));
 
-            if let Some(prop_name) = &self.content_prop_name {
-                serde_attrs.push(format!("content = \"{}\"", prop_name));
+                if let Some(prop_name) = &self.content_prop_name {
+                    serde_attrs.push(format!("content = \"{}\"", prop_name));
+                }
             }
-        }
-        if let Some(casing) = &self.variant_casing.as_maybe_str() {
-            serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            if let Some(casing) = &self.variant_casing.as_maybe_str() {
+                serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            }
         }
         serde_attrs
     }
@@ -157,6 +163,9 @@ impl Parse for EnumOptions {
                             .trim_matches('"'),
                     )
                     .map_err(|err| Error::new(content.span(), err))?;
+                }
+                "untagged" => {
+                    result.untagged = true;
                 }
                 other => {
                     return Err(Error::new(

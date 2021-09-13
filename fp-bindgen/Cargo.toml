@@ -9,7 +9,7 @@ chrono-compat = ["chrono"]
 
 [dependencies]
 chrono = { version = "0.4", optional = true }
-fp-bindgen-macros = { version = "0.1.0", path = "../macros" }
+fp-bindgen-macros = { path = "../macros" }
 Inflector = "0.11"
 quote = "1"
 syn = { version = "1", features = ["full", "extra-traits"] }

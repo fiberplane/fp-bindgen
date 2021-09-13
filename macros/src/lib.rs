@@ -45,8 +45,18 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
         _ => vec![],
     };
 
+    let where_clause = if generics.params.is_empty() {
+        quote! {}
+    } else {
+        let params = generics.type_params();
+        quote! {
+            where
+                #( #params: Serializable ),*
+        }
+    };
+
     let implementation = quote! {
-        impl fp_bindgen::prelude::Serializable for #item_name#generics {
+        impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
             fn name() -> String {
                 #item_name_str.to_owned()
             }

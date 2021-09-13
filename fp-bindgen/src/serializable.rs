@@ -1,5 +1,5 @@
 use crate::{
-    types::{EnumOptions, GenericArgument, Variant},
+    types::{CustomType, EnumOptions, GenericArgument, Variant},
     Type,
 };
 use std::{
@@ -252,21 +252,46 @@ where
 }
 
 #[cfg(feature = "chrono-compat")]
-impl for chrono::DateTime<chrono::Utc> {
+impl Serializable for chrono::Utc {
     fn name() -> String {
-        "DateTime<Utc>".to_owned()
+        "chrono::Utc".to_owned()
     }
 
     fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "DateTime",
-            type_args: vec!["Utc"],
-            rs_ty: "chrono::DateTime<chrono::Utc>".to_owned(),
-            ts_ty: "string".to_owned()
+            name: "DateTime".to_owned(),
+            type_args: vec![],
+            rs_ty: "chrono::Utc".to_owned(),
+            ts_ty: "UNIMPLEMENTED".to_owned(), // *should* never appear in the generated output
         })
     }
 
     fn dependencies() -> BTreeSet<Type> {
         BTreeSet::new()
+    }
+}
+
+#[cfg(feature = "chrono-compat")]
+impl<T> Serializable for chrono::DateTime<T>
+where
+    T: chrono::TimeZone + Serializable,
+{
+    fn name() -> String {
+        "chrono::DateTime<T>".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            name: "DateTime".to_owned(),
+            type_args: vec![T::ty()],
+            rs_ty: format!("chrono::DateTime<{}>", T::name()),
+            ts_ty: "string".to_owned(),
+        })
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
     }
 }
