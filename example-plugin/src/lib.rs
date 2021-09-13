@@ -1,7 +1,7 @@
 mod example_protocol;
 
 use example_protocol::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::panic;
 
 fn init_panic_hook() {
@@ -53,6 +53,27 @@ fp_export!(
         ComplexGuestToHost {
             map: BTreeMap::new(),
             simple: result.simple,
+        }
+    }
+);
+
+fp_export!(
+    async fn fetch_data(url: String) -> String {
+        init_panic_hook();
+
+        let result = make_request(RequestOptions {
+            url,
+            method: RequestMethod::Get,
+            headers: HashMap::new(),
+            body: None,
+        })
+        .await;
+
+        match result {
+            Ok(response) => {
+                String::from_utf8(response.body).unwrap_or_else(|_| "Invalid utf8".to_owned())
+            }
+            Err(err) => format!("Error: {:?}", err),
         }
     }
 );

@@ -3,6 +3,11 @@ import { encode, decode } from "@msgpack/msgpack";
 import type {
     ComplexGuestToHost,
     ComplexHostToGuest,
+    RequestError,
+    RequestMethod,
+    RequestOptions,
+    Response,
+    Result,
     Simple,
 } from "./types";
 
@@ -10,12 +15,14 @@ type FatPtr = bigint;
 
 export type Imports = {
     log: (message: string) => void;
+    makeRequest: (opts: RequestOptions) => Promise<Result<Response, RequestError>>;
     myAsyncImportedFunction: () => Promise<ComplexHostToGuest>;
     myComplexImportedFunction: (a: ComplexGuestToHost) => ComplexHostToGuest;
     myPlainImportedFunction: (a: number, b: number) => number;
 };
 
 export type Exports = {
+    fetchData?: (url: string) => Promise<string>;
     myAsyncExportedFunction?: () => Promise<ComplexGuestToHost>;
     myComplexExportedFunction?: (a: ComplexHostToGuest) => ComplexGuestToHost;
     myPlainExportedFunction?: (a: number, b: number) => number;
@@ -112,6 +119,22 @@ export async function createRuntime(
                 const message = parseObject<string>(message_ptr);
                 importFunctions.log(message);
             },
+            __fp_gen_make_request: (opts_ptr: FatPtr): FatPtr => {
+                const opts = parseObject<RequestOptions>(opts_ptr);
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.makeRequest(opts)
+                    .then((result) => {
+                        assignAsyncValue(_async_result_ptr, result);
+                        resolveFuture(_async_result_ptr);
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "make_request"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_my_async_imported_function: (): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.myAsyncImportedFunction()
@@ -151,6 +174,15 @@ export async function createRuntime(
     const resolveFuture = getExport<(ptr: FatPtr) => void>("__fp_guest_resolve_async_value");
 
     return {
+        fetchData: (() => {
+            const export_fn = instance.exports.__fp_gen_fetch_data as any;
+            if (!export_fn) return;
+        
+            return (url: string) => {
+                const url_ptr = serializeObject(url);
+                return promiseFromPtr<string>(export_fn(url_ptr));
+            };
+        })(),
         myAsyncExportedFunction: (() => {
             const export_fn = instance.exports.__fp_gen_my_async_exported_function as any;
             if (!export_fn) return;

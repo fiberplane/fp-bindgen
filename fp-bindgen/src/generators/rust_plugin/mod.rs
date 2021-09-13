@@ -1,6 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{Field, Type, Variant};
+use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -126,12 +126,25 @@ pub fn generate_type_bindings(
                 &deserializable_types,
             );
             match ty {
-                Type::Enum(name, variants) => {
-                    Some(create_enum_definition(name, variants, &serde_reqs))
+                Type::Enum(name, generic_args, variants, opts) => {
+                    if name == "Option" || name == "Result" {
+                        None // No need to define our own.
+                    } else {
+                        Some(create_enum_definition(
+                            name,
+                            generic_args,
+                            variants,
+                            &serde_reqs,
+                            opts,
+                        ))
+                    }
                 }
-                Type::Struct(name, fields) => {
-                    Some(create_struct_definition(name, fields, &serde_reqs))
-                }
+                Type::Struct(name, generic_args, fields) => Some(create_struct_definition(
+                    name,
+                    generic_args,
+                    fields,
+                    &serde_reqs,
+                )),
                 _ => None,
             }
         })
@@ -172,8 +185,8 @@ pub fn generate_function_bindings(
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &function.return_type {
-                None => "".to_owned(),
-                Some(ty) => format!(
+                Type::Unit => "".to_owned(),
+                ty => format!(
                     " -> {}",
                     match ty {
                         Type::Primitive(primitive) => format_primitive(*primitive),
@@ -207,8 +220,8 @@ pub fn generate_function_bindings(
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &function.return_type {
-                None => "".to_owned(),
-                Some(ty) => format!(" -> {}", format_type(ty)),
+                Type::Unit => "".to_owned(),
+                ty => format!(" -> {}", format_type(ty)),
             };
             let export_args = function
                 .args
@@ -229,13 +242,13 @@ pub fn generate_function_bindings(
                 .collect::<Vec<_>>()
                 .join(", ");
             let call_fn = match &function.return_type {
-                None => format!("__fp_gen_{}({});", name, args),
-                Some(Type::Primitive(_)) => format!("__fp_gen_{}({})", name, args),
-                Some(_) => format!("let ret = __fp_gen_{}({});", name, args),
+                Type::Unit => format!("__fp_gen_{}({});", name, args),
+                Type::Primitive(_) => format!("__fp_gen_{}({})", name, args),
+                _ => format!("let ret = __fp_gen_{}({});", name, args),
             };
             let import_return_value = match &function.return_type {
-                None | Some(Type::Primitive(_)) => "",
-                Some(_) => {
+                Type::Unit | Type::Primitive(_) => "",
+                _ => {
                     if function.is_async {
                         "        let result_ptr = HostFuture::new(ret).await;\n        import_value_from_host(result_ptr)\n"
                     } else {
@@ -267,7 +280,7 @@ pub fn generate_function_bindings(
         .map(|function| {
             let name = function.name;
             let modifiers = if function.is_async { "async " } else { "" };
-            let has_return_value = function.return_type.is_some();
+            let has_return_value = function.return_type != Type::Unit;
             let args_with_ptr_types = function
                 .args
                 .iter()
@@ -321,28 +334,25 @@ pub fn generate_function_bindings(
 
                 // Call the actual async function:
                 async_body.push(match &function.return_type {
-                    None => format!("    {}({}).await;", name, args),
-                    Some(_) => format!("    let ret = {}({}).await;", name, args),
+                    Type::Unit => format!("    {}({}).await;", name, args),
+                    _ => format!("    let ret = {}({}).await;", name, args),
                 });
 
                 async_body.push("    unsafe {".to_owned());
 
                 // If there is a return type, put the result in the `AsyncValue`
                 // referenced by `ptr`:
-                match &function.return_type {
-                    None => {}
-                    Some(ty) => {
-                        async_body.append(&mut vec![
-                            "        let (result_ptr, result_len) =".to_owned(),
-                            format!(
-                                "            _fp_from_fat_ptr(_fp_export_value_to_host::<{}>(&ret));",
-                                format_type(ty)
-                            ),
-                            "        (*ptr).ptr = result_ptr as u32;".to_owned(),
-                            "        (*ptr).len = result_len;".to_owned(),
-                        ]);
-                    }
-                };
+                if has_return_value {
+                    async_body.append(&mut vec![
+                        "        let (result_ptr, result_len) =".to_owned(),
+                        format!(
+                            "            _fp_from_fat_ptr(_fp_export_value_to_host::<{}>(&ret));",
+                            format_type(&function.return_type)
+                        ),
+                        "        (*ptr).ptr = result_ptr as u32;".to_owned(),
+                        "        (*ptr).len = result_len;".to_owned(),
+                    ]);
+                }
 
                 async_body.append(&mut vec![
                     // We're done, notify the host:
@@ -359,16 +369,17 @@ pub fn generate_function_bindings(
             } else {
                 let mut body = import_args;
                 body.push(match &function.return_type {
-                    None => format!("{}({});", name, args),
-                    Some(Type::Primitive(_)) => format!("{}({})", name, args),
-                    Some(_) => format!("let ret = {}({});", name, args),
+                    Type::Unit => format!("{}({});", name, args),
+                    Type::Primitive(_) => format!("{}({})", name, args),
+                    _ => format!("let ret = {}({});", name, args),
                 });
                 match &function.return_type {
-                    None | Some(Type::Primitive(_)) => {}
-                    Some(ty) => {
-                        body.push(format!("_fp_export_value_to_host::<{}>(&ret)", format_type(ty)))
-                    }
-                };
+                    Type::Unit | Type::Primitive(_) => {}
+                    ty => body.push(format!(
+                        "_fp_export_value_to_host::<{}>(&ret)",
+                        format_type(ty)
+                    )),
+                }
                 body
             };
 
@@ -390,9 +401,9 @@ pub fn generate_function_bindings(
                     " -> _FP_FatPtr"
                 } else {
                     match &function.return_type {
-                        None => "",
-                        Some(Type::Primitive(_)) => " -> $ret",
-                        Some(_) => " -> _FP_FatPtr",
+                        Type::Unit => "",
+                        Type::Primitive(_) => " -> $ret",
+                        _ => " -> _FP_FatPtr",
                     }
                 },
                 body.iter()
@@ -458,7 +469,17 @@ pub unsafe fn _fp_host_resolve_async_value(async_value_ptr: FatPtr) {
 
 fn collect_collection_types(ty: &Type) -> BTreeSet<String> {
     match ty {
-        Type::Enum(_, _) => BTreeSet::new(), // TODO
+        Type::Enum(_, _, variants, _) => {
+            let mut collection_types = BTreeSet::new();
+            for variant in variants {
+                collection_types.append(&mut collect_collection_types(&variant.ty));
+            }
+            collection_types
+        }
+        Type::GenericArgument(arg) => match &arg.ty {
+            Some(ty) => collect_collection_types(ty),
+            None => BTreeSet::new(),
+        },
         Type::List(name, ty) => {
             let mut collection_types = collect_collection_types(ty);
             if name == "BTreeSet" || name == "HashSet" {
@@ -477,26 +498,80 @@ fn collect_collection_types(ty: &Type) -> BTreeSet<String> {
         Type::Option(ty) => collect_collection_types(ty),
         Type::Primitive(_) => BTreeSet::new(),
         Type::String => BTreeSet::new(),
-        Type::Struct(_, fields) => {
+        Type::Struct(_, _, fields) => {
             let mut collection_types = BTreeSet::new();
             for field in fields {
                 collection_types.append(&mut collect_collection_types(&field.ty));
             }
             collection_types
         }
+        Type::Tuple(items) => {
+            let mut collection_types = BTreeSet::new();
+            for item in items {
+                collection_types.append(&mut collect_collection_types(item));
+            }
+            collection_types
+        }
+        Type::Unit => BTreeSet::new(),
     }
 }
 
 fn create_enum_definition(
     name: String,
+    generic_args: Vec<GenericArgument>,
     variants: Vec<Variant>,
     serde_reqs: &SerializationRequirements,
+    opts: EnumOptions,
 ) -> String {
-    "TODO".to_owned() // TODO
+    let derives = match serde_reqs {
+        SerializationRequirements::Serialize => "Serialize",
+        SerializationRequirements::Deserialize => "Deserialize",
+        SerializationRequirements::Both => "Serialize, Deserialize",
+    };
+    let variants = variants
+        .into_iter()
+        .map(|variant| match variant.ty {
+            Type::Unit => format!("    {},", variant.name),
+            Type::Struct(_, _, fields) => {
+                let fields = fields
+                    .iter()
+                    .map(|field| format!("{}: {}", field.name, format_type(&field.ty)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!(
+                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{ {} }},",
+                    variant.name, fields
+                )
+            }
+            Type::Tuple(items) => {
+                let items = items
+                    .iter()
+                    .map(|item| format_type(item))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("    {}({}),", variant.name, items)
+            }
+            other => panic!("Unsupported type for enum variant: {:?}", other),
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    format!(
+        "#[derive(Clone, Debug, PartialEq, {})]\n\
+        #[serde({})]\n\
+        pub enum {} {{\n\
+            {}\n\
+        }}",
+        derives,
+        opts.to_serde_attrs().join(", "),
+        format_name_with_generics(&name, &generic_args),
+        variants
+    )
 }
 
 fn create_struct_definition(
     name: String,
+    generic_args: Vec<GenericArgument>,
     fields: Vec<Field>,
     serde_reqs: &SerializationRequirements,
 ) -> String {
@@ -507,7 +582,20 @@ fn create_struct_definition(
     };
     let fields = fields
         .into_iter()
-        .map(|field| format!("    pub {}: {},", field.name, format_type(&field.ty)))
+        .map(|field| {
+            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _) if name == "Option") {
+                "    #[serde(skip_serializing_if = \"Option::is_none\")]\n"
+            } else {
+                ""
+            };
+
+            format!(
+                "{}    pub {}: {},",
+                skip,
+                field.name,
+                format_type(&field.ty)
+            )
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -517,20 +605,51 @@ fn create_struct_definition(
         pub struct {} {{\n\
             {}\n\
         }}",
-        derives, name, fields
+        derives,
+        format_name_with_generics(&name, &generic_args),
+        fields
     )
+}
+
+fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
+    if generic_args.is_empty() {
+        name.to_owned()
+    } else {
+        format!(
+            "{}<{}>",
+            name,
+            generic_args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Some(ty) => format_type(ty),
+                    None => arg.name.clone(),
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
 }
 
 /// Formats a type so it's valid Rust again.
 fn format_type(ty: &Type) -> String {
     match ty {
-        Type::Enum(name, _) => name.clone(),
+        Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+        Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
         Type::Option(ty) => format!("Option<{}>", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "String".to_owned(),
-        Type::Struct(name, _) => name.clone(),
+        Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Tuple(items) => format!(
+            "({})",
+            items
+                .iter()
+                .map(|item| item.name())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Type::Unit => "()".to_owned(),
     }
 }
 

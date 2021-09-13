@@ -8,36 +8,36 @@ use std::collections::HashSet;
 use syn::{AttrStyle, FnArg, ForeignItemFn, Ident, Item, Path, PathArguments, ReturnType, Type};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
-#[proc_macro_derive(Serializable)]
+#[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
     let dependencies = match item {
-        syn::Item::Enum(ty) => {
-            // TODO
-            vec![]
-        }
+        syn::Item::Enum(ty) => ty
+            .variants
+            .into_iter()
+            .flat_map(|variant| variant.fields)
+            .map(|field| {
+                extract_path_from_type(&field.ty).unwrap_or_else(|| {
+                    panic!(
+                        "Only value types are supported. Incompatible type in enum variant field: {:?}",
+                        field
+                    )
+                })
+            })
+            .collect::<Vec<_>>(),
         syn::Item::Struct(ty) => ty
             .fields
             .into_iter()
-            .map(|field| match field.ty {
-                syn::Type::Path(path) if path.qself.is_none() => {
-                    let mut path = path.path;
-                    for segment in &mut path.segments {
-                        if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
-                            // When calling a static function on `Vec<T>`, it gets invoked
-                            // as `Vec::<T>::some_func()`, so we need to insert extra colons:
-                            args.colon2_token = Some(syn::parse_quote!(::));
-                        }
-                    }
-                    path
-                }
-                _ => panic!(
-                    "Only value types are supported. Incompatible type in struct field: {:?}",
-                    field
-                ),
+            .map(|field| {
+                extract_path_from_type(&field.ty).unwrap_or_else(|| {
+                    panic!(
+                        "Only value types are supported. Incompatible type in struct field: {:?}",
+                        field
+                    )
+                })
             })
             .collect::<Vec<_>>(),
         _ => vec![],
@@ -54,7 +54,6 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
-                use std::str::FromStr;
                 let mut dependencies = std::collections::BTreeSet::new();
                 #( #dependencies::add_type_with_dependencies(&mut dependencies); )*
                 dependencies
@@ -62,6 +61,24 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
         }
     };
     implementation.into()
+}
+
+fn extract_path_from_type(ty: &Type) -> Option<Path> {
+    match ty {
+        Type::Path(path) if path.qself.is_none() => {
+            let mut path = path.path.clone();
+            for segment in &mut path.segments {
+                if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
+                    // When calling a static function on `Vec<T>`, it gets invoked
+                    // as `Vec::<T>::some_func()`, so we need to insert extra colons
+                    // to make the famed Rust "turbofish":
+                    args.colon2_token = Some(syn::parse_quote!(::));
+                }
+            }
+            Some(path)
+        }
+        _ => None,
+    }
 }
 
 fn parse_type_item(item: TokenStream) -> (Ident, Item) {
@@ -149,31 +166,33 @@ fn parse_functions(
                             "Methods are not supported. Found `self` in function declaration: {:?}",
                             function.sig
                         ),
-                        FnArg::Typed(arg) => match arg.ty.as_ref() {
-                            Type::Path(path) if path.qself.is_none() => {
-                                serializable_type_names.insert(path.path.clone());
-                            }
-                            _ => panic!(
-                                "Only value types are supported. \
-                                    Incompatible argument type in function declaration: {:?}",
-                                function.sig
-                            ),
-                        },
+                        FnArg::Typed(arg) => {
+                            serializable_type_names.insert(
+                                extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
+                                    panic!(
+                                        "Only value types are supported. \
+                                            Incompatible argument type in function declaration: {:?}",
+                                        function.sig
+                                    )
+                                }),
+                            );
+                        }
                     }
                 }
 
                 match &function.sig.output {
                     ReturnType::Default => { /* No return value. */ }
-                    ReturnType::Type(_, ty) => match ty.as_ref() {
-                        Type::Path(path) if path.qself.is_none() => {
-                            deserializable_type_names.insert(path.path.clone());
-                        }
-                        _ => panic!(
-                            "Only value types are supported. \
-                                Incompatible return type in function declaration: {:?}",
-                            function.sig
-                        ),
-                    },
+                    ReturnType::Type(_, ty) => {
+                        deserializable_type_names.insert(
+                            extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
+                                panic!(
+                                    "Only value types are supported. \
+                                        Incompatible return type in function declaration: {:?}",
+                                    function.sig
+                                )
+                            }),
+                        );
+                    }
                 }
 
                 docs.push(

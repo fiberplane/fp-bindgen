@@ -55,7 +55,7 @@ pub struct Function {
     pub name: String,
     pub doc_lines: Vec<&'static str>,
     pub args: Vec<FunctionArg>,
-    pub return_type: Option<Type>,
+    pub return_type: Type,
     pub is_async: bool,
 }
 
@@ -88,12 +88,12 @@ impl Function {
             })
             .collect();
         let return_type = match &item.sig.output {
-            ReturnType::Default => None,
-            ReturnType::Type(_, return_type) => Some(
+            ReturnType::Default => Type::Unit,
+            ReturnType::Type(_, return_type) => {
                 resolve_type(return_type.as_ref(), deserializable_types).unwrap_or_else(|| {
                     panic!("Unresolvable return type: {:?}", return_type.as_ref())
-                }),
-            ),
+                })
+            }
         };
         let is_async = item.sig.asyncness.is_some();
 
