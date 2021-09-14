@@ -1,3 +1,5 @@
+export type Body = ArrayBuffer;
+
 export type ComplexGuestToHost = {
     simple: Simple;
     map: Record<string, Simple>;
@@ -13,7 +15,7 @@ export type RequestError =
     | { type: "no_route" }
     | { type: "connection_refused" }
     | { type: "timeout" }
-    | { type: "server_error"; statusCode: number; response: ArrayBuffer }
+    | { type: "server_error"; statusCode: number; response: Body }
     | { type: "other"; reason: string };
 
 export type RequestMethod =
@@ -32,7 +34,7 @@ export type RequestOptions = {
 
 export type Response = {
     headers: Record<string, string>;
-    body: ArrayBuffer;
+    body: Body;
 };
 
 export type Result<T, E> =

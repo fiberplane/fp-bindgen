@@ -45,6 +45,16 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
         _ => vec![],
     };
 
+    // Aliases cannot be derived, but we can detect their presence by comparing
+    // the paths of dependencies with their expected names:
+    let aliases = dependencies.iter().map(|path| {
+        // FIXME: For now, this only works for plain identifiers, so nesting an
+        //        alias inside of a container is still likely to fail.
+        path.get_ident()
+            .map(|ident| ident.to_string())
+            .unwrap_or_else(|| "".to_owned())
+    });
+
     let where_clause = if generics.params.is_empty() {
         quote! {}
     } else {
@@ -67,7 +77,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
                 let mut dependencies = std::collections::BTreeSet::new();
-                #( #dependencies::add_type_with_dependencies(&mut dependencies); )*
+                #( #dependencies::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
                 dependencies
             }
         }
@@ -186,6 +196,7 @@ fn parse_functions(
                         ),
                         FnArg::Typed(arg) => {
                             serializable_type_names.insert(
+                                // FIXME: Check for aliases
                                 extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
                                     panic!(
                                         "Only value types are supported. \
@@ -202,6 +213,7 @@ fn parse_functions(
                     ReturnType::Default => { /* No return value. */ }
                     ReturnType::Type(_, ty) => {
                         deserializable_type_names.insert(
+                            // FIXME: Check for aliases
                             extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
                                 panic!(
                                     "Only value types are supported. \

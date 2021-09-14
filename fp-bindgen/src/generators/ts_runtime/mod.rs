@@ -423,6 +423,11 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
+            Type::Alias(name, ty) => Some(format!(
+                "export type {} = {};",
+                name,
+                format_type(ty.as_ref())
+            )),
             Type::Enum(name, generic_args, variants, opts) => Some(create_enum_definition(
                 name,
                 generic_args,
@@ -590,6 +595,7 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
+        Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => {
             if name == "Option" {
                 format!("{} | null", format_type(ty))

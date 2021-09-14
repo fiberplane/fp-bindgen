@@ -1,5 +1,7 @@
+#[cfg(feature = "chrono-compat")]
+use crate::CustomType;
 use crate::{
-    types::{CustomType, EnumOptions, GenericArgument, Variant},
+    types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
 use std::{
@@ -34,6 +36,15 @@ pub trait Serializable {
 
         dependencies.insert(ty);
         dependencies.append(&mut Self::dependencies());
+    }
+
+    fn add_type_with_dependencies_and_alias(dependencies: &mut BTreeSet<Type>, alias: &str) {
+        Self::add_type_with_dependencies(dependencies);
+
+        if !alias.is_empty() && alias != Self::name() {
+            let alias = Type::Alias(alias.to_owned(), Box::new(Self::ty()));
+            dependencies.insert(alias);
+        }
     }
 }
 

@@ -123,6 +123,9 @@ pub fn generate_type_bindings(
                 &deserializable_types,
             );
             match ty {
+                Type::Alias(name, ty) => {
+                    Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
+                }
                 Type::Enum(name, generic_args, variants, opts) => {
                     if name == "Result" {
                         None // No need to define our own.
@@ -466,6 +469,7 @@ pub unsafe fn _fp_host_resolve_async_value(async_value_ptr: FatPtr) {
 
 fn collect_std_types(ty: &Type) -> BTreeSet<String> {
     match ty {
+        Type::Alias(_, ty) => collect_std_types(ty),
         Type::Container(name, ty) => {
             let mut types = collect_std_types(ty);
             if name == "Rc" {
@@ -637,6 +641,7 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 /// Formats a type so it's valid Rust again.
 fn format_type(ty: &Type) -> String {
     match ty {
+        Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Custom(custom) => custom.rs_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),

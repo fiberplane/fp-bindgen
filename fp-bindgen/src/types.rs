@@ -16,6 +16,7 @@ pub struct GenericArgument {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
+    Alias(String, Box<Type>),
     Container(String, Box<Type>),
     Custom(CustomType),
     Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
@@ -44,15 +45,16 @@ impl Type {
 
     pub fn name(&self) -> String {
         match self {
+            Self::Alias(name, _) => name.clone(),
             Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Custom(custom) => custom.rs_ty.clone(),
-            Self::Enum(name, generic_args, _, _) => format_name_with_generics(name, generic_args),
+            Self::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
-            Self::Struct(name, generic_args, _) => format_name_with_generics(name, generic_args),
+            Self::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
             Self::Tuple(items) => format!(
                 "({})",
                 items
@@ -214,6 +216,25 @@ pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -
     }
 }
 
+fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
+    if generic_args.is_empty() {
+        name.to_owned()
+    } else {
+        format!(
+            "{}<{}>",
+            name,
+            generic_args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Some(ty) => ty.name(),
+                    None => arg.name.clone(),
+                })
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
 fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
     let name = item.ident.to_string();
     let generic_args = item
@@ -353,6 +374,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                 Err(_) => types
                     .iter()
                     .find(|ty| match ty {
+                        Type::Alias(name, _) => name == &path_without_args && type_args.is_empty(),
                         Type::Container(name, ty) => {
                             name == &path_without_args
                                 && type_args.len() == 1
