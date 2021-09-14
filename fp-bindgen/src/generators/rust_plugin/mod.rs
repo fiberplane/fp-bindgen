@@ -99,21 +99,18 @@ pub fn generate_type_bindings(
     let mut all_types = serializable_types.clone();
     all_types.append(&mut deserializable_types.clone());
 
-    let collection_types = all_types
+    let std_types = all_types
         .iter()
-        .flat_map(|ty| collect_collection_types(ty))
+        .flat_map(|ty| collect_std_types(ty))
         .collect::<BTreeSet<_>>();
-    let std_imports = if collection_types.is_empty() {
+    let std_imports = if std_types.is_empty() {
         "".to_owned()
-    } else if collection_types.len() == 1 {
-        format!(
-            "use std::collections::{};\n",
-            collection_types.iter().next().unwrap()
-        )
+    } else if std_types.len() == 1 {
+        format!("use std::{};\n", std_types.iter().next().unwrap())
     } else {
         format!(
-            "use std::collections::{{{}}};\n",
-            collection_types.into_iter().collect::<Vec<_>>().join(", ")
+            "use std::{{{}}};\n",
+            std_types.into_iter().collect::<Vec<_>>().join(", ")
         )
     };
 
@@ -126,8 +123,11 @@ pub fn generate_type_bindings(
                 &deserializable_types,
             );
             match ty {
+                Type::Alias(name, ty) => {
+                    Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
+                }
                 Type::Enum(name, generic_args, variants, opts) => {
-                    if name == "Option" || name == "Result" {
+                    if name == "Result" {
                         None // No need to define our own.
                     } else {
                         Some(create_enum_definition(
@@ -467,50 +467,58 @@ pub unsafe fn _fp_host_resolve_async_value(async_value_ptr: FatPtr) {
     );
 }
 
-fn collect_collection_types(ty: &Type) -> BTreeSet<String> {
+fn collect_std_types(ty: &Type) -> BTreeSet<String> {
     match ty {
-        Type::Enum(_, _, variants, _) => {
-            let mut collection_types = BTreeSet::new();
-            for variant in variants {
-                collection_types.append(&mut collect_collection_types(&variant.ty));
+        Type::Alias(_, ty) => collect_std_types(ty),
+        Type::Container(name, ty) => {
+            let mut types = collect_std_types(ty);
+            if name == "Rc" {
+                types.insert("rc::Rc".to_owned());
             }
-            collection_types
+            types
+        }
+        Type::Custom(_) => BTreeSet::new(),
+        Type::Enum(_, _, variants, _) => {
+            let mut types = BTreeSet::new();
+            for variant in variants {
+                types.append(&mut collect_std_types(&variant.ty));
+            }
+            types
         }
         Type::GenericArgument(arg) => match &arg.ty {
-            Some(ty) => collect_collection_types(ty),
+            Some(ty) => collect_std_types(ty),
             None => BTreeSet::new(),
         },
         Type::List(name, ty) => {
-            let mut collection_types = collect_collection_types(ty);
+            let mut types = collect_std_types(ty);
             if name == "BTreeSet" || name == "HashSet" {
-                collection_types.insert(name.clone());
+                types.insert(format!("collections::{}", name));
             }
-            collection_types
+            types
         }
         Type::Map(name, key, value) => {
-            let mut collection_types = collect_collection_types(key);
-            collection_types.append(&mut collect_collection_types(value));
+            let mut types = collect_std_types(key);
+            types.append(&mut collect_std_types(value));
             if name == "BTreeMap" || name == "HashMap" {
-                collection_types.insert(name.clone());
+                types.insert(format!("collections::{}", name));
             }
-            collection_types
+            types
         }
-        Type::Option(ty) => collect_collection_types(ty),
         Type::Primitive(_) => BTreeSet::new(),
         Type::String => BTreeSet::new(),
         Type::Struct(_, _, fields) => {
-            let mut collection_types = BTreeSet::new();
+            let mut types = BTreeSet::new();
             for field in fields {
-                collection_types.append(&mut collect_collection_types(&field.ty));
+                types.append(&mut collect_std_types(&field.ty));
             }
-            collection_types
+            types
         }
         Type::Tuple(items) => {
-            let mut collection_types = BTreeSet::new();
+            let mut types = BTreeSet::new();
             for item in items {
-                collection_types.append(&mut collect_collection_types(item));
+                types.append(&mut collect_std_types(item));
             }
-            collection_types
+            types
         }
         Type::Unit => BTreeSet::new(),
     }
@@ -633,11 +641,13 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 /// Formats a type so it's valid Rust again.
 fn format_type(ty: &Type) -> String {
     match ty {
+        Type::Alias(name, _) => name.clone(),
+        Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
+        Type::Custom(custom) => custom.rs_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
-        Type::Option(ty) => format!("Option<{}>", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "String".to_owned(),
         Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),

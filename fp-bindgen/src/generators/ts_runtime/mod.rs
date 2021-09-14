@@ -423,6 +423,11 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
     let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
+            Type::Alias(name, ty) => Some(format!(
+                "export type {} = {};",
+                name,
+                format_type(ty.as_ref())
+            )),
             Type::Enum(name, generic_args, variants, opts) => Some(create_enum_definition(
                 name,
                 generic_args,
@@ -459,58 +464,66 @@ fn create_enum_definition(
                     }
                 }
                 Type::Struct(_, _, fields) => {
-                    match (&opts.tag_prop_name, &opts.content_prop_name) {
-                        (Some(tag), Some(content)) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
-                                tag,
-                                variant_name,
-                                content,
-                                format_struct_fields(fields).join("; ")
-                            )
-                        }
-                        (Some(tag), None) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {} }}",
-                                tag,
-                                variant_name,
-                                format_struct_fields(fields).join("; ")
-                            )
-                        }
-                        (None, _) => {
-                            format!(
-                                "    | {{ {}: {{ {} }} }}",
-                                variant_name,
-                                format_struct_fields(fields).join("; ")
-                            )
+                    if opts.untagged {
+                        format!("    | {{ {} }}", format_struct_fields(fields).join("; "))
+                    } else {
+                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                            (Some(tag), Some(content)) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
+                                    tag,
+                                    variant_name,
+                                    content,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
+                            (Some(tag), None) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {} }}",
+                                    tag,
+                                    variant_name,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
+                            (None, _) => {
+                                format!(
+                                    "    | {{ {}: {{ {} }} }}",
+                                    variant_name,
+                                    format_struct_fields(fields).join("; ")
+                                )
+                            }
                         }
                     }
                 }
                 Type::Tuple(items) if items.len() == 1 => {
-                    match (&opts.tag_prop_name, &opts.content_prop_name) {
-                        (Some(tag), Some(content)) => {
-                            format!(
-                                "    | {{ {}: \"{}\"; {}: {} }}",
-                                tag,
-                                variant_name,
-                                content,
-                                format_type(items.first().unwrap())
-                            )
-                        }
-                        (Some(tag), None) => {
-                            format!(
-                                "    | {{ {}: \"{}\" }} & {}",
-                                tag,
-                                variant_name,
-                                format_type(items.first().unwrap())
-                            )
-                        }
-                        (None, _) => {
-                            format!(
-                                "    | {{ {}: {} }}",
-                                variant_name,
-                                format_type(items.first().unwrap())
-                            )
+                    if opts.untagged {
+                        format!("    | {}", format_type(items.first().unwrap()))
+                    } else {
+                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                            (Some(tag), Some(content)) => {
+                                format!(
+                                    "    | {{ {}: \"{}\"; {}: {} }}",
+                                    tag,
+                                    variant_name,
+                                    content,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
+                            (Some(tag), None) => {
+                                format!(
+                                    "    | {{ {}: \"{}\" }} & {}",
+                                    tag,
+                                    variant_name,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
+                            (None, _) => {
+                                format!(
+                                    "    | {{ {}: {} }}",
+                                    variant_name,
+                                    format_type(items.first().unwrap())
+                                )
+                            }
                         }
                     }
                 }
@@ -565,7 +578,15 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
     fields
         .iter()
         .map(|field| match &field.ty {
-            Type::Option(ty) => format!("{}?: {}", field.name.to_camel_case(), format_type(ty)),
+            Type::Container(name, ty) => {
+                let optional = if name == "Option" { "?" } else { "" };
+                format!(
+                    "{}{}: {}",
+                    field.name.to_camel_case(),
+                    optional,
+                    format_type(ty)
+                )
+            }
             ty => format!("{}: {}", field.name.to_camel_case(), format_type(ty)),
         })
         .collect()
@@ -574,6 +595,15 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
     match ty {
+        Type::Alias(name, _) => name.clone(),
+        Type::Container(name, ty) => {
+            if name == "Option" {
+                format!("{} | null", format_type(ty))
+            } else {
+                format_type(ty)
+            }
+        }
+        Type::Custom(custom) => custom.ts_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(_, ty) => {
@@ -585,7 +615,6 @@ fn format_type(ty: &Type) -> String {
             }
         }
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
-        Type::Option(ty) => format!("{} | null", format_type(ty)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
         Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),

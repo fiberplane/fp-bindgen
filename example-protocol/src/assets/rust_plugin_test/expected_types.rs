@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::{collections::BTreeMap, collections::HashMap};
+
+pub type Body = Vec<u8>;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +25,7 @@ pub enum RequestError {
     ConnectionRefused,
     Timeout,
     #[serde(rename_all = "camelCase")]
-    ServerError { status_code: u16, response: Vec<u8> },
+    ServerError { status_code: u16, response: Body },
     #[serde(rename_all = "camelCase")]
     Other { reason: String },
 }
@@ -51,7 +53,7 @@ pub struct RequestOptions {
 #[serde(rename_all = "camelCase")]
 pub struct Response {
     pub headers: HashMap<String, String>,
-    pub body: Vec<u8>,
+    pub body: Body,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -1,6 +1,8 @@
 use fp_bindgen::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 
+pub type Body = Vec<u8>;
+
 #[derive(Serializable)]
 pub struct DeadCode {
     pub you_wont_see_this: bool,
@@ -45,7 +47,7 @@ pub struct RequestOptions {
 #[derive(Serializable)]
 pub struct Response {
     pub headers: HashMap<String, String>,
-    pub body: Vec<u8>,
+    pub body: Body,
 }
 
 #[derive(Serializable)]
@@ -55,7 +57,7 @@ pub enum RequestError {
     NoRoute,
     ConnectionRefused,
     Timeout,
-    ServerError { status_code: u16, response: Vec<u8> },
+    ServerError { status_code: u16, response: Body },
     Other { reason: String },
 }
 

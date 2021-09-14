@@ -16,11 +16,13 @@ pub struct GenericArgument {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Type {
+    Alias(String, Box<Type>),
+    Container(String, Box<Type>),
+    Custom(CustomType),
     Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
     GenericArgument(Box<GenericArgument>),
     List(String, Box<Type>),
     Map(String, Box<Type>, Box<Type>),
-    Option(Box<Type>),
     Primitive(Primitive),
     String,
     Struct(String, Vec<GenericArgument>, Vec<Field>),
@@ -43,14 +45,16 @@ impl Type {
 
     pub fn name(&self) -> String {
         match self {
-            Self::Enum(name, generic_args, _, _) => format_name_with_generics(name, generic_args),
+            Self::Alias(name, _) => name.clone(),
+            Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
+            Self::Custom(custom) => custom.rs_ty.clone(),
+            Self::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
-            Self::Option(ty) => format!("Option<{}>", ty.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
-            Self::Struct(name, generic_args, _) => format_name_with_generics(name, generic_args),
+            Self::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
             Self::Tuple(items) => format!(
                 "({})",
                 items
@@ -83,25 +87,38 @@ impl PartialOrd for Type {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CustomType {
+    pub name: String,
+    pub type_args: Vec<Type>,
+    pub rs_ty: String,
+    pub ts_ty: String,
+}
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct EnumOptions {
     pub variant_casing: Casing,
     pub content_prop_name: Option<String>,
     pub tag_prop_name: Option<String>,
+    pub untagged: bool,
 }
 
 impl EnumOptions {
     pub fn to_serde_attrs(&self) -> Vec<String> {
         let mut serde_attrs = vec![];
-        if let Some(prop_name) = &self.tag_prop_name {
-            serde_attrs.push(format!("tag = \"{}\"", prop_name));
+        if self.untagged {
+            serde_attrs.push("untagged".to_owned());
+        } else {
+            if let Some(prop_name) = &self.tag_prop_name {
+                serde_attrs.push(format!("tag = \"{}\"", prop_name));
 
-            if let Some(prop_name) = &self.content_prop_name {
-                serde_attrs.push(format!("content = \"{}\"", prop_name));
+                if let Some(prop_name) = &self.content_prop_name {
+                    serde_attrs.push(format!("content = \"{}\"", prop_name));
+                }
             }
-        }
-        if let Some(casing) = &self.variant_casing.as_maybe_str() {
-            serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            if let Some(casing) = &self.variant_casing.as_maybe_str() {
+                serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            }
         }
         serde_attrs
     }
@@ -149,6 +166,9 @@ impl Parse for EnumOptions {
                     )
                     .map_err(|err| Error::new(content.span(), err))?;
                 }
+                "untagged" => {
+                    result.untagged = true;
+                }
                 other => {
                     return Err(Error::new(
                         content.span(),
@@ -190,6 +210,25 @@ pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -
             generic_args
                 .iter()
                 .map(|arg| arg.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+}
+
+fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
+    if generic_args.is_empty() {
+        name.to_owned()
+    } else {
+        format!(
+            "{}<{}>",
+            name,
+            generic_args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Some(ty) => ty.name(),
+                    None => arg.name.clone(),
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         )
@@ -264,7 +303,7 @@ fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
 fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
     attrs
         .iter()
-        .find(|attr| attr.path.is_ident("fp"))
+        .find(|attr| attr.path.is_ident("fp") || attr.path.is_ident("serde"))
         .map(|attr| {
             syn::parse2::<EnumOptions>(attr.tokens.clone()).expect("Could not parse attributes")
         })
@@ -335,6 +374,18 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                 Err(_) => types
                     .iter()
                     .find(|ty| match ty {
+                        Type::Alias(name, _) => name == &path_without_args && type_args.is_empty(),
+                        Type::Container(name, ty) => {
+                            name == &path_without_args
+                                && type_args.len() == 1
+                                && type_args
+                                    .first()
+                                    .map(|arg| arg == ty.as_ref())
+                                    .unwrap_or(false)
+                        }
+                        Type::Custom(custom) => {
+                            custom.name == path_without_args && custom.type_args == type_args
+                        }
                         Type::Enum(name, generic_args, _, _) => {
                             name == &path_without_args
                                 && generic_args
@@ -362,13 +413,6 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                                 && type_args
                                     .get(1)
                                     .map(|arg| arg == value.as_ref())
-                                    .unwrap_or(false)
-                        }
-                        Type::Option(ty) => {
-                            path_without_args == "Option"
-                                && type_args
-                                    .first()
-                                    .map(|arg| arg == ty.as_ref())
                                     .unwrap_or(false)
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,

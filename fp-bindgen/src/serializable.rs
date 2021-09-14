@@ -1,8 +1,13 @@
+#[cfg(feature = "chrono-compat")]
+use crate::CustomType;
 use crate::{
     types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
-use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    rc::Rc,
+};
 
 pub trait Serializable {
     /// The name of the type as defined in the protocol.
@@ -31,6 +36,34 @@ pub trait Serializable {
 
         dependencies.insert(ty);
         dependencies.append(&mut Self::dependencies());
+    }
+
+    fn add_type_with_dependencies_and_alias(dependencies: &mut BTreeSet<Type>, alias: &str) {
+        Self::add_type_with_dependencies(dependencies);
+
+        if !alias.is_empty() && alias != Self::name() {
+            let alias = Type::Alias(alias.to_owned(), Box::new(Self::ty()));
+            dependencies.insert(alias);
+        }
+    }
+}
+
+impl<T> Serializable for Box<T>
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("Option<{}>", T::name())
+    }
+
+    fn ty() -> Type {
+        Type::Container("Option".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
     }
 }
 
@@ -123,7 +156,26 @@ where
     }
 
     fn ty() -> Type {
-        Type::Option(Box::new(T::ty()))
+        Type::Container("Option".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
+    }
+}
+
+impl<T> Serializable for Rc<T>
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("Rc<{}>", T::name())
+    }
+
+    fn ty() -> Type {
+        Type::Container("Rc".to_owned(), Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
@@ -201,6 +253,51 @@ where
 
     fn ty() -> Type {
         Type::List("Vec".to_owned(), Box::new(T::ty()))
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        let mut dependencies = BTreeSet::new();
+        T::add_type_with_dependencies(&mut dependencies);
+        dependencies
+    }
+}
+
+#[cfg(feature = "chrono-compat")]
+impl Serializable for chrono::Utc {
+    fn name() -> String {
+        "chrono::Utc".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            name: "DateTime".to_owned(),
+            type_args: vec![],
+            rs_ty: "chrono::Utc".to_owned(),
+            ts_ty: "UNIMPLEMENTED".to_owned(), // *should* never appear in the generated output
+        })
+    }
+
+    fn dependencies() -> BTreeSet<Type> {
+        BTreeSet::new()
+    }
+}
+
+#[cfg(feature = "chrono-compat")]
+impl<T> Serializable for chrono::DateTime<T>
+where
+    T: chrono::TimeZone + Serializable,
+{
+    fn name() -> String {
+        "chrono::DateTime<T>".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            name: "DateTime".to_owned(),
+            type_args: vec![T::ty()],
+            rs_ty: format!("chrono::DateTime<{}>", T::name()),
+            ts_ty: "string".to_owned(),
+        })
     }
 
     fn dependencies() -> BTreeSet<Type> {
