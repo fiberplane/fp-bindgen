@@ -20,14 +20,16 @@ pub fn generate_bindings(
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
 
-    let type_names = all_types
+    let mut type_names = all_types
         .into_iter()
         .filter_map(|ty| match ty {
+            Type::Alias(name, _) => Some(name),
             Type::Enum(name, _, _, _) => Some(name),
             Type::Struct(name, _, _) => Some(name),
             _ => None,
         })
         .collect::<Vec<_>>();
+    type_names.dedup();
 
     let import_wrappers = format_import_wrappers(&import_functions);
     let export_wrappers = format_export_wrappers(&export_functions);
@@ -420,7 +422,7 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
 }
 
 fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let type_defs = types
+    let mut type_defs = types
         .iter()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => Some(format!(
@@ -439,10 +441,13 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
             }
             _ => None,
         })
-        .collect::<Vec<_>>()
-        .join("\n\n");
+        .collect::<Vec<_>>();
+    type_defs.dedup();
 
-    write_bindings_file(format!("{}/types.ts", path), format!("{}\n", type_defs))
+    write_bindings_file(
+        format!("{}/types.ts", path),
+        format!("{}\n", type_defs.join("\n\n")),
+    )
 }
 
 fn create_enum_definition(

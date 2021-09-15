@@ -1,5 +1,7 @@
 export type Body = ArrayBuffer;
 
+export type ComplexAlias = ComplexGuestToHost;
+
 export type ComplexGuestToHost = {
     simple: Simple;
     map: Record<string, Simple>;

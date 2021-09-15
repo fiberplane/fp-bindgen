@@ -3,6 +3,8 @@ use std::{collections::BTreeMap, collections::HashMap};
 
 pub type Body = Vec<u8>;
 
+pub type ComplexAlias = ComplexGuestToHost;
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexGuestToHost {

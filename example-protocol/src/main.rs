@@ -20,6 +20,8 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
 }
 
+pub type ComplexAlias = ComplexGuestToHost;
+
 #[derive(Serializable)]
 pub struct ComplexGuestToHost {
     pub simple: Simple,
@@ -70,7 +72,9 @@ fp_import! {
     fn my_plain_imported_function(a: u32, b: u32) -> u32;
 
     /// This one passes complex data types. Things are getting interesting.
-    fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest;
+    fn my_complex_imported_function(a: ComplexAlias) -> ComplexHostToGuest;
+
+    fn count_words(string: String) -> Result<u16, String>;
 
     async fn my_async_imported_function() -> ComplexHostToGuest;
 
@@ -80,7 +84,7 @@ fp_import! {
 fp_export! {
     fn my_plain_exported_function(a: u32, b: u32) -> u32;
 
-    fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost;
+    fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexAlias;
 
     async fn my_async_exported_function() -> ComplexGuestToHost;
 

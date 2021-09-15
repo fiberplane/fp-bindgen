@@ -11,19 +11,14 @@ pub fn generate_bindings(
     deserializable_types: BTreeSet<Type>,
     path: &str,
 ) {
+    let spec_path = format!("{}/spec", path);
+    fs::create_dir_all(&spec_path).expect("Could not create spec/ directory");
+
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:
-    generate_type_bindings(
-        deserializable_types,
-        serializable_types,
-        &format!("{}/spec", path),
-    );
+    generate_type_bindings(deserializable_types, serializable_types, &spec_path);
 
-    generate_function_bindings(
-        import_functions,
-        export_functions,
-        &format!("{}/spec", path),
-    );
+    generate_function_bindings(import_functions, export_functions, &spec_path);
 
     write_bindings_file(
         format!("{}/errors.rs", path),
@@ -41,15 +36,28 @@ pub fn generate_function_bindings(
     export_functions: FunctionList,
     path: &str,
 ) {
-    let extern_decls = import_functions
+    let imports_map = import_functions
         .iter()
         .map(|function| {
-            let args = function
+            let name = &function.name;
+            format!(
+                "            \"{}\" => Function::new_native_with_env(store, env.clone(), _{}),",
+                name, name
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let imports = import_functions
+        .iter()
+        .map(|function| {
+            let name = &function.name;
+            let args_with_types = function
                 .args
                 .iter()
                 .map(|arg| {
                     format!(
-                        "{}: {}",
+                        ", {}: {}",
                         arg.name,
                         match arg.ty {
                             Type::Primitive(primitive) => format_primitive(primitive),
@@ -58,7 +66,21 @@ pub fn generate_function_bindings(
                     )
                 })
                 .collect::<Vec<_>>()
-                .join(", ");
+                .join("");
+            let import_args = function
+                .args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Type::Primitive(_) => "".to_owned(),
+                    _ => format!(
+                        "    let {} = import_from_guest::<{}>(env, {});\n",
+                        arg.name,
+                        format_type(&arg.ty),
+                        arg.name
+                    ),
+                })
+                .collect::<Vec<_>>()
+                .join("");
             let return_type = match &function.return_type {
                 Type::Unit => "".to_owned(),
                 ty => format!(
@@ -69,15 +91,28 @@ pub fn generate_function_bindings(
                     }
                 ),
             };
+            let args = function
+                .args
+                .iter()
+                .map(|arg| arg.name.clone())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let call_fn = match &function.return_type {
+                Type::Unit => format!("super::{}({});", name, args),
+                Type::Primitive(_) => format!("super::{}({})", name, args),
+                _ => format!("export_to_host(env, &super::{}({}))", name, args),
+            };
             format!(
-                "    fn __fp_gen_{}({}){};",
-                function.name, args, return_type
+                "pub fn _{}(env: &RuntimeInstanceData{}){} {{
+{}    {}
+}}",
+                name, args_with_types, return_type, import_args, call_fn
             )
         })
         .collect::<Vec<_>>()
-        .join("\n\n");
+        .join("\n");
 
-    let fn_defs = import_functions
+    let exports = export_functions
         .into_iter()
         .map(|function| {
             let name = function.name;
@@ -150,153 +185,6 @@ pub fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    let macro_rules = export_functions
-        .into_iter()
-        .map(|function| {
-            let name = function.name;
-            let modifiers = if function.is_async { "async " } else { "" };
-            let has_return_value = function.return_type != Type::Unit;
-            let args_with_ptr_types = function
-                .args
-                .iter()
-                .map(|arg| {
-                    let ty = match &arg.ty {
-                        Type::Primitive(primitive) => format_primitive(*primitive),
-                        _ => "_FP_FatPtr".to_owned(),
-                    };
-                    format!("{}: {}", arg.name, ty)
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let import_args = function
-                .args
-                .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    ty => Some(format!(
-                        "let {} = unsafe {{ _fp_import_value_from_host::<{}>({}) }};",
-                        arg.name,
-                        format_type(ty),
-                        arg.name
-                    )),
-                })
-                .collect::<Vec<_>>();
-            let args = function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            let body = if function.is_async {
-                // Set up the `AsyncValue` to be synchronously returned and spawn a task
-                // to execute the async function:
-                let mut async_body = vec![
-                    "let len = std::mem::size_of::<_FP_AsyncValue>() as u32;".to_owned(),
-                    "let ptr = _fp_malloc(len);".to_owned(),
-                    "let fat_ptr = _fp_to_fat_ptr(ptr, len);".to_owned(),
-                    "let ptr = ptr as *mut _FP_AsyncValue;".to_owned(),
-                    "".to_owned(),
-                    "_FP_Task::spawn(Box::pin(async move {".to_owned(),
-                ];
-
-                async_body.append(
-                    &mut import_args
-                        .iter()
-                        .map(|import_arg| format!("    {}", import_arg))
-                        .collect(),
-                );
-
-                // Call the actual async function:
-                async_body.push(match &function.return_type {
-                    Type::Unit => format!("    {}({}).await;", name, args),
-                    _ => format!("    let ret = {}({}).await;", name, args),
-                });
-
-                async_body.push("    unsafe {".to_owned());
-
-                // If there is a return type, put the result in the `AsyncValue`
-                // referenced by `ptr`:
-                if has_return_value {
-                    async_body.append(&mut vec![
-                        "        let (result_ptr, result_len) =".to_owned(),
-                        format!(
-                            "            _fp_from_fat_ptr(_fp_export_value_to_host::<{}>(&ret));",
-                            format_type(&function.return_type)
-                        ),
-                        "        (*ptr).ptr = result_ptr as u32;".to_owned(),
-                        "        (*ptr).len = result_len;".to_owned(),
-                    ]);
-                }
-
-                async_body.append(&mut vec![
-                    // We're done, notify the host:
-                    "        (*ptr).status = 1;".to_owned(), // 1 = STATUS_READY
-                    "        _fp_host_resolve_async_value(fat_ptr);".to_owned(),
-                    "    }".to_owned(),
-                    "}));".to_owned(),
-                    "".to_owned(),
-                    // The `fat_ptr` is returned synchronously:
-                    "fat_ptr".to_owned(),
-                ]);
-
-                async_body
-            } else {
-                let mut body = import_args;
-                body.push(match &function.return_type {
-                    Type::Unit => format!("{}({});", name, args),
-                    Type::Primitive(_) => format!("{}({})", name, args),
-                    _ => format!("let ret = {}({});", name, args),
-                });
-                match &function.return_type {
-                    Type::Unit | Type::Primitive(_) => {}
-                    ty => body.push(format!(
-                        "_fp_export_value_to_host::<{}>(&ret)",
-                        format_type(ty)
-                    )),
-                }
-                body
-            };
-
-            format!(
-                "    ({}fn {}($($param:ident: $ty:ty),*){} $body:block) => {{
-        #[no_mangle]
-        pub fn __fp_gen_{}({}){} {{
-{}
-        }}
-
-        {}fn {}($($param: $ty),*){} $body
-    }};",
-                modifiers,
-                name,
-                if has_return_value { " -> $ret:ty" } else { "" },
-                name,
-                args_with_ptr_types,
-                if function.is_async {
-                    " -> _FP_FatPtr"
-                } else {
-                    match &function.return_type {
-                        Type::Unit => "",
-                        Type::Primitive(_) => " -> $ret",
-                        _ => " -> _FP_FatPtr",
-                    }
-                },
-                body.iter()
-                    .map(|line| if line.is_empty() {
-                        "".to_owned()
-                    } else {
-                        format!("            {}", line)
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                modifiers,
-                name,
-                if has_return_value { " -> $ret" } else { "" }
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
     write_bindings_file(
         format!("{}/bindings.rs", path),
         format!(
@@ -313,7 +201,18 @@ use wasmer::{{imports, Function, ImportObject, Instance, Store, Value, WasmerEnv
 impl Runtime {{
     {}
 }}
+
+fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {{
+    imports! {{
+        \"fp\" => {{
+{}
+        }}
+    }}
+}}
+
+{}
 ",
+            exports, imports_map, imports,
         ),
     );
 }
