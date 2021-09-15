@@ -92,7 +92,7 @@ fp_export! {
 }
 
 fn main() {
-    for bindings_type in ["rust-plugin", "ts-runtime"] {
+    for bindings_type in ["rust-plugin", "rust-wasmer-runtime", "ts-runtime"] {
         let output_path = format!("bindings/{}", bindings_type);
         fp_bindgen!(bindings_type, &output_path);
         println!("Generated bindings written to `{}/`.", output_path);
@@ -121,6 +121,26 @@ fn test_generate_rust_plugin() {
     let expected_mod =
         String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_mod.rs"));
     tests::assert_lines_eq(&generated_mod, &expected_mod);
+}
+
+#[test]
+fn test_generate_rust_wasmer_runtime() {
+    fp_bindgen!("rust-wasmer-runtime", "bindings/rust-wasmer-runtime");
+
+    let generated_functions =
+        std::fs::read_to_string("bindings/rust-wasmer-runtime/spec/bindings.rs")
+            .expect("Cannot read generated bindings");
+    let expected_functions = String::from_utf8_lossy(include_bytes!(
+        "assets/rust_wasmer_runtime_test/expected_bindings.rs"
+    ));
+    tests::assert_lines_eq(&generated_functions, &expected_functions);
+
+    let generated_types = std::fs::read_to_string("bindings/rust-wasmer-runtime/spec/types.rs")
+        .expect("Cannot read generated types");
+    let expected_types = String::from_utf8_lossy(include_bytes!(
+        "assets/rust_wasmer_runtime_test/expected_types.rs"
+    ));
+    tests::assert_lines_eq(&generated_types, &expected_types);
 }
 
 #[test]

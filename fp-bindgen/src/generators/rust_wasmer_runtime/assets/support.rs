@@ -6,7 +6,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::task::Poll;
-use wasmer::{Array, WasmPtr};
+use wasmer::{Array, RuntimeError, WasmPtr};
 
 pub(crate) const FUTURE_STATUS_PENDING: u32 = 0;
 pub(crate) const FUTURE_STATUS_READY: u32 = 1;
@@ -80,23 +80,17 @@ fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> 
 }
 
 /// Serialize a value and put it in linear memory.
-pub(crate) fn export_to_host<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
+pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
     let mut buffer = Vec::new();
     value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
 
-    export_to_host_raw(env, buffer)
+    export_to_guest_raw(env, buffer)
 }
 
 /// Copy the buffer into linear memory.
-fn export_to_host_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
+fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
-    // NOTE BENNO: Verify this:
-    // We take the capacity rather than the length, because that is the actual
-    // amount of bytes that needs to be deallocated. This does mean our `len`
-    // *may* be higher than the actual amount of bytes containing serialized
-    // data, but MessagePack *should* not care about that, because it has its
-    // own internal size markers.
     let len = buffer.len() as u32;
 
     // Make sure the length marker does not run into our extension bits:
@@ -159,6 +153,18 @@ pub(crate) fn assign_async_value(
     values[1].set(result_ptr);
     values[2].set(result_len);
     values[0].set(status);
+}
+
+pub enum InvocationError {
+    FunctionNotExported,
+    UnexpectedReturnType,
+    RuntimeError(RuntimeError),
+}
+
+impl From<RuntimeError> for InvocationError {
+    fn from(error: RuntimeError) -> Self {
+        Self::RuntimeError(error)
+    }
 }
 
 // The ModuleFuture implements the Future Trait to handle async Futures as
