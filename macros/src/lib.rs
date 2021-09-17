@@ -47,13 +47,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 
     // Aliases cannot be derived, but we can detect their presence by comparing
     // the paths of dependencies with their expected names:
-    let aliases = dependencies.iter().map(|path| {
-        // FIXME: For now, this only works for plain identifiers, so nesting an
-        //        alias inside of a container is still likely to fail.
-        path.get_ident()
-            .map(|ident| ident.to_string())
-            .unwrap_or_else(|| "".to_owned())
-    });
+    let aliases = dependencies.iter().map(get_alias_from_path);
 
     let where_clause = if generics.params.is_empty() {
         quote! {}
@@ -125,15 +119,23 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let (functions, docs, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let serializable_aliases = serializable_types
+        .iter()
+        .map(get_alias_from_path)
+        .collect::<Vec<_>>();
     let serializable_types = serializable_types.iter();
+    let deserializable_aliases = deserializable_types
+        .iter()
+        .map(get_alias_from_path)
+        .collect::<Vec<_>>();
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies(&mut serializable_import_types); )*
+            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_import_types, #serializable_aliases); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies(&mut deserializable_import_types); )*
+            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_import_types, #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, vec![#( #docs ),*], &serializable_import_types, &deserializable_import_types); )*
@@ -148,15 +150,23 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let (functions, docs, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let serializable_aliases = serializable_types
+        .iter()
+        .map(get_alias_from_path)
+        .collect::<Vec<_>>();
     let serializable_types = serializable_types.iter();
+    let deserializable_aliases = deserializable_types
+        .iter()
+        .map(get_alias_from_path)
+        .collect::<Vec<_>>();
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies(&mut serializable_export_types); )*
+            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_export_types, #serializable_aliases); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies(&mut deserializable_export_types); )*
+            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_export_types, #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, vec![#( #docs ),*], &serializable_export_types, &deserializable_export_types); )*
@@ -165,6 +175,14 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
         }
     };
     replacement.into()
+}
+
+fn get_alias_from_path(path: &Path) -> String {
+    // FIXME: For now, this only works for plain identifiers, so nesting an
+    //        alias inside of a container is still likely to fail.
+    path.get_ident()
+        .map(|ident| ident.to_string())
+        .unwrap_or_else(|| "".to_owned())
 }
 
 /// Parses function declarations and returns them in a list.
@@ -196,7 +214,6 @@ fn parse_functions(
                         ),
                         FnArg::Typed(arg) => {
                             serializable_type_names.insert(
-                                // FIXME: Check for aliases
                                 extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
                                     panic!(
                                         "Only value types are supported. \
@@ -213,7 +230,6 @@ fn parse_functions(
                     ReturnType::Default => { /* No return value. */ }
                     ReturnType::Type(_, ty) => {
                         deserializable_type_names.insert(
-                            // FIXME: Check for aliases
                             extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
                                 panic!(
                                     "Only value types are supported. \

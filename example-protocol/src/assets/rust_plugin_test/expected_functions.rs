@@ -4,6 +4,8 @@ use super::types::*;
 
 #[link(wasm_import_module = "fp")]
 extern "C" {
+    fn __fp_gen_count_words(string: FatPtr) -> FatPtr;
+
     fn __fp_gen_log(message: FatPtr);
 
     fn __fp_gen_make_request(opts: FatPtr) -> FatPtr;
@@ -15,6 +17,14 @@ extern "C" {
     fn __fp_gen_my_plain_imported_function(a: u32, b: u32) -> u32;
 
     fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
+}
+
+pub fn count_words(string: String) -> Result<u16, String> {
+    let string = export_value_to_host(&string);
+    unsafe {
+        let ret = __fp_gen_count_words(string);
+        import_value_from_host(ret)
+    }
 }
 
 /// Logs a message to the (development) console.
@@ -41,7 +51,7 @@ pub async fn my_async_imported_function() -> ComplexHostToGuest {
 }
 
 /// This one passes complex data types. Things are getting interesting.
-pub fn my_complex_imported_function(a: ComplexGuestToHost) -> ComplexHostToGuest {
+pub fn my_complex_imported_function(a: ComplexAlias) -> ComplexHostToGuest {
     let a = export_value_to_host(&a);
     unsafe {
         let ret = __fp_gen_my_complex_imported_function(a);
@@ -120,7 +130,7 @@ macro_rules! fp_export {
         pub fn __fp_gen_my_complex_exported_function(a: _FP_FatPtr) -> _FP_FatPtr {
             let a = unsafe { _fp_import_value_from_host::<ComplexHostToGuest>(a) };
             let ret = my_complex_exported_function(a);
-            _fp_export_value_to_host::<ComplexGuestToHost>(&ret)
+            _fp_export_value_to_host::<ComplexAlias>(&ret)
         }
 
         fn my_complex_exported_function($($param: $ty),*) -> $ret $body

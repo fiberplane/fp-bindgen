@@ -639,7 +639,7 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 }
 
 /// Formats a type so it's valid Rust again.
-fn format_type(ty: &Type) -> String {
+pub fn format_type(ty: &Type) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
@@ -663,7 +663,7 @@ fn format_type(ty: &Type) -> String {
     }
 }
 
-fn format_primitive(primitive: Primitive) -> String {
+pub fn format_primitive(primitive: Primitive) -> String {
     let string = match primitive {
         Primitive::Bool => "bool",
         Primitive::F32 => "f32",

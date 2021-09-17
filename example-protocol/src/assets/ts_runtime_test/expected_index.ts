@@ -1,6 +1,8 @@
 import { encode, decode } from "@msgpack/msgpack";
 
 import type {
+    Body,
+    ComplexAlias,
     ComplexGuestToHost,
     ComplexHostToGuest,
     RequestError,
@@ -14,17 +16,18 @@ import type {
 type FatPtr = bigint;
 
 export type Imports = {
+    countWords: (string: string) => Result<number, string>;
     log: (message: string) => void;
     makeRequest: (opts: RequestOptions) => Promise<Result<Response, RequestError>>;
     myAsyncImportedFunction: () => Promise<ComplexHostToGuest>;
-    myComplexImportedFunction: (a: ComplexGuestToHost) => ComplexHostToGuest;
+    myComplexImportedFunction: (a: ComplexAlias) => ComplexHostToGuest;
     myPlainImportedFunction: (a: number, b: number) => number;
 };
 
 export type Exports = {
     fetchData?: (url: string) => Promise<string>;
     myAsyncExportedFunction?: () => Promise<ComplexGuestToHost>;
-    myComplexExportedFunction?: (a: ComplexHostToGuest) => ComplexGuestToHost;
+    myComplexExportedFunction?: (a: ComplexHostToGuest) => ComplexAlias;
     myPlainExportedFunction?: (a: number, b: number) => number;
 };
 
@@ -115,6 +118,10 @@ export async function createRuntime(
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
             __fp_host_resolve_async_value: resolvePromise,
+            __fp_gen_count_words: (string_ptr: FatPtr): FatPtr => {
+                const string = parseObject<string>(string_ptr);
+                return serializeObject(importFunctions.countWords(string));
+            },
             __fp_gen_log: (message_ptr: FatPtr) => {
                 const message = parseObject<string>(message_ptr);
                 importFunctions.log(message);
@@ -151,7 +158,7 @@ export async function createRuntime(
                 return _async_result_ptr;
             },
             __fp_gen_my_complex_imported_function: (a_ptr: FatPtr): FatPtr => {
-                const a = parseObject<ComplexGuestToHost>(a_ptr);
+                const a = parseObject<ComplexAlias>(a_ptr);
                 return serializeObject(importFunctions.myComplexImportedFunction(a));
             },
             __fp_gen_my_plain_imported_function: (a: number, b: number): number => {
@@ -195,7 +202,7 @@ export async function createRuntime(
         
             return (a: ComplexHostToGuest) => {
                 const a_ptr = serializeObject(a);
-                return parseObject<ComplexGuestToHost>(export_fn(a_ptr));
+                return parseObject<ComplexAlias>(export_fn(a_ptr));
             };
         })(),
         myPlainExportedFunction: instance.exports.__fp_gen_my_plain_exported_function as any,

@@ -15,6 +15,7 @@ primitive_impls!();
 
 enum BindingsType {
     RustPlugin,
+    RustWasmerRuntime,
     TsRuntime,
 }
 
@@ -24,9 +25,11 @@ impl FromStr for BindingsType {
     fn from_str(bindings_type: &str) -> Result<Self, Self::Err> {
         match bindings_type {
             "rust-plugin" => Ok(Self::RustPlugin),
+            "rust-wasmer-runtime" => Ok(Self::RustWasmerRuntime),
             "ts-runtime" => Ok(Self::TsRuntime),
             other => Err(format!(
-                "Bindings type must be one of `rust-plugin`, `ts-runtime`, was: `{}`",
+                "Bindings type must be one of `rust-plugin`, `rust-wasmer-runtime`, `ts-runtime`.
+                Received: `{}`",
                 other
             )),
         }
@@ -45,20 +48,17 @@ pub fn generate_bindings(
 
     fs::create_dir_all(path).expect("Could not create output directory");
 
-    match bindings_type {
-        BindingsType::RustPlugin => generators::rust_plugin::generate_bindings(
-            import_functions,
-            export_functions,
-            serializable_types,
-            deserializable_types,
-            path,
-        ),
-        BindingsType::TsRuntime => generators::ts_runtime::generate_bindings(
-            import_functions,
-            export_functions,
-            serializable_types,
-            deserializable_types,
-            path,
-        ),
-    }
+    let generate_bindings = match bindings_type {
+        BindingsType::RustPlugin => generators::rust_plugin::generate_bindings,
+        BindingsType::RustWasmerRuntime => generators::rust_wasmer_runtime::generate_bindings,
+        BindingsType::TsRuntime => generators::ts_runtime::generate_bindings,
+    };
+
+    generate_bindings(
+        import_functions,
+        export_functions,
+        serializable_types,
+        deserializable_types,
+        path,
+    );
 }
