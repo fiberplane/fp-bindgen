@@ -26,7 +26,7 @@ pub struct Task {
 }
 
 impl Task {
-    pub(crate) fn spawn(future: Pin<Box<dyn Future<Output = ()> + 'static>>) {
+    pub fn spawn(future: Pin<Box<dyn Future<Output = ()> + 'static>>) {
         let this = Rc::new(Self {
             inner: RefCell::new(None),
             is_queued: Cell::new(false),
