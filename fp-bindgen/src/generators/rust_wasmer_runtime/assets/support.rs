@@ -6,7 +6,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::mem::size_of;
 use std::task::Poll;
-use wasmer::{Array, RuntimeError, WasmPtr};
+use wasmer::{Array, WasmPtr};
 
 pub(crate) const FUTURE_STATUS_PENDING: u32 = 0;
 pub(crate) const FUTURE_STATUS_READY: u32 = 1;
@@ -153,18 +153,6 @@ pub(crate) fn assign_async_value(
     values[1].set(result_ptr);
     values[2].set(result_len);
     values[0].set(status);
-}
-
-pub enum InvocationError {
-    FunctionNotExported,
-    UnexpectedReturnType,
-    RuntimeError(RuntimeError),
-}
-
-impl From<RuntimeError> for InvocationError {
-    fn from(error: RuntimeError) -> Self {
-        Self::RuntimeError(error)
-    }
 }
 
 // The ModuleFuture implements the Future Trait to handle async Futures as
