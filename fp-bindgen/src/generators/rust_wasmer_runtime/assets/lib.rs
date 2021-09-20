@@ -5,7 +5,7 @@ use support::FatPtr;
 use wasmer::{LazyInit, Memory, Module, NativeFunc, WasmerEnv};
 
 mod errors;
-mod spec;
+pub mod spec;
 mod support;
 
 pub struct Runtime {
