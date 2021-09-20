@@ -1,8 +1,9 @@
 use super::types::*;
+use crate::errors::InvocationError;
 use crate::{
     support::{
         assign_async_value, create_future_value, export_to_guest, import_from_guest,
-        resolve_async_value, FatPtr, InvocationError, ModuleFuture, FUTURE_STATUS_READY,
+        resolve_async_value, FatPtr, ModuleFuture, FUTURE_STATUS_READY,
     },
     Runtime, RuntimeInstanceData,
 };
