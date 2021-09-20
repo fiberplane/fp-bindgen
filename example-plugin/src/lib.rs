@@ -1,6 +1,6 @@
 mod example_protocol;
 
-use example_protocol::*;
+use example_protocol::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 use std::panic;
 

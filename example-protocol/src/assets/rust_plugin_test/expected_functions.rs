@@ -16,7 +16,7 @@ extern "C" {
 
     fn __fp_gen_my_plain_imported_function(a: u32, b: u32) -> u32;
 
-    fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
+    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
 }
 
 pub fn count_words(string: String) -> Result<u16, String> {
@@ -65,83 +65,82 @@ pub fn my_plain_imported_function(a: u32, b: u32) -> u32 {
     unsafe { __fp_gen_my_plain_imported_function(a, b) }
 }
 
-#[doc(hidden)]
-pub unsafe fn _fp_host_resolve_async_value(async_value_ptr: FatPtr) {
-    __fp_host_resolve_async_value(async_value_ptr)
-}
-
 #[macro_export]
 macro_rules! fp_export {
-    (async fn fetch_data($($param:ident: $ty:ty),*) -> $ret:ty $body:block) => {
+    (async fn fetch_data$args:tt -> $ret:ty $body:block) => {
         #[no_mangle]
-        pub fn __fp_gen_fetch_data(url: _FP_FatPtr) -> _FP_FatPtr {
-            let len = std::mem::size_of::<_FP_AsyncValue>() as u32;
-            let ptr = _fp_malloc(len);
-            let fat_ptr = _fp_to_fat_ptr(ptr, len);
-            let ptr = ptr as *mut _FP_AsyncValue;
+        pub fn __fp_gen_fetch_data(url: __fp_macro::FatPtr) -> __fp_macro::FatPtr {
+            use __fp_macro::*;
+            let len = std::mem::size_of::<AsyncValue>() as u32;
+            let ptr = malloc(len);
+            let fat_ptr = to_fat_ptr(ptr, len);
+            let ptr = ptr as *mut AsyncValue;
 
-            _FP_Task::spawn(Box::pin(async move {
-                let url = unsafe { _fp_import_value_from_host::<String>(url) };
+            Task::spawn(Box::pin(async move {
+                let url = unsafe { import_value_from_host::<String>(url) };
                 let ret = fetch_data(url).await;
                 unsafe {
                     let (result_ptr, result_len) =
-                        _fp_from_fat_ptr(_fp_export_value_to_host::<String>(&ret));
+                       from_fat_ptr(export_value_to_host::<String>(&ret));
                     (*ptr).ptr = result_ptr as u32;
                     (*ptr).len = result_len;
                     (*ptr).status = 1;
-                    _fp_host_resolve_async_value(fat_ptr);
+                    __fp_host_resolve_async_value(fat_ptr);
                 }
             }));
 
             fat_ptr
         }
 
-        async fn fetch_data($($param: $ty),*) -> $ret $body
+        async fn fetch_data$args -> $ret $body
     };
 
-    (async fn my_async_exported_function($($param:ident: $ty:ty),*) -> $ret:ty $body:block) => {
+    (async fn my_async_exported_function$args:tt -> $ret:ty $body:block) => {
         #[no_mangle]
-        pub fn __fp_gen_my_async_exported_function() -> _FP_FatPtr {
-            let len = std::mem::size_of::<_FP_AsyncValue>() as u32;
-            let ptr = _fp_malloc(len);
-            let fat_ptr = _fp_to_fat_ptr(ptr, len);
-            let ptr = ptr as *mut _FP_AsyncValue;
+        pub fn __fp_gen_my_async_exported_function() -> __fp_macro::FatPtr {
+            use __fp_macro::*;
+            let len = std::mem::size_of::<AsyncValue>() as u32;
+            let ptr = malloc(len);
+            let fat_ptr = to_fat_ptr(ptr, len);
+            let ptr = ptr as *mut AsyncValue;
 
-            _FP_Task::spawn(Box::pin(async move {
+            Task::spawn(Box::pin(async move {
                 let ret = my_async_exported_function().await;
                 unsafe {
                     let (result_ptr, result_len) =
-                        _fp_from_fat_ptr(_fp_export_value_to_host::<ComplexGuestToHost>(&ret));
+                       from_fat_ptr(export_value_to_host::<ComplexGuestToHost>(&ret));
                     (*ptr).ptr = result_ptr as u32;
                     (*ptr).len = result_len;
                     (*ptr).status = 1;
-                    _fp_host_resolve_async_value(fat_ptr);
+                    __fp_host_resolve_async_value(fat_ptr);
                 }
             }));
 
             fat_ptr
         }
 
-        async fn my_async_exported_function($($param: $ty),*) -> $ret $body
+        async fn my_async_exported_function$args -> $ret $body
     };
 
-    (fn my_complex_exported_function($($param:ident: $ty:ty),*) -> $ret:ty $body:block) => {
+    (fn my_complex_exported_function$args:tt -> $ret:ty $body:block) => {
         #[no_mangle]
-        pub fn __fp_gen_my_complex_exported_function(a: _FP_FatPtr) -> _FP_FatPtr {
-            let a = unsafe { _fp_import_value_from_host::<ComplexHostToGuest>(a) };
+        pub fn __fp_gen_my_complex_exported_function(a: __fp_macro::FatPtr) -> __fp_macro::FatPtr {
+            use __fp_macro::*;
+            let a = unsafe { import_value_from_host::<ComplexHostToGuest>(a) };
             let ret = my_complex_exported_function(a);
-            _fp_export_value_to_host::<ComplexAlias>(&ret)
+            export_value_to_host::<ComplexAlias>(&ret)
         }
 
-        fn my_complex_exported_function($($param: $ty),*) -> $ret $body
+        fn my_complex_exported_function$args -> $ret $body
     };
 
-    (fn my_plain_exported_function($($param:ident: $ty:ty),*) -> $ret:ty $body:block) => {
+    (fn my_plain_exported_function$args:tt -> $ret:ty $body:block) => {
         #[no_mangle]
         pub fn __fp_gen_my_plain_exported_function(a: u32, b: u32) -> $ret {
+            use __fp_macro::*;
             my_plain_exported_function(a, b)
         }
 
-        fn my_plain_exported_function($($param: $ty),*) -> $ret $body
+        fn my_plain_exported_function$args -> $ret $body
     };
 }
