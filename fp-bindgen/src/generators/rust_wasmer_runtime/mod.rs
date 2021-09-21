@@ -256,7 +256,7 @@ pub fn generate_function_bindings(
 
 {}{}        let function = instance
             .exports
-            .get_function(\"{}\")
+            .get_function(\"__fp_gen_{}\")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         {}
     }}",
