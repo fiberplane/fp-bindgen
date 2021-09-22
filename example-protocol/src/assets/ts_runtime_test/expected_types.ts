@@ -1,4 +1,4 @@
-export type Body = ArrayBuffer;
+export type Body = Array<number>;
 
 export type ComplexAlias = ComplexGuestToHost;
 
@@ -31,7 +31,7 @@ export type RequestOptions = {
     url: string;
     method: RequestMethod;
     headers: Record<string, string>;
-    body?: ArrayBuffer;
+    body?: Array<number>;
 };
 
 export type Response = {

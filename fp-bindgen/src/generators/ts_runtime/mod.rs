@@ -611,14 +611,7 @@ fn format_type(ty: &Type) -> String {
         Type::Custom(custom) => custom.ts_ty.clone(),
         Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
-        Type::List(_, ty) => {
-            if ty.as_ref() == &Type::Primitive(Primitive::U8) {
-                // Special case so `Vec<u8>` becomes `ArrayBuffer` in TS:
-                "ArrayBuffer".to_owned()
-            } else {
-                format!("Array<{}>", format_type(ty))
-            }
-        }
+        Type::List(_, ty) => format!("Array<{}>", format_type(ty)),
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
