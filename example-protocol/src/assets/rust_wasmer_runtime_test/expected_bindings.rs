@@ -20,7 +20,7 @@ impl Runtime {
 
         let function = instance
             .exports
-            .get_function("fetch_data")
+            .get_function("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(&[url.into()])?;
 
@@ -40,7 +40,7 @@ impl Runtime {
 
         let function = instance
             .exports
-            .get_function("my_async_exported_function")
+            .get_function("__fp_gen_my_async_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(&[])?;
 
@@ -62,7 +62,7 @@ impl Runtime {
 
         let function = instance
             .exports
-            .get_function("my_complex_exported_function")
+            .get_function("__fp_gen_my_complex_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(&[a.into()])?;
 
@@ -82,7 +82,7 @@ impl Runtime {
 
         let function = instance
             .exports
-            .get_function("my_plain_exported_function")
+            .get_function("__fp_gen_my_plain_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(&[a.into(), b.into()])?;
 
