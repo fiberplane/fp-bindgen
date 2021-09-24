@@ -67,13 +67,16 @@ pub fn __fp_guest_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPt
     unsafe {
         if let Some(waker) = WAKERS.remove(&async_value_ptr) {
             // First assign the result ptr and mark the async value as ready:
-            let (async_value_ptr, _) = from_fat_ptr(async_value_ptr);
-            let mut async_value = read_volatile(async_value_ptr as *const AsyncValue);
             let (ptr, len) = from_fat_ptr(result_ptr);
-            async_value.ptr = ptr as u32;
-            async_value.len = len;
-            async_value.status = STATUS_READY;
-            write_volatile(async_value_ptr as *mut AsyncValue, async_value);
+            let (async_value_ptr, _) = from_fat_ptr(async_value_ptr);
+            write_volatile(
+                async_value_ptr as *mut AsyncValue,
+                AsyncValue {
+                    status: STATUS_READY,
+                    ptr: ptr as u32,
+                    len,
+                },
+            );
 
             waker.wake();
         }
