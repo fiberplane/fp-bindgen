@@ -534,13 +534,24 @@ fn create_enum_definition(
         .map(|variant| match variant.ty {
             Type::Unit => format!("    {},", variant.name),
             Type::Struct(_, _, fields) => {
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("{}: {}", field.name, format_type(&field.ty)))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let fields = format_struct_fields(&fields);
+                let has_annotations = fields.iter().any(|field| field.contains('\n'));
+                let fields = if has_annotations {
+                    format!(
+                        "\n{}    ",
+                        fields
+                            .iter()
+                            .flat_map(|field| field.split('\n'))
+                            .map(|line| format!("        {}\n", line))
+                            .collect::<Vec<_>>()
+                            .join("")
+                    )
+                } else {
+                    let fields = fields.join(" ");
+                    format!(" {} ", &fields[0..fields.len() - 1])
+                };
                 format!(
-                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{ {} }},",
+                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{{}}},",
                     variant.name, fields
                 )
             }
@@ -581,30 +592,24 @@ fn create_struct_definition(
         SerializationRequirements::Deserialize => "Deserialize",
         SerializationRequirements::Both => "Serialize, Deserialize",
     };
-    let fields = fields
-        .into_iter()
-        .map(|field| {
-            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _) if name == "Option") {
-                "    #[serde(skip_serializing_if = \"Option::is_none\")]\n"
-            } else {
-                ""
-            };
-
+    let fields = format_struct_fields(&fields)
+        .iter()
+        .flat_map(|field| field.split('\n'))
+        .map(|line| {
             format!(
-                "{}    pub {}: {},",
-                skip,
-                field.name,
-                format_type(&field.ty)
+                "    {}{}\n",
+                if line.starts_with('#') { "" } else { "pub " },
+                line
             )
         })
         .collect::<Vec<_>>()
-        .join("\n");
+        .join("");
 
     format!(
         "#[derive(Clone, Debug, PartialEq, {})]\n\
         #[serde(rename_all = \"camelCase\")]\n\
         pub struct {} {{\n\
-            {}\n\
+            {}\
         }}",
         derives,
         format_name_with_generics(&name, &generic_args),
@@ -629,6 +634,30 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
                 .join(", ")
         )
     }
+}
+
+fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+    fields
+        .iter()
+        .map(|field| {
+            let mut serde_attrs = vec![];
+            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
+                serde_attrs.push("skip_serializing_if = \"Option::is_none\"");
+            }
+
+            if is_binary_type(&field.ty) {
+                serde_attrs.push("with = \"serde_bytes\"");
+            }
+
+            let annotations = if serde_attrs.is_empty() {
+                "".to_owned()
+            } else {
+                format!("#[serde({})]\n", serde_attrs.join(", "))
+            };
+
+            format!("{}{}: {},", annotations, field.name, format_type(&field.ty))
+        })
+        .collect()
 }
 
 /// Formats a type so it's valid Rust again.
@@ -673,6 +702,19 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::U128 => "u128",
     };
     string.to_owned()
+}
+
+/// Detects types that can be encoded as a binary blob.
+fn is_binary_type(ty: &Type) -> bool {
+    match ty {
+        Type::List(name, ty) if name == "Vec" && ty.as_ref() == &Type::Primitive(Primitive::U8) => {
+            true
+        }
+        Type::Container(name, ty) if (name == "Box" || name == "Option") => {
+            is_binary_type(ty.as_ref())
+        }
+        _ => false,
+    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

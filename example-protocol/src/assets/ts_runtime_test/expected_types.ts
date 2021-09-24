@@ -31,7 +31,7 @@ export type RequestOptions = {
     url: string;
     method: RequestMethod;
     headers: Record<string, string>;
-    body?: Array<number>;
+    body?: ArrayBuffer;
 };
 
 export type Response = {
