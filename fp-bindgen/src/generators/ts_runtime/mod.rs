@@ -75,15 +75,6 @@ export async function createRuntime(
 ): Promise<Exports> {{
     const promises = new Map<FatPtr, (result: unknown) => void>();
 
-    function assignAsyncValue<T>(fatPtr: FatPtr, result: T) {{
-        const [ptr, len] = fromFatPtr(fatPtr);
-        const buffer = new Uint32Array(memory.buffer, ptr, len / 4);
-        const [resultPtr, resultLen] = fromFatPtr(serializeObject(result));
-        buffer[1] = resultPtr;
-        buffer[2] = resultLen;
-        buffer[0] = 1; // Set status to ready.
-    }}
-
     function createAsyncValue(): FatPtr {{
         const len = 12; // std::mem::size_of::<AsyncValue>()
         const fatPtr = malloc(len);
@@ -153,7 +144,7 @@ export async function createRuntime(
     const memory = getExport<WebAssembly.Memory>(\"memory\");
     const malloc = getExport<(len: number) => FatPtr>(\"__fp_malloc\");
     const free = getExport<(ptr: FatPtr) => void>(\"__fp_free\");
-    const resolveFuture = getExport<(ptr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
+    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
 
     return {{
 {}
@@ -263,17 +254,17 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
                 .join(", ");
             if function.is_async {
-                let assign_async_value = match &function.return_type {
-                    Type::Unit => "",
-                    _ => "\n            assignAsyncValue(_async_result_ptr, result);",
+                let async_result = match &function.return_type {
+                    Type::Unit => "0",
+                    _ => "serializeObject(result)",
                 };
 
                 format!(
                     "__fp_gen_{}: ({}){} => {{
 {}    const _async_result_ptr = createAsyncValue();
     importFunctions.{}({})
-        .then((result) => {{{}
-            resolveFuture(_async_result_ptr);
+        .then((result) => {{
+            resolveFuture(_async_result_ptr, {});
         }})
         .catch((error) => {{
             console.error(
@@ -293,7 +284,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                         .join(""),
                     name.to_camel_case(),
                     args,
-                    assign_async_value,
+                    async_result,
                     name
                 )
                 .split('\n')

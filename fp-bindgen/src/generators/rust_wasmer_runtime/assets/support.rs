@@ -137,24 +137,6 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
     ptr
 }
 
-/// Write a status and a result ptr to a FutureValue in linear memory.
-pub(crate) fn assign_async_value(
-    env: &RuntimeInstanceData,
-    async_ptr: FatPtr,
-    status: u32,
-    result_ptr: FatPtr,
-) {
-    let memory = unsafe { env.memory.get_unchecked() };
-
-    let (async_ptr, async_len) = to_wasm_ptr(async_ptr);
-    let values = async_ptr.deref(memory, 0, async_len).unwrap();
-
-    let (result_ptr, result_len) = from_fat_ptr(result_ptr);
-    values[1].set(result_ptr);
-    values[2].set(result_len);
-    values[0].set(status);
-}
-
 // The ModuleFuture implements the Future Trait to handle async Futures as
 // returned from the module.
 pub(crate) struct ModuleFuture<T> {

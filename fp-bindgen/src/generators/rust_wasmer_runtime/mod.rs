@@ -104,9 +104,12 @@ pub fn generate_function_bindings(
                 .join(", ");
             let call_fn = if function.is_async {
                 let call_async_fn = match &function.return_type {
-                    Type::Unit => format!("super::{}({}).await;\n        let ptr = 0;", name, args),
+                    Type::Unit => format!(
+                        "super::{}({}).await;\n        let result_ptr = 0;",
+                        name, args
+                    ),
                     _ => format!(
-                        "let ptr = export_to_guest(&env, &super::{}({}).await);",
+                        "let result_ptr = export_to_guest(&env, &super::{}({}).await);",
                         name, args
                     ),
                 };
@@ -117,12 +120,11 @@ pub fn generate_function_bindings(
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {{
         {}
-        assign_async_value(&env, async_ptr, FUTURE_STATUS_READY, ptr);
 
         unsafe {{
             env.__fp_guest_resolve_async_value
                 .get_unchecked()
-                .call(async_ptr)
+                .call(async_ptr, result_ptr)
                 .expect(\"Runtime error: Cannot resolve async value\");
         }}
     }});
@@ -281,8 +283,8 @@ pub fn generate_function_bindings(
 use crate::errors::InvocationError;
 use crate::{{
     support::{{
-        assign_async_value, create_future_value, export_to_guest, import_from_guest,
-        resolve_async_value, FatPtr, ModuleFuture, FUTURE_STATUS_READY,
+        create_future_value, export_to_guest, import_from_guest, resolve_async_value,
+        FatPtr, ModuleFuture,
     }},
     Runtime, RuntimeInstanceData,
 }};

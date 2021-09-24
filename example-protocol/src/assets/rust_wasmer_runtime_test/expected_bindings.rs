@@ -2,8 +2,8 @@ use super::types::*;
 use crate::errors::InvocationError;
 use crate::{
     support::{
-        assign_async_value, create_future_value, export_to_guest, import_from_guest,
-        resolve_async_value, FatPtr, ModuleFuture, FUTURE_STATUS_READY,
+        create_future_value, export_to_guest, import_from_guest, resolve_async_value,
+        FatPtr, ModuleFuture,
     },
     Runtime, RuntimeInstanceData,
 };
@@ -126,13 +126,12 @@ pub fn _make_request(env: &RuntimeInstanceData, opts: FatPtr) -> FatPtr {
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let ptr = export_to_guest(&env, &super::make_request(opts).await);
-        assign_async_value(&env, async_ptr, FUTURE_STATUS_READY, ptr);
+        let result_ptr = export_to_guest(&env, &super::make_request(opts).await);
 
         unsafe {
             env.__fp_guest_resolve_async_value
                 .get_unchecked()
-                .call(async_ptr)
+                .call(async_ptr, result_ptr)
                 .expect("Runtime error: Cannot resolve async value");
         }
     });
@@ -145,13 +144,12 @@ pub fn _my_async_imported_function(env: &RuntimeInstanceData) -> FatPtr {
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let ptr = export_to_guest(&env, &super::my_async_imported_function().await);
-        assign_async_value(&env, async_ptr, FUTURE_STATUS_READY, ptr);
+        let result_ptr = export_to_guest(&env, &super::my_async_imported_function().await);
 
         unsafe {
             env.__fp_guest_resolve_async_value
                 .get_unchecked()
-                .call(async_ptr)
+                .call(async_ptr, result_ptr)
                 .expect("Runtime error: Cannot resolve async value");
         }
     });
