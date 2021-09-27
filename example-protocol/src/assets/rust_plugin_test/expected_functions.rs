@@ -16,7 +16,7 @@ extern "C" {
 
     fn __fp_gen_my_plain_imported_function(a: u32, b: u32) -> u32;
 
-    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);
+    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr);
 }
 
 pub fn count_words(string: String) -> Result<u16, String> {
@@ -80,12 +80,8 @@ macro_rules! fp_export {
                 let url = unsafe { import_value_from_host::<String>(url) };
                 let ret = fetch_data(url).await;
                 unsafe {
-                    let (result_ptr, result_len) =
-                       from_fat_ptr(export_value_to_host::<String>(&ret));
-                    (*ptr).ptr = result_ptr as u32;
-                    (*ptr).len = result_len;
-                    (*ptr).status = 1;
-                    __fp_host_resolve_async_value(fat_ptr);
+                    let result_ptr = export_value_to_host::<String>(&ret);
+                    __fp_host_resolve_async_value(fat_ptr, result_ptr);
                 }
             }));
 
@@ -107,12 +103,8 @@ macro_rules! fp_export {
             Task::spawn(Box::pin(async move {
                 let ret = my_async_exported_function().await;
                 unsafe {
-                    let (result_ptr, result_len) =
-                       from_fat_ptr(export_value_to_host::<ComplexGuestToHost>(&ret));
-                    (*ptr).ptr = result_ptr as u32;
-                    (*ptr).len = result_len;
-                    (*ptr).status = 1;
-                    __fp_host_resolve_async_value(fat_ptr);
+                    let result_ptr = export_value_to_host::<ComplexGuestToHost>(&ret);
+                    __fp_host_resolve_async_value(fat_ptr, result_ptr);
                 }
             }));
 

@@ -1,3 +1,9 @@
+// ============================================= //
+// WebAssembly runtime for TypeScript            //
+//                                               //
+// This file is generated. PLEASE DO NOT MODIFY. //
+// ============================================= //
+
 import { encode, decode } from "@msgpack/msgpack";
 
 import type {
@@ -78,23 +84,13 @@ export async function createRuntime(
         });
     }
 
-    function resolvePromise(ptr: FatPtr) {
-        const resolve = promises.get(ptr);
-        if (resolve) {
-            const [asyncPtr, asyncLen] = fromFatPtr(ptr);
-            const buffer = new Uint32Array(memory.buffer, asyncPtr, asyncLen / 4);
-            switch (buffer[0]) {
-                case 0:
-                    throw new FPRuntimeError("Tried to resolve promise that is not ready");
-                case 1:
-                    resolve(parseObject(toFatPtr(buffer[1]!, buffer[2]!)));
-                    break;
-                default:
-                    throw new FPRuntimeError("Unexpected status: " + buffer[0]);
-            }
-        } else {
+    function resolvePromise(asyncValuePtr: FatPtr, resultPtr: FatPtr) {
+        const resolve = promises.get(asyncValuePtr);
+        if (!resolve) {
             throw new FPRuntimeError("Tried to resolve unknown promise");
         }
+
+        resolve(resultPtr ? parseObject(resultPtr) : undefined);
     }
 
     function serializeObject<T>(object: T): FatPtr {
