@@ -131,25 +131,23 @@ pub fn generate_type_bindings(
                 Type::Alias(name, ty) => {
                     Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
                 }
-                Type::Enum(name, generic_args, variants, opts) => {
+                Type::Enum(name, generic_args, doc_lines, variants, opts) => {
                     if name == "Result" {
                         None // No need to define our own.
                     } else {
                         Some(create_enum_definition(
                             name,
                             generic_args,
+                            &doc_lines,
                             variants,
                             &serde_reqs,
                             opts,
                         ))
                     }
                 }
-                Type::Struct(name, generic_args, fields) => Some(create_struct_definition(
-                    name,
-                    generic_args,
-                    fields,
-                    &serde_reqs,
-                )),
+                Type::Struct(name, generic_args, doc_lines, fields) => Some(
+                    create_struct_definition(name, generic_args, &doc_lines, fields, &serde_reqs),
+                ),
                 _ => None,
             }
         })
@@ -471,7 +469,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
             types
         }
         Type::Custom(_) => BTreeSet::new(),
-        Type::Enum(_, _, variants, _) => {
+        Type::Enum(_, _, _, variants, _) => {
             let mut types = BTreeSet::new();
             for variant in variants {
                 types.append(&mut collect_std_types(&variant.ty));
@@ -499,7 +497,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
         }
         Type::Primitive(_) => BTreeSet::new(),
         Type::String => BTreeSet::new(),
-        Type::Struct(_, _, fields) => {
+        Type::Struct(_, _, _, fields) => {
             let mut types = BTreeSet::new();
             for field in fields {
                 types.append(&mut collect_std_types(&field.ty));
@@ -520,6 +518,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
 fn create_enum_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
+    doc_lines: &[&'static str],
     variants: Vec<Variant>,
     serde_reqs: &SerializationRequirements,
     opts: EnumOptions,
@@ -533,7 +532,7 @@ fn create_enum_definition(
         .into_iter()
         .map(|variant| match variant.ty {
             Type::Unit => format!("    {},", variant.name),
-            Type::Struct(_, _, fields) => {
+            Type::Struct(_, _, _, fields) => {
                 let fields = fields
                     .iter()
                     .map(|field| format!("{}: {}", field.name, format_type(&field.ty)))
@@ -558,11 +557,12 @@ fn create_enum_definition(
         .join("\n");
 
     format!(
-        "#[derive(Clone, Debug, PartialEq, {})]\n\
+        "{}#[derive(Clone, Debug, PartialEq, {})]\n\
         #[serde({})]\n\
         pub enum {} {{\n\
             {}\n\
         }}",
+        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
         derives,
         opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
@@ -573,6 +573,7 @@ fn create_enum_definition(
 fn create_struct_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
+    doc_lines: &[&'static str],
     fields: Vec<Field>,
     serde_reqs: &SerializationRequirements,
 ) -> String {
@@ -584,7 +585,7 @@ fn create_struct_definition(
     let fields = fields
         .into_iter()
         .map(|field| {
-            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _) if name == "Option") {
+            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _, _) if name == "Option") {
                 "    #[serde(skip_serializing_if = \"Option::is_none\")]\n"
             } else {
                 ""
@@ -601,15 +602,34 @@ fn create_struct_definition(
         .join("\n");
 
     format!(
-        "#[derive(Clone, Debug, PartialEq, {})]\n\
+        "{}#[derive(Clone, Debug, PartialEq, {})]\n\
         #[serde(rename_all = \"camelCase\")]\n\
         pub struct {} {{\n\
             {}\n\
         }}",
+        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
         derives,
         format_name_with_generics(&name, &generic_args),
         fields
     )
+}
+
+struct FormatDocsOptions {
+    indent: usize,
+}
+
+impl FormatDocsOptions {
+    fn with_indent(indent: usize) -> Self {
+        Self { indent }
+    }
+}
+
+fn format_docs(doc_lines: &[&'static str], opts: FormatDocsOptions) -> String {
+    doc_lines
+        .iter()
+        .map(|line| format!("{}///{}\n", " ".repeat(opts.indent), line))
+        .collect::<Vec<_>>()
+        .join("")
 }
 
 fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
@@ -637,13 +657,13 @@ pub fn format_type(ty: &Type) -> String {
         Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Custom(custom) => custom.rs_ty.clone(),
-        Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+        Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "String".to_owned(),
-        Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "({})",
             items

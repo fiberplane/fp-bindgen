@@ -24,8 +24,8 @@ pub fn generate_bindings(
         .into_iter()
         .filter_map(|ty| match ty {
             Type::Alias(name, _) => Some(name),
-            Type::Enum(name, _, _, _) => Some(name),
-            Type::Struct(name, _, _) => Some(name),
+            Type::Enum(name, _, _, _, _) => Some(name),
+            Type::Struct(name, _, _, _) => Some(name),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -422,26 +422,24 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
 }
 
 fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let mut type_defs = types
-        .iter()
-        .filter_map(|ty| match ty {
-            Type::Alias(name, ty) => Some(format!(
-                "export type {} = {};",
-                name,
-                format_type(ty.as_ref())
-            )),
-            Type::Enum(name, generic_args, variants, opts) => Some(create_enum_definition(
-                name,
-                generic_args,
-                variants,
-                opts.clone(),
-            )),
-            Type::Struct(name, generic_args, fields) => {
-                Some(create_struct_definition(name, generic_args, fields))
-            }
-            _ => None,
-        })
-        .collect::<Vec<_>>();
+    let mut type_defs =
+        types
+            .iter()
+            .filter_map(|ty| match ty {
+                Type::Alias(name, ty) => Some(format!(
+                    "export type {} = {};",
+                    name,
+                    format_type(ty.as_ref())
+                )),
+                Type::Enum(name, generic_args, doc_lines, variants, opts) => Some(
+                    create_enum_definition(name, generic_args, doc_lines, variants, opts.clone()),
+                ),
+                Type::Struct(name, generic_args, doc_lines, fields) => Some(
+                    create_struct_definition(name, generic_args, doc_lines, fields),
+                ),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
     type_defs.dedup();
 
     write_bindings_file(
@@ -453,6 +451,7 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
 fn create_enum_definition(
     name: &str,
     generic_args: &[GenericArgument],
+    doc_lines: &[&'static str],
     variants: &[Variant],
     opts: EnumOptions,
 ) -> String {
@@ -468,7 +467,7 @@ fn create_enum_definition(
                         format!("    | \"{}\"", variant_name)
                     }
                 }
-                Type::Struct(_, _, fields) => {
+                Type::Struct(_, _, _, fields) => {
                     if opts.untagged {
                         format!("    | {{ {} }}", format_struct_fields(fields).join("; "))
                     } else {
@@ -539,7 +538,8 @@ fn create_enum_definition(
         .join("\n");
 
     format!(
-        "export type {} =\n{};",
+        "{}export type {} =\n{};",
+        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
         format_name_with_generics(name, generic_args),
         variants
     )
@@ -548,16 +548,48 @@ fn create_enum_definition(
 fn create_struct_definition(
     name: &str,
     generic_args: &[GenericArgument],
+    doc_lines: &[&'static str],
     fields: &[Field],
 ) -> String {
     format!(
-        "export type {} = {{\n{}\n}};",
+        "{}export type {} = {{\n{}\n}};",
+        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
         format_name_with_generics(name, generic_args),
         join_lines(&format_struct_fields(fields), |line| format!(
             "    {};",
             line
         ))
     )
+}
+
+struct FormatDocsOptions {
+    indent: usize,
+}
+
+impl FormatDocsOptions {
+    fn with_indent(indent: usize) -> Self {
+        Self { indent }
+    }
+}
+
+fn format_docs(doc_lines: &[&'static str], opts: FormatDocsOptions) -> String {
+    if doc_lines.is_empty() {
+        "".to_owned()
+    } else {
+        let mut lines = vec!["/**".to_owned()];
+        lines.append(
+            &mut doc_lines
+                .iter()
+                .map(|doc_line| format!(" *{}", doc_line))
+                .collect(),
+        );
+        lines.push(" */".to_owned());
+        lines
+            .into_iter()
+            .map(|line| format!("{}{}\n", " ".repeat(opts.indent), line))
+            .collect::<Vec<_>>()
+            .join("")
+    }
 }
 
 fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
@@ -609,7 +641,7 @@ fn format_type(ty: &Type) -> String {
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
-        Type::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+        Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
         Type::List(_, ty) => {
             if ty.as_ref() == &Type::Primitive(Primitive::U8) {
@@ -622,7 +654,7 @@ fn format_type(ty: &Type) -> String {
         Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
-        Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
             items

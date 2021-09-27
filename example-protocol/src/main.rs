@@ -46,12 +46,14 @@ pub struct RequestOptions {
     pub body: Option<Vec<u8>>,
 }
 
+/// A response to a request.
 #[derive(Serializable)]
 pub struct Response {
     pub headers: HashMap<String, String>,
     pub body: Body,
 }
 
+/// Represents an error with the request.
 #[derive(Serializable)]
 #[fp(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {

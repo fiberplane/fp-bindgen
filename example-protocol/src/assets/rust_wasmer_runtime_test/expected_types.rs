@@ -19,6 +19,7 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
 }
 
+/// Represents an error with the request.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
@@ -51,6 +52,7 @@ pub struct RequestOptions {
     pub body: Option<Vec<u8>>,
 }
 
+/// A response to a request.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {

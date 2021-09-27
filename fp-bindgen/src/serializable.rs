@@ -207,6 +207,7 @@ where
                     ty: Some(E::ty()),
                 },
             ],
+            vec![" A result that can be either successful (`Ok)` or represent an error (`Err`)."],
             vec![
                 Variant {
                     name: "Ok".to_owned(),

@@ -12,6 +12,9 @@ export type ComplexHostToGuest = {
     list: Array<number>;
 };
 
+/**
+ * Represents an error with the request.
+ */
 export type RequestError =
     | { type: "offline" }
     | { type: "no_route" }
@@ -34,11 +37,17 @@ export type RequestOptions = {
     body?: ArrayBuffer;
 };
 
+/**
+ * A response to a request.
+ */
 export type Response = {
     headers: Record<string, string>;
     body: Body;
 };
 
+/**
+ * A result that can be either successful (`Ok)` or represent an error (`Err`).
+ */
 export type Result<T, E> =
     | { Ok: T }
     | { Err: E };

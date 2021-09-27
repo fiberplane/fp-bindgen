@@ -6,14 +6,15 @@ use proc_macro2::Literal;
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
 use syn::{
-    AttrStyle, FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments, ReturnType, Type,
+    AttrStyle, Attribute, FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments,
+    ReturnType, Type,
 };
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
-    let (item_name, item, generics) = parse_type_item(item);
+    let (item_name, item, generics, doc_lines) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
     let dependencies = match item {
@@ -66,7 +67,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn ty() -> fp_bindgen::prelude::Type {
-                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
+                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies(), vec![#( #doc_lines ),*])
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
@@ -97,16 +98,18 @@ fn extract_path_from_type(ty: &Type) -> Option<Path> {
     }
 }
 
-fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
+fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics, Vec<Literal>) {
     let item = syn::parse::<Item>(item).unwrap();
     match item {
         Item::Enum(item) => {
             let generics = item.generics.clone();
-            (item.ident.clone(), Item::Enum(item), generics)
+            let doc_lines = get_doc_lines(&item.attrs);
+            (item.ident.clone(), Item::Enum(item), generics, doc_lines)
         }
         Item::Struct(item) => {
             let generics = item.generics.clone();
-            (item.ident.clone(), Item::Struct(item), generics)
+            let doc_lines = get_doc_lines(&item.attrs);
+            (item.ident.clone(), Item::Struct(item), generics, doc_lines)
         }
         item => panic!(
             "Only struct and enum types can be constructed from an item. Found: {:?}",
@@ -185,6 +188,26 @@ fn get_alias_from_path(path: &Path) -> String {
         .unwrap_or_else(|| "".to_owned())
 }
 
+fn get_doc_lines(attrs: &[Attribute]) -> Vec<Literal> {
+    attrs
+        .iter()
+        .filter(|attr| {
+            attr.style == AttrStyle::Outer
+                && attr.path.get_ident().map(|ident| ident.to_string()) == Some("doc".to_owned())
+        })
+        .flat_map(|attr| {
+            attr.tokens
+                .clone()
+                .into_iter()
+                .filter_map(|token| match token {
+                    proc_macro2::TokenTree::Literal(literal) => Some(literal),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 /// Parses function declarations and returns them in a list.
 /// In addition, it returns a list of doc lines for every function as well.
 /// Finally, it returns two sets: one with all the paths for types that may need serialization
@@ -241,27 +264,7 @@ fn parse_functions(
                     }
                 }
 
-                docs.push(
-                    function
-                        .attrs
-                        .iter()
-                        .filter(|attr| {
-                            attr.style == AttrStyle::Outer
-                                && attr.path.get_ident().map(|ident| ident.to_string())
-                                    == Some("doc".to_owned())
-                        })
-                        .flat_map(|attr| {
-                            attr.tokens
-                                .clone()
-                                .into_iter()
-                                .filter_map(|token| match token {
-                                    proc_macro2::TokenTree::Literal(literal) => Some(literal),
-                                    _ => None,
-                                })
-                                .collect::<Vec<_>>()
-                        })
-                        .collect::<Vec<_>>(),
-                );
+                docs.push(get_doc_lines(&function.attrs));
 
                 functions.push(function.into_token_stream().to_string());
 

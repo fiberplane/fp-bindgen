@@ -19,23 +19,33 @@ pub enum Type {
     Alias(String, Box<Type>),
     Container(String, Box<Type>),
     Custom(CustomType),
-    Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
+    Enum(
+        String,
+        Vec<GenericArgument>,
+        Vec<&'static str>,
+        Vec<Variant>,
+        EnumOptions,
+    ),
     GenericArgument(Box<GenericArgument>),
     List(String, Box<Type>),
     Map(String, Box<Type>, Box<Type>),
     Primitive(Primitive),
     String,
-    Struct(String, Vec<GenericArgument>, Vec<Field>),
+    Struct(String, Vec<GenericArgument>, Vec<&'static str>, Vec<Field>),
     Tuple(Vec<Type>),
     Unit,
 }
 
 impl Type {
-    pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
+    pub fn from_item(
+        item_str: &str,
+        dependencies: &BTreeSet<Type>,
+        doc_lines: Vec<&'static str>,
+    ) -> Self {
         let item = syn::parse_str::<Item>(item_str).unwrap();
         match item {
-            Item::Enum(item) => parse_enum_item(item, dependencies),
-            Item::Struct(item) => parse_struct_item(item, dependencies),
+            Item::Enum(item) => parse_enum_item(item, dependencies, doc_lines),
+            Item::Struct(item) => parse_struct_item(item, dependencies, doc_lines),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item
@@ -48,13 +58,13 @@ impl Type {
             Self::Alias(name, _) => name.clone(),
             Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Custom(custom) => custom.rs_ty.clone(),
-            Self::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+            Self::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
-            Self::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+            Self::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
             Self::Tuple(items) => format!(
                 "({})",
                 items
@@ -235,7 +245,11 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
     }
 }
 
-fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
+fn parse_enum_item(
+    item: ItemEnum,
+    dependencies: &BTreeSet<Type>,
+    doc_lines: Vec<&'static str>,
+) -> Type {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -279,7 +293,7 @@ fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
                         Field { name, ty }
                     })
                     .collect();
-                Type::Struct(name.clone(), vec![], fields)
+                Type::Struct(name.clone(), vec![], vec![], fields)
             } else {
                 let item_types = variant
                     .fields
@@ -297,7 +311,7 @@ fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
         })
         .collect();
     let opts = parse_enum_options(&item.attrs);
-    Type::Enum(name, generic_args, variants, opts)
+    Type::Enum(name, generic_args, doc_lines, variants, opts)
 }
 
 fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
@@ -310,7 +324,11 @@ fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
         .unwrap_or_else(EnumOptions::default)
 }
 
-fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
+fn parse_struct_item(
+    item: ItemStruct,
+    dependencies: &BTreeSet<Type>,
+    doc_lines: Vec<&'static str>,
+) -> Type {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -338,7 +356,7 @@ fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
             Field { name, ty }
         })
         .collect();
-    Type::Struct(name, generic_args, fields)
+    Type::Struct(name, generic_args, doc_lines, fields)
 }
 
 /// Resolves a type based on its type path and a set of user-defined types to match against.
@@ -386,7 +404,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         Type::Custom(custom) => {
                             custom.name == path_without_args && custom.type_args == type_args
                         }
-                        Type::Enum(name, generic_args, _, _) => {
+                        Type::Enum(name, generic_args, _, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()
@@ -417,7 +435,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,
                         Type::String => path_without_args == "String",
-                        Type::Struct(name, generic_args, _) => {
+                        Type::Struct(name, generic_args, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()
