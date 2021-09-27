@@ -38,18 +38,15 @@ pub fn generate_bindings(
         "import {{ encode, decode }} from \"@msgpack/msgpack\";
 
 import type {{
-{}
-}} from \"./types\";
+{}}} from \"./types\";
 
 type FatPtr = bigint;
 
 export type Imports = {{
-{}
-}};
+{}}};
 
 export type Exports = {{
-{}
-}};
+{}}};
 
 /**
  * Represents an unrecoverable error in the FP runtime.
@@ -138,8 +135,7 @@ export async function createRuntime(
     const {{ instance }} = await WebAssembly.instantiate(plugin, {{
         fp: {{
             __fp_host_resolve_async_value: resolvePromise,
-{}
-        }},
+{}        }},
     }});
 
     const getExport = <T>(name: string): T => {{
@@ -156,8 +152,7 @@ export async function createRuntime(
     const resolveFuture = getExport<(ptr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
 
     return {{
-{}
-    }};
+{}    }};
 }}
 
 function fromFatPtr(fatPtr: FatPtr): [ptr: number, len: number] {{
@@ -397,7 +392,7 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 format!("return ({}) => {}", args, fn_call.replace("return ", ""))
             } else {
                 format!(
-                    "return ({}) => {{\n{}\n        {}\n    }};",
+                    "return ({}) => {{\n{}\n        {}    }};",
                     args,
                     join_lines(&export_args, |line| format!("        {}", line)),
                     fn_call
@@ -451,7 +446,7 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
 fn create_enum_definition(
     name: &str,
     generic_args: &[GenericArgument],
-    doc_lines: &[&'static str],
+    doc_lines: &[String],
     variants: &[Variant],
     opts: EnumOptions,
 ) -> String {
@@ -459,22 +454,22 @@ fn create_enum_definition(
         .iter()
         .map(|variant| {
             let variant_name = opts.variant_casing.format_string(&variant.name);
-            match &variant.ty {
+            let variant_decl = match &variant.ty {
                 Type::Unit => {
                     if let Some(tag) = &opts.tag_prop_name {
-                        format!("    | {{ {}: \"{}\" }}", tag, variant_name)
+                        format!("| {{ {}: \"{}\" }}", tag, variant_name)
                     } else {
-                        format!("    | \"{}\"", variant_name)
+                        format!("| \"{}\"", variant_name)
                     }
                 }
                 Type::Struct(_, _, _, fields) => {
                     if opts.untagged {
-                        format!("    | {{ {} }}", format_struct_fields(fields).join("; "))
+                        format!("| {{ {} }}", format_struct_fields(fields).join("; "))
                     } else {
                         match (&opts.tag_prop_name, &opts.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
-                                    "    | {{ {}: \"{}\"; {}: {{ {} }} }}",
+                                    "| {{ {}: \"{}\"; {}: {{ {} }} }}",
                                     tag,
                                     variant_name,
                                     content,
@@ -483,7 +478,7 @@ fn create_enum_definition(
                             }
                             (Some(tag), None) => {
                                 format!(
-                                    "    | {{ {}: \"{}\"; {} }}",
+                                    "| {{ {}: \"{}\"; {} }}",
                                     tag,
                                     variant_name,
                                     format_struct_fields(fields).join("; ")
@@ -491,7 +486,7 @@ fn create_enum_definition(
                             }
                             (None, _) => {
                                 format!(
-                                    "    | {{ {}: {{ {} }} }}",
+                                    "| {{ {}: {{ {} }} }}",
                                     variant_name,
                                     format_struct_fields(fields).join("; ")
                                 )
@@ -501,12 +496,12 @@ fn create_enum_definition(
                 }
                 Type::Tuple(items) if items.len() == 1 => {
                     if opts.untagged {
-                        format!("    | {}", format_type(items.first().unwrap()))
+                        format!("| {}", format_type(items.first().unwrap()))
                     } else {
                         match (&opts.tag_prop_name, &opts.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
-                                    "    | {{ {}: \"{}\"; {}: {} }}",
+                                    "| {{ {}: \"{}\"; {}: {} }}",
                                     tag,
                                     variant_name,
                                     content,
@@ -515,7 +510,7 @@ fn create_enum_definition(
                             }
                             (Some(tag), None) => {
                                 format!(
-                                    "    | {{ {}: \"{}\" }} & {}",
+                                    "| {{ {}: \"{}\" }} & {}",
                                     tag,
                                     variant_name,
                                     format_type(items.first().unwrap())
@@ -523,7 +518,7 @@ fn create_enum_definition(
                             }
                             (None, _) => {
                                 format!(
-                                    "    | {{ {}: {} }}",
+                                    "| {{ {}: {} }}",
                                     variant_name,
                                     format_type(items.first().unwrap())
                                 )
@@ -532,49 +527,52 @@ fn create_enum_definition(
                     }
                 }
                 other => panic!("Unsupported type for enum variant: {:?}", other),
-            }
+            };
+
+            let lines = if variant.doc_lines.is_empty() {
+                vec![variant_decl]
+            } else {
+                let mut lines = vec![];
+                lines.append(&mut format_docs(&variant.doc_lines));
+                lines.push(variant_decl);
+                lines
+            };
+
+            join_lines(&lines, |line| format!("    {}", line))
         })
         .collect::<Vec<_>>()
-        .join("\n");
+        .join("");
 
     format!(
         "{}export type {} =\n{};",
-        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
+        join_lines(&format_docs(doc_lines), String::to_owned),
         format_name_with_generics(name, generic_args),
-        variants
+        variants.trim_end()
     )
 }
 
 fn create_struct_definition(
     name: &str,
     generic_args: &[GenericArgument],
-    doc_lines: &[&'static str],
+    doc_lines: &[String],
     fields: &[Field],
 ) -> String {
     format!(
-        "{}export type {} = {{\n{}\n}};",
-        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
+        "{}export type {} = {{\n{}}};",
+        join_lines(&format_docs(doc_lines), String::to_owned),
         format_name_with_generics(name, generic_args),
-        join_lines(&format_struct_fields(fields), |line| format!(
-            "    {};",
-            line
-        ))
+        join_lines(&format_struct_fields(fields), |line| if line.is_empty() {
+            line.clone()
+        } else {
+            format!("    {}", line)
+        })
+        .trim_start_matches('\n')
     )
 }
 
-struct FormatDocsOptions {
-    indent: usize,
-}
-
-impl FormatDocsOptions {
-    fn with_indent(indent: usize) -> Self {
-        Self { indent }
-    }
-}
-
-fn format_docs(doc_lines: &[&'static str], opts: FormatDocsOptions) -> String {
+fn format_docs(doc_lines: &[String]) -> Vec<String> {
     if doc_lines.is_empty() {
-        "".to_owned()
+        Vec::new()
     } else {
         let mut lines = vec!["/**".to_owned()];
         lines.append(
@@ -585,10 +583,6 @@ fn format_docs(doc_lines: &[&'static str], opts: FormatDocsOptions) -> String {
         );
         lines.push(" */".to_owned());
         lines
-            .into_iter()
-            .map(|line| format!("{}{}\n", " ".repeat(opts.indent), line))
-            .collect::<Vec<_>>()
-            .join("")
     }
 }
 
@@ -614,17 +608,27 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 fn format_struct_fields(fields: &[Field]) -> Vec<String> {
     fields
         .iter()
-        .map(|field| match &field.ty {
-            Type::Container(name, ty) => {
-                let optional = if name == "Option" { "?" } else { "" };
-                format!(
-                    "{}{}: {}",
-                    field.name.to_camel_case(),
-                    optional,
-                    format_type(ty)
-                )
+        .flat_map(|field| {
+            let field_decl = match &field.ty {
+                Type::Container(name, ty) => {
+                    let optional = if name == "Option" { "?" } else { "" };
+                    format!(
+                        "{}{}: {};",
+                        field.name.to_camel_case(),
+                        optional,
+                        format_type(ty)
+                    )
+                }
+                ty => format!("{}: {};", field.name.to_camel_case(), format_type(ty)),
+            };
+            if field.doc_lines.is_empty() {
+                vec![field_decl]
+            } else {
+                let mut lines = vec!["".to_owned()];
+                lines.append(&mut format_docs(&field.doc_lines));
+                lines.push(field_decl);
+                lines
             }
-            ty => format!("{}: {}", field.name.to_camel_case(), format_type(ty)),
         })
         .collect()
 }
@@ -690,7 +694,12 @@ fn join_lines<F>(lines: &[String], formatter: F) -> String
 where
     F: FnMut(&String) -> String,
 {
-    lines.iter().map(formatter).collect::<Vec<_>>().join("\n")
+    let lines = lines.iter().map(formatter).collect::<Vec<_>>().join("\n");
+    if lines.is_empty() {
+        lines
+    } else {
+        format!("{}\n", lines)
+    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

@@ -1,4 +1,7 @@
-use crate::types::{resolve_type, Type};
+use crate::{
+    docs::get_doc_lines,
+    types::{resolve_type, Type},
+};
 use quote::ToTokens;
 use std::collections::BTreeSet;
 use syn::{FnArg, ForeignItemFn, ReturnType};
@@ -11,13 +14,11 @@ impl FunctionList {
     pub fn add_function(
         &mut self,
         function_decl: &str,
-        doc_lines: Vec<&'static str>,
         serializable_types: &BTreeSet<Type>,
         deserializable_types: &BTreeSet<Type>,
     ) {
         self.0.insert(Function::new(
             function_decl,
-            doc_lines,
             serializable_types,
             deserializable_types,
         ));
@@ -53,7 +54,7 @@ impl<'a> IntoIterator for &'a FunctionList {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Function {
     pub name: String,
-    pub doc_lines: Vec<&'static str>,
+    pub doc_lines: Vec<String>,
     pub args: Vec<FunctionArg>,
     pub return_type: Type,
     pub is_async: bool,
@@ -62,7 +63,6 @@ pub struct Function {
 impl Function {
     pub fn new(
         decl: &str,
-        doc_lines: Vec<&'static str>,
         serializable_types: &BTreeSet<Type>,
         deserializable_types: &BTreeSet<Type>,
     ) -> Self {
@@ -70,6 +70,7 @@ impl Function {
             syn::parse_str::<ForeignItemFn>(decl).expect("Cannot parse function declaration");
 
         let name = item.sig.ident.to_string();
+        let doc_lines = get_doc_lines(&item.attrs);
         let args = item
             .sig
             .inputs

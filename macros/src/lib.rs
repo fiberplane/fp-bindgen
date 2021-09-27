@@ -2,19 +2,15 @@ mod primitives;
 
 use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
-use proc_macro2::Literal;
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
-use syn::{
-    AttrStyle, Attribute, FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments,
-    ReturnType, Type,
-};
+use syn::{FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments, ReturnType, Type};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
-    let (item_name, item, generics, doc_lines) = parse_type_item(item);
+    let (item_name, item, generics) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
     let dependencies = match item {
@@ -67,7 +63,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn ty() -> fp_bindgen::prelude::Type {
-                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies(), vec![#( #doc_lines ),*])
+                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
@@ -98,18 +94,16 @@ fn extract_path_from_type(ty: &Type) -> Option<Path> {
     }
 }
 
-fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics, Vec<Literal>) {
+fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
     let item = syn::parse::<Item>(item).unwrap();
     match item {
         Item::Enum(item) => {
             let generics = item.generics.clone();
-            let doc_lines = get_doc_lines(&item.attrs);
-            (item.ident.clone(), Item::Enum(item), generics, doc_lines)
+            (item.ident.clone(), Item::Enum(item), generics)
         }
         Item::Struct(item) => {
             let generics = item.generics.clone();
-            let doc_lines = get_doc_lines(&item.attrs);
-            (item.ident.clone(), Item::Struct(item), generics, doc_lines)
+            (item.ident.clone(), Item::Struct(item), generics)
         }
         item => panic!(
             "Only struct and enum types can be constructed from an item. Found: {:?}",
@@ -121,7 +115,7 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics, Vec<Literal>) {
 /// Declares functions the plugin can import from the host runtime.
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
-    let (functions, docs, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
     let serializable_aliases = serializable_types
         .iter()
         .map(get_alias_from_path)
@@ -141,7 +135,7 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
             #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_import_types, #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
-            #( list.add_function(#functions, vec![#( #docs ),*], &serializable_import_types, &deserializable_import_types); )*
+            #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
 
             (list, serializable_import_types, deserializable_import_types)
         }
@@ -152,7 +146,7 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 /// Declares functions the plugin may export to the host runtime.
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
-    let (functions, docs, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
     let serializable_aliases = serializable_types
         .iter()
         .map(get_alias_from_path)
@@ -172,7 +166,7 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
             #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_export_types, #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
-            #( list.add_function(#functions, vec![#( #docs ),*], &serializable_export_types, &deserializable_export_types); )*
+            #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
 
             (list, serializable_export_types, deserializable_export_types)
         }
@@ -188,36 +182,13 @@ fn get_alias_from_path(path: &Path) -> String {
         .unwrap_or_else(|| "".to_owned())
 }
 
-fn get_doc_lines(attrs: &[Attribute]) -> Vec<Literal> {
-    attrs
-        .iter()
-        .filter(|attr| {
-            attr.style == AttrStyle::Outer
-                && attr.path.get_ident().map(|ident| ident.to_string()) == Some("doc".to_owned())
-        })
-        .flat_map(|attr| {
-            attr.tokens
-                .clone()
-                .into_iter()
-                .filter_map(|token| match token {
-                    proc_macro2::TokenTree::Literal(literal) => Some(literal),
-                    _ => None,
-                })
-                .collect::<Vec<_>>()
-        })
-        .collect()
-}
-
 /// Parses function declarations and returns them in a list.
 /// In addition, it returns a list of doc lines for every function as well.
 /// Finally, it returns two sets: one with all the paths for types that may need serialization
 /// to call the functions, and one with all the paths for types that may need deserialization to
 /// call the functions.
-fn parse_functions(
-    token_stream: TokenStream,
-) -> (Vec<String>, Vec<Vec<Literal>>, HashSet<Path>, HashSet<Path>) {
+fn parse_functions(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
     let mut functions = Vec::new();
-    let mut docs = Vec::new();
     let mut serializable_type_names = HashSet::new();
     let mut deserializable_type_names = HashSet::new();
     let mut current_item_tokens = Vec::<TokenTree>::new();
@@ -264,8 +235,6 @@ fn parse_functions(
                     }
                 }
 
-                docs.push(get_doc_lines(&function.attrs));
-
                 functions.push(function.into_token_stream().to_string());
 
                 current_item_tokens = Vec::new();
@@ -276,7 +245,6 @@ fn parse_functions(
 
     (
         functions,
-        docs,
         serializable_type_names,
         deserializable_type_names,
     )

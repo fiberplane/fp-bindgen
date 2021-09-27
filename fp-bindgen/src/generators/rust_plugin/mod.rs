@@ -518,7 +518,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
 fn create_enum_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
-    doc_lines: &[&'static str],
+    doc_lines: &[String],
     variants: Vec<Variant>,
     serde_reqs: &SerializationRequirements,
     opts: EnumOptions,
@@ -573,7 +573,7 @@ fn create_enum_definition(
 fn create_struct_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
-    doc_lines: &[&'static str],
+    doc_lines: &[String],
     fields: Vec<Field>,
     serde_reqs: &SerializationRequirements,
 ) -> String {
@@ -624,7 +624,7 @@ impl FormatDocsOptions {
     }
 }
 
-fn format_docs(doc_lines: &[&'static str], opts: FormatDocsOptions) -> String {
+fn format_docs(doc_lines: &[String], opts: FormatDocsOptions) -> String {
     doc_lines
         .iter()
         .map(|line| format!("{}///{}\n", " ".repeat(opts.indent), line))

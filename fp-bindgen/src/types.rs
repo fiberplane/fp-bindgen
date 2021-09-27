@@ -1,4 +1,4 @@
-use crate::{casing::Casing, primitives::Primitive};
+use crate::{casing::Casing, docs::get_doc_lines, primitives::Primitive};
 use quote::ToTokens;
 use std::{collections::BTreeSet, convert::TryFrom, str::FromStr};
 use syn::{
@@ -22,7 +22,7 @@ pub enum Type {
     Enum(
         String,
         Vec<GenericArgument>,
-        Vec<&'static str>,
+        Vec<String>,
         Vec<Variant>,
         EnumOptions,
     ),
@@ -31,21 +31,17 @@ pub enum Type {
     Map(String, Box<Type>, Box<Type>),
     Primitive(Primitive),
     String,
-    Struct(String, Vec<GenericArgument>, Vec<&'static str>, Vec<Field>),
+    Struct(String, Vec<GenericArgument>, Vec<String>, Vec<Field>),
     Tuple(Vec<Type>),
     Unit,
 }
 
 impl Type {
-    pub fn from_item(
-        item_str: &str,
-        dependencies: &BTreeSet<Type>,
-        doc_lines: Vec<&'static str>,
-    ) -> Self {
+    pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
         let item = syn::parse_str::<Item>(item_str).unwrap();
         match item {
-            Item::Enum(item) => parse_enum_item(item, dependencies, doc_lines),
-            Item::Struct(item) => parse_struct_item(item, dependencies, doc_lines),
+            Item::Enum(item) => parse_enum_item(item, dependencies),
+            Item::Struct(item) => parse_struct_item(item, dependencies),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item
@@ -202,12 +198,14 @@ impl Parse for EnumOptions {
 pub struct Field {
     pub name: String,
     pub ty: Type,
+    pub doc_lines: Vec<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Variant {
     pub name: String,
     pub ty: Type,
+    pub doc_lines: Vec<String>,
 }
 
 pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -> String {
@@ -245,11 +243,7 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
     }
 }
 
-fn parse_enum_item(
-    item: ItemEnum,
-    dependencies: &BTreeSet<Type>,
-    doc_lines: Vec<&'static str>,
-) -> Type {
+fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -263,6 +257,7 @@ fn parse_enum_item(
             _ => None,
         })
         .collect();
+    let doc_lines = get_doc_lines(&item.attrs);
     let variants = item
         .variants
         .iter()
@@ -290,7 +285,12 @@ fn parse_enum_item(
                         let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
                             panic!("Unresolvable variant field type: {:?}", field.ty)
                         });
-                        Field { name, ty }
+                        let doc_lines = get_doc_lines(&field.attrs);
+                        Field {
+                            name,
+                            ty,
+                            doc_lines,
+                        }
                     })
                     .collect();
                 Type::Struct(name.clone(), vec![], vec![], fields)
@@ -306,8 +306,13 @@ fn parse_enum_item(
                     .collect();
                 Type::Tuple(item_types)
             };
+            let doc_lines = get_doc_lines(&variant.attrs);
 
-            Variant { name, ty }
+            Variant {
+                name,
+                ty,
+                doc_lines,
+            }
         })
         .collect();
     let opts = parse_enum_options(&item.attrs);
@@ -324,11 +329,7 @@ fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
         .unwrap_or_else(EnumOptions::default)
 }
 
-fn parse_struct_item(
-    item: ItemStruct,
-    dependencies: &BTreeSet<Type>,
-    doc_lines: Vec<&'static str>,
-) -> Type {
+fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -342,6 +343,7 @@ fn parse_struct_item(
             _ => None,
         })
         .collect();
+    let doc_lines = get_doc_lines(&item.attrs);
     let fields = item
         .fields
         .iter()
@@ -353,7 +355,12 @@ fn parse_struct_item(
                 .to_string();
             let ty = resolve_type(&field.ty, dependencies)
                 .unwrap_or_else(|| panic!("Unresolvable field type: {:?}", field.ty));
-            Field { name, ty }
+            let doc_lines = get_doc_lines(&field.attrs);
+            Field {
+                name,
+                ty,
+                doc_lines,
+            }
         })
         .collect();
     Type::Struct(name, generic_args, doc_lines, fields)

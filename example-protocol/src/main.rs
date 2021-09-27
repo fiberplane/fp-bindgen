@@ -14,6 +14,8 @@ pub struct Simple {
     pub bar: String,
 }
 
+/// Multi-line doc comment with complex characters
+/// & " , \ ! '
 #[derive(Serializable)]
 pub struct ComplexHostToGuest {
     pub simple: Simple,
@@ -35,7 +37,7 @@ pub enum RequestMethod {
     Get,
     Options,
     Post,
-    Update,
+    Put,
 }
 
 #[derive(Serializable)]
@@ -49,7 +51,9 @@ pub struct RequestOptions {
 /// A response to a request.
 #[derive(Serializable)]
 pub struct Response {
+    /// Response headers, by name.
     pub headers: HashMap<String, String>,
+    /// Response body.
     pub body: Body,
 }
 
@@ -57,12 +61,21 @@ pub struct Response {
 #[derive(Serializable)]
 #[fp(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
+    /// Used when we know we don't have an active network connection.
     Offline,
     NoRoute,
     ConnectionRefused,
     Timeout,
-    ServerError { status_code: u16, response: Body },
-    Other { reason: String },
+    ServerError {
+        /// HTTP status code.
+        status_code: u16,
+        /// Response body.
+        response: Body,
+    },
+    /// Misc.
+    Other {
+        reason: String,
+    },
 }
 
 fp_import! {

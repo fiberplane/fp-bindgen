@@ -207,15 +207,20 @@ where
                     ty: Some(E::ty()),
                 },
             ],
-            vec![" A result that can be either successful (`Ok)` or represent an error (`Err`)."],
+            vec![
+                " A result that can be either successful (`Ok)` or represent an error (`Err`)."
+                    .to_owned(),
+            ],
             vec![
                 Variant {
                     name: "Ok".to_owned(),
                     ty: Type::Tuple(vec![Type::named_generic("T")]),
+                    doc_lines: vec![" Represents a succesful result.".to_owned()],
                 },
                 Variant {
                     name: "Err".to_owned(),
                     ty: Type::Tuple(vec![Type::named_generic("E")]),
+                    doc_lines: vec![" Represents an error.".to_owned()],
                 },
             ],
             EnumOptions::default(),

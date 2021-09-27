@@ -7,6 +7,10 @@ export type ComplexGuestToHost = {
     map: Record<string, Simple>;
 };
 
+/**
+ * Multi-line doc comment with complex characters
+ * & " , \ ! '
+ */
 export type ComplexHostToGuest = {
     simple: Simple;
     list: Array<number>;
@@ -16,11 +20,29 @@ export type ComplexHostToGuest = {
  * Represents an error with the request.
  */
 export type RequestError =
+    /**
+     * Used when we know we don't have an active network connection.
+     */
     | { type: "offline" }
     | { type: "no_route" }
     | { type: "connection_refused" }
     | { type: "timeout" }
-    | { type: "server_error"; statusCode: number; response: Body }
+    | {
+        type: "server_error";
+
+        /**
+         * HTTP status code.
+         */
+        statusCode: number;
+
+        /**
+         * Response body.
+         */
+        response: Body
+    }
+    /**
+     * Misc.
+     */
     | { type: "other"; reason: string };
 
 export type RequestMethod =
@@ -28,7 +50,7 @@ export type RequestMethod =
     | "GET"
     | "OPTIONS"
     | "POST"
-    | "UPDATE";
+    | "PUT";
 
 export type RequestOptions = {
     url: string;
@@ -41,7 +63,14 @@ export type RequestOptions = {
  * A response to a request.
  */
 export type Response = {
+    /**
+     * Response headers, by name.
+     */
     headers: Record<string, string>;
+
+    /**
+     * Response body.
+     */
     body: Body;
 };
 
@@ -49,7 +78,13 @@ export type Response = {
  * A result that can be either successful (`Ok)` or represent an error (`Err`).
  */
 export type Result<T, E> =
+    /**
+     * Represents a succesful result.
+     */
     | { Ok: T }
+    /**
+     * Represents an error.
+     */
     | { Err: E };
 
 export type Simple = {

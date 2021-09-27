@@ -12,6 +12,8 @@ pub struct ComplexGuestToHost {
     pub map: BTreeMap<String, Simple>,
 }
 
+/// Multi-line doc comment with complex characters
+/// & " , \ ! '
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
@@ -40,7 +42,7 @@ pub enum RequestMethod {
     Get,
     Options,
     Post,
-    Update,
+    Put,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
