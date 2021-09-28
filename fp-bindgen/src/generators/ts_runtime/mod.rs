@@ -672,12 +672,10 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::I16 => "number",
         Primitive::I32 => "number",
         Primitive::I64 => "bigint",
-        Primitive::I128 => "bigint",
         Primitive::U8 => "number",
         Primitive::U16 => "number",
         Primitive::U32 => "number",
         Primitive::U64 => "bigint",
-        Primitive::U128 => "bigint",
     };
     string.to_owned()
 }

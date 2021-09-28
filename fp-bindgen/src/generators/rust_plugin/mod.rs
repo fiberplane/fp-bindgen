@@ -690,12 +690,10 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::I16 => "i16",
         Primitive::I32 => "i32",
         Primitive::I64 => "i64",
-        Primitive::I128 => "i128",
         Primitive::U8 => "u8",
         Primitive::U16 => "u16",
         Primitive::U32 => "u32",
         Primitive::U64 => "u64",
-        Primitive::U128 => "u128",
     };
     string.to_owned()
 }

@@ -72,12 +72,10 @@ The following Rust types don't require serialization:
 - `i16`
 - `i32`
 - `i64`
-- `i128`
 - `u8`
 - `u16`
 - `u32`
 - `u64`
-- `u128`
 
 Anything else is serialized as described above.
 

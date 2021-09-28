@@ -10,12 +10,10 @@ pub enum Primitive {
     I16,
     I32,
     I64,
-    I128,
     U8,
     U16,
     U32,
     U64,
-    U128,
 }
 
 impl Primitive {
@@ -29,12 +27,10 @@ impl Primitive {
             I16 => "i16",
             I32 => "i32",
             I64 => "i64",
-            I128 => "i128",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
             U64 => "u64",
-            U128 => "u128",
         };
         string.to_owned()
     }
@@ -52,12 +48,10 @@ impl FromStr for Primitive {
             "i16" => Primitive::I16,
             "i32" => Primitive::I32,
             "i64" => Primitive::I64,
-            "i128" => Primitive::I128,
             "u8" => Primitive::U8,
             "u16" => Primitive::U16,
             "u32" => Primitive::U32,
             "u64" => Primitive::U64,
-            "u128" => Primitive::U128,
             string => return Err(format!("Unknown primitive type: \"{}\"", string)),
         };
         Ok(primitive)
