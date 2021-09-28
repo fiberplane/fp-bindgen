@@ -526,39 +526,77 @@ fn create_enum_definition(
     };
     let variants = variants
         .into_iter()
-        .map(|variant| match variant.ty {
-            Type::Unit => format!("    {},", variant.name),
-            Type::Struct(_, _, _, fields) => {
-                let fields = format_struct_fields(&fields);
-                let has_annotations = fields.iter().any(|field| field.contains('\n'));
-                let fields = if has_annotations {
+        .flat_map(|variant| {
+            let variant_decl = match variant.ty {
+                Type::Unit => format!("{},", variant.name),
+                Type::Struct(_, _, _, fields) => {
+                    let fields = format_struct_fields(&fields);
+                    let has_multiple_lines = fields.iter().any(|field| field.contains('\n'));
+                    let fields = if has_multiple_lines {
+                        format!(
+                            "\n{}\n",
+                            fields
+                                .iter()
+                                .flat_map(|field| field.split('\n'))
+                                .map(|line| if line.is_empty() {
+                                    line.to_owned()
+                                } else {
+                                    format!("    {}", line)
+                                })
+                                .collect::<Vec<_>>()
+                                .join("\n")
+                                .trim_start_matches('\n'),
+                        )
+                    } else {
+                        let fields = fields.join(" ");
+                        format!(" {} ", &fields.trim_end_matches(','))
+                    };
                     format!(
-                        "\n{}    ",
-                        fields
-                            .iter()
-                            .flat_map(|field| field.split('\n'))
-                            .map(|line| format!("        {}\n", line))
-                            .collect::<Vec<_>>()
-                            .join("")
+                        "#[serde(rename_all = \"camelCase\")]\n{} {{{}}},",
+                        variant.name, fields
                     )
-                } else {
-                    let fields = fields.join(" ");
-                    format!(" {} ", &fields[0..fields.len() - 1])
-                };
-                format!(
-                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{{}}},",
-                    variant.name, fields
-                )
-            }
-            Type::Tuple(items) => {
-                let items = items
-                    .iter()
-                    .map(|item| format_type(item))
+                }
+                Type::Tuple(items) => {
+                    let items = items
+                        .iter()
+                        .map(|item| format_type(item))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    format!("{}({}),", variant.name, items)
+                }
+                other => panic!("Unsupported type for enum variant: {:?}", other),
+            };
+
+            let lines = if variant.doc_lines.is_empty() {
+                variant_decl
+                    .split('\n')
+                    .map(str::to_owned)
                     .collect::<Vec<_>>()
-                    .join(", ");
-                format!("    {}({}),", variant.name, items)
-            }
-            other => panic!("Unsupported type for enum variant: {:?}", other),
+            } else {
+                let mut lines = format_docs(&variant.doc_lines)
+                    .trim_end_matches('\n')
+                    .split('\n')
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>();
+                lines.append(
+                    &mut variant_decl
+                        .split('\n')
+                        .map(str::to_owned)
+                        .collect::<Vec<_>>(),
+                );
+                lines
+            };
+
+            lines
+                .iter()
+                .map(|line| {
+                    if line.is_empty() {
+                        line.clone()
+                    } else {
+                        format!("    {}", line)
+                    }
+                })
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -569,7 +607,7 @@ fn create_enum_definition(
         pub enum {} {{\n\
             {}\n\
         }}",
-        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
+        format_docs(doc_lines),
         derives,
         opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
@@ -593,42 +631,40 @@ fn create_struct_definition(
         .iter()
         .flat_map(|field| field.split('\n'))
         .map(|line| {
-            format!(
-                "    {}{}\n",
-                if line.starts_with('#') { "" } else { "pub " },
-                line
-            )
+            if line.is_empty() {
+                line.to_owned()
+            } else {
+                format!(
+                    "    {}{}",
+                    if line.starts_with('#') || line.starts_with("///") {
+                        ""
+                    } else {
+                        "pub "
+                    },
+                    line
+                )
+            }
         })
         .collect::<Vec<_>>()
-        .join("");
+        .join("\n");
 
     format!(
         "{}#[derive(Clone, Debug, PartialEq, {})]\n\
         #[serde(rename_all = \"camelCase\")]\n\
         pub struct {} {{\n\
-            {}\
+            {}\n\
         }}",
-        format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
+        format_docs(doc_lines),
         derives,
         format_name_with_generics(&name, &generic_args),
-        fields
+        fields.trim_start_matches('\n')
     )
 }
 
-struct FormatDocsOptions {
-    indent: usize,
-}
-
-impl FormatDocsOptions {
-    fn with_indent(indent: usize) -> Self {
-        Self { indent }
-    }
-}
-
-fn format_docs(doc_lines: &[String], opts: FormatDocsOptions) -> String {
+fn format_docs(doc_lines: &[String]) -> String {
     doc_lines
         .iter()
-        .map(|line| format!("{}///{}\n", " ".repeat(opts.indent), line))
+        .map(|line| format!("///{}\n", line))
         .collect::<Vec<_>>()
         .join("")
 }
@@ -665,13 +701,33 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                 serde_attrs.push("with = \"serde_bytes\"");
             }
 
+            let docs = if field.doc_lines.is_empty() {
+                "".to_owned()
+            } else {
+                format!(
+                    "\n{}",
+                    field
+                        .doc_lines
+                        .iter()
+                        .map(|line| format!("///{}\n", line))
+                        .collect::<Vec<_>>()
+                        .join("")
+                )
+            };
+
             let annotations = if serde_attrs.is_empty() {
                 "".to_owned()
             } else {
                 format!("#[serde({})]\n", serde_attrs.join(", "))
             };
 
-            format!("{}{}: {},", annotations, field.name, format_type(&field.ty))
+            format!(
+                "{}{}{}: {},",
+                docs,
+                annotations,
+                field.name,
+                format_type(&field.ty)
+            )
         })
         .collect()
 }

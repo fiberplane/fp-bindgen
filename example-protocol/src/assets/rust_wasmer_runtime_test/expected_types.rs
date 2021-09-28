@@ -25,12 +25,20 @@ pub struct ComplexHostToGuest {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
+    /// Used when we know we don't have an active network connection.
     Offline,
     NoRoute,
     ConnectionRefused,
     Timeout,
     #[serde(rename_all = "camelCase")]
-    ServerError { status_code: u16, response: Body },
+    ServerError {
+        /// HTTP status code.
+        status_code: u16,
+
+        /// Response body.
+        response: Body,
+    },
+    /// Misc.
     #[serde(rename_all = "camelCase")]
     Other { reason: String },
 }
@@ -59,7 +67,10 @@ pub struct RequestOptions {
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
+    /// Response headers, by name.
     pub headers: HashMap<String, String>,
+
+    /// Response body.
     pub body: Body,
 }
 
