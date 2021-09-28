@@ -6,15 +6,23 @@ Macros for generating WebAssembly bindings.
 
 `fp-bindgen` is an alternative to `wasm-bindgen`, but diverges primarily in two ways:
 
-- It doesn't assume the Wasm host is a browser or other JS-based runtime. Instead, it can generate
-  bindings for both JS and Rust runtimes. We also intend to document our communication primitives so
-  that bindings for other languages can be contributed.
+- It doesn't assume the Wasm host is a browser or other JS-based runtime. Our communication
+  primitives are [documented](#specification) so that bindings for other languages can be
+  contributed.
 - It uses [MessagePack](https://msgpack.org/index.html) for serializing complex data structures, to
   improve performance over `wasm-bindgen`'s JSON serialization.
 
 ## Usage
 
-### Defining a protocol
+Using `fp-bindgen` is a three-step process:
+
+- First you [define a protocol](#defining-a-protocol) that specifies the functions and data
+  structures available for communication across the Wasm bridge.
+- Then you [generate the bindings](#generating-bindings) for the hosts and plugin language that are
+  relevant to you.
+- Finally, you can start implementing plugins and runtimes using the generated bindings.
+
+## Defining a protocol
 
 Before you can generate bindings using this library, you first define a protocol of functions that
 can be called by the _runtime_ (the Wasm host) and functions that can be called by the _plugin_ (the
@@ -57,6 +65,8 @@ fp_import! {
 Note that `Serializable` is implemented by default for some common standard types, such as
 `Option`, `Vec`, and other container types.
 
+### Async functions
+
 Functions can also be `async`, which can be achieved by nothing more than putting the `async`
 keyword in front of the function declaration.
 
@@ -68,11 +78,38 @@ fp_import! {
 }
 ```
 
-### Generating bindings
+### Using existing Rust types
 
-Finally, to generate bindings based on your protocol, you first need to create a function that will
-generate them for you. Creating this function is easy, because its implementation can be created for
-you using the `fp_bindgen` macro:
+Sometimes you may wish to use Rust types for your protocol that you want to use directly in the
+generated runtime or plugin implementation. In such a case, generation of the data types would be
+a hindrance, rather than an aid, so we allow explicit annotations to achieve this:
+
+**Example:**
+
+```rust
+#[derive(Deserialize, Serialize, Serializable)]
+#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[serde(rename_all = "camelCase")]
+pub struct MyStruct {
+    pub foo: i32,
+    pub bar_qux: String,
+}
+```
+
+In this example, `MyStruct` has a double duty: it acts both as a type definition for the protocol
+(through `fp-bindgen`'s `Serializable` trait), which can still be used for generating a TypeScript
+type definition, for instance. _And_ it acts as a type that can be directly used by the Rust Wasmer
+runtime, under the assumption the runtime can import it from `my_crate::prelude`.
+
+Please note that in this case, you do have a bigger responsibility to make sure the definition
+fulfills the requirements of the code generator, hence why Serde's trait derives and annotations
+have to be added manually here, in accordance with how the generator would otherwise generate them.
+
+## Generating bindings
+
+To generate bindings based on your protocol, you first need to create a function that will generate
+them for you. Creating this function is easy, because its implementation can be created for you
+using the `fp_bindgen` macro:
 
 ```rust
 fn generate_bindings(bindings_type: &str) {
