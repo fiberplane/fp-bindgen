@@ -38,7 +38,7 @@ export type RequestError =
         /**
          * Response body.
          */
-        response: Body
+        response: Body;
     }
     /**
      * Misc.

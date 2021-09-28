@@ -392,7 +392,7 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 format!("return ({}) => {}", args, fn_call.replace("return ", ""))
             } else {
                 format!(
-                    "return ({}) => {{\n{}\n        {}    }};",
+                    "return ({}) => {{\n{}        {}\n    }};",
                     args,
                     join_lines(&export_args, |line| format!("        {}", line)),
                     fn_call
@@ -410,7 +410,7 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 return_fn
             )
             .split('\n')
-            .map(|line| line.to_owned())
+            .map(str::to_owned)
             .collect::<Vec<_>>()
         })
         .collect()
@@ -466,30 +466,36 @@ fn create_enum_definition(
                     if opts.untagged {
                         format!("| {{ {} }}", format_struct_fields(fields).join("; "))
                     } else {
+                        let field_lines = format_struct_fields(fields);
+                        let formatted_fields = if field_lines.len() > fields.len() {
+                            format!(
+                                "\n{}",
+                                join_lines(&field_lines, |line| format!("    {}", line))
+                            )
+                        } else {
+                            format!(" {} ", field_lines.join("").trim_end_matches(';'))
+                        };
+
                         match (&opts.tag_prop_name, &opts.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
-                                    "| {{ {}: \"{}\"; {}: {{ {} }} }}",
-                                    tag,
-                                    variant_name,
-                                    content,
-                                    format_struct_fields(fields).join("; ")
+                                    "| {{ {}: \"{}\"; {}: {{{}}} }}",
+                                    tag, variant_name, content, formatted_fields
                                 )
                             }
                             (Some(tag), None) => {
+                                let space = if formatted_fields.contains('\n') {
+                                    "\n    "
+                                } else {
+                                    " "
+                                };
                                 format!(
-                                    "| {{ {}: \"{}\"; {} }}",
-                                    tag,
-                                    variant_name,
-                                    format_struct_fields(fields).join("; ")
+                                    "| {{{}{}: \"{}\";{}}}",
+                                    space, tag, variant_name, formatted_fields
                                 )
                             }
                             (None, _) => {
-                                format!(
-                                    "| {{ {}: {{ {} }} }}",
-                                    variant_name,
-                                    format_struct_fields(fields).join("; ")
-                                )
+                                format!("| {{ {}: {{{}}} }}", variant_name, formatted_fields)
                             }
                         }
                     }
@@ -530,11 +536,18 @@ fn create_enum_definition(
             };
 
             let lines = if variant.doc_lines.is_empty() {
-                vec![variant_decl]
+                variant_decl
+                    .split('\n')
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
             } else {
-                let mut lines = vec![];
-                lines.append(&mut format_docs(&variant.doc_lines));
-                lines.push(variant_decl);
+                let mut lines = format_docs(&variant.doc_lines);
+                lines.append(
+                    &mut variant_decl
+                        .split('\n')
+                        .map(str::to_owned)
+                        .collect::<Vec<_>>(),
+                );
                 lines
             };
 
@@ -561,11 +574,10 @@ fn create_struct_definition(
         "{}export type {} = {{\n{}}};",
         join_lines(&format_docs(doc_lines), String::to_owned),
         format_name_with_generics(name, generic_args),
-        join_lines(&format_struct_fields(fields), |line| if line.is_empty() {
-            line.clone()
-        } else {
-            format!("    {}", line)
-        })
+        join_lines(&format_struct_fields(fields), |line| format!(
+            "    {}",
+            line
+        ))
         .trim_start_matches('\n')
     )
 }
@@ -692,9 +704,19 @@ fn format_primitive(primitive: Primitive) -> String {
 
 fn join_lines<F>(lines: &[String], formatter: F) -> String
 where
-    F: FnMut(&String) -> String,
+    F: Fn(&String) -> String,
 {
-    let lines = lines.iter().map(formatter).collect::<Vec<_>>().join("\n");
+    let lines = lines
+        .iter()
+        .map(|line| {
+            if line.is_empty() {
+                line.clone()
+            } else {
+                formatter(line)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
     if lines.is_empty() {
         lines
     } else {
