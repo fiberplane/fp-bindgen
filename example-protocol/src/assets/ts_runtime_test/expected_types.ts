@@ -1,4 +1,10 @@
-export type Body = ArrayBuffer;
+// ============================================= //
+// Types for WebAssembly runtime                 //
+//                                               //
+// This file is generated. PLEASE DO NOT MODIFY. //
+// ============================================= //
+
+export type Body = Array<number>;
 
 export type ComplexAlias = ComplexGuestToHost;
 

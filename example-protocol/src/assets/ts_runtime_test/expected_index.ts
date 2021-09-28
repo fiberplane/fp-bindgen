@@ -1,3 +1,9 @@
+// ============================================= //
+// WebAssembly runtime for TypeScript            //
+//                                               //
+// This file is generated. PLEASE DO NOT MODIFY. //
+// ============================================= //
+
 import { encode, decode } from "@msgpack/msgpack";
 
 import type {
@@ -55,15 +61,6 @@ export async function createRuntime(
 ): Promise<Exports> {
     const promises = new Map<FatPtr, (result: unknown) => void>();
 
-    function assignAsyncValue<T>(fatPtr: FatPtr, result: T) {
-        const [ptr, len] = fromFatPtr(fatPtr);
-        const buffer = new Uint32Array(memory.buffer, ptr, len / 4);
-        const [resultPtr, resultLen] = fromFatPtr(serializeObject(result));
-        buffer[1] = resultPtr;
-        buffer[2] = resultLen;
-        buffer[0] = 1; // Set status to ready.
-    }
-
     function createAsyncValue(): FatPtr {
         const len = 12; // std::mem::size_of::<AsyncValue>()
         const fatPtr = malloc(len);
@@ -87,23 +84,13 @@ export async function createRuntime(
         });
     }
 
-    function resolvePromise(ptr: FatPtr) {
-        const resolve = promises.get(ptr);
-        if (resolve) {
-            const [asyncPtr, asyncLen] = fromFatPtr(ptr);
-            const buffer = new Uint32Array(memory.buffer, asyncPtr, asyncLen / 4);
-            switch (buffer[0]) {
-                case 0:
-                    throw new FPRuntimeError("Tried to resolve promise that is not ready");
-                case 1:
-                    resolve(parseObject(toFatPtr(buffer[1]!, buffer[2]!)));
-                    break;
-                default:
-                    throw new FPRuntimeError("Unexpected status: " + buffer[0]);
-            }
-        } else {
+    function resolvePromise(asyncValuePtr: FatPtr, resultPtr: FatPtr) {
+        const resolve = promises.get(asyncValuePtr);
+        if (!resolve) {
             throw new FPRuntimeError("Tried to resolve unknown promise");
         }
+
+        resolve(resultPtr ? parseObject(resultPtr) : undefined);
     }
 
     function serializeObject<T>(object: T): FatPtr {
@@ -131,8 +118,7 @@ export async function createRuntime(
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.makeRequest(opts)
                     .then((result) => {
-                        assignAsyncValue(_async_result_ptr, result);
-                        resolveFuture(_async_result_ptr);
+                        resolveFuture(_async_result_ptr, serializeObject(result));
                     })
                     .catch((error) => {
                         console.error(
@@ -146,8 +132,7 @@ export async function createRuntime(
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.myAsyncImportedFunction()
                     .then((result) => {
-                        assignAsyncValue(_async_result_ptr, result);
-                        resolveFuture(_async_result_ptr);
+                        resolveFuture(_async_result_ptr, serializeObject(result));
                     })
                     .catch((error) => {
                         console.error(
@@ -178,7 +163,7 @@ export async function createRuntime(
     const memory = getExport<WebAssembly.Memory>("memory");
     const malloc = getExport<(len: number) => FatPtr>("__fp_malloc");
     const free = getExport<(ptr: FatPtr) => void>("__fp_free");
-    const resolveFuture = getExport<(ptr: FatPtr) => void>("__fp_guest_resolve_async_value");
+    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>("__fp_guest_resolve_async_value");
 
     return {
         fetchData: (() => {

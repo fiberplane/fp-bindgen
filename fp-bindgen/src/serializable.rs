@@ -53,11 +53,11 @@ where
     T: Serializable,
 {
     fn name() -> String {
-        format!("Option<{}>", T::name())
+        format!("Box<{}>", T::name())
     }
 
     fn ty() -> Type {
-        Type::Container("Option".to_owned(), Box::new(T::ty()))
+        Type::Container("Box".to_owned(), Box::new(T::ty()))
     }
 
     fn dependencies() -> BTreeSet<Type> {
