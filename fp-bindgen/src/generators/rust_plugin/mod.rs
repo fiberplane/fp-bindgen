@@ -4,29 +4,6 @@ use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgumen
 use std::collections::BTreeSet;
 use std::fs;
 
-enum SerializationRequirements {
-    Serialize,
-    Deserialize,
-    Both,
-}
-
-impl SerializationRequirements {
-    pub fn from_sets(
-        ty: &Type,
-        serializable_types: &BTreeSet<Type>,
-        deserializable_types: &BTreeSet<Type>,
-    ) -> Self {
-        let needs_serialization = serializable_types.contains(ty);
-        let needs_deserialization = deserializable_types.contains(ty);
-        match (needs_serialization, needs_deserialization) {
-            (true, true) => SerializationRequirements::Both,
-            (true, false) => SerializationRequirements::Serialize,
-            (false, true) => SerializationRequirements::Deserialize,
-            _ => panic!("Type cannot be (de)serialized: {:?}", ty),
-        }
-    }
-}
-
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
@@ -98,11 +75,11 @@ pub mod prelude {{
 
 pub fn generate_type_bindings(
     serializable_types: BTreeSet<Type>,
-    deserializable_types: BTreeSet<Type>,
+    mut deserializable_types: BTreeSet<Type>,
     path: &str,
 ) {
-    let mut all_types = serializable_types.clone();
-    all_types.append(&mut deserializable_types.clone());
+    let mut all_types = serializable_types;
+    all_types.append(&mut deserializable_types);
 
     let std_types = all_types
         .iter()
@@ -122,11 +99,6 @@ pub fn generate_type_bindings(
     let type_defs = all_types
         .into_iter()
         .filter_map(|ty| {
-            let serde_reqs = SerializationRequirements::from_sets(
-                &ty,
-                &serializable_types,
-                &deserializable_types,
-            );
             match ty {
                 Type::Alias(name, ty) => {
                     Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
@@ -135,21 +107,12 @@ pub fn generate_type_bindings(
                     if name == "Result" {
                         None // No need to define our own.
                     } else {
-                        Some(create_enum_definition(
-                            name,
-                            generic_args,
-                            variants,
-                            &serde_reqs,
-                            opts,
-                        ))
+                        Some(create_enum_definition(name, generic_args, variants, opts))
                     }
                 }
-                Type::Struct(name, generic_args, fields) => Some(create_struct_definition(
-                    name,
-                    generic_args,
-                    fields,
-                    &serde_reqs,
-                )),
+                Type::Struct(name, generic_args, fields) => {
+                    Some(create_struct_definition(name, generic_args, fields))
+                }
                 _ => None,
             }
         })
@@ -517,14 +480,8 @@ fn create_enum_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
     variants: Vec<Variant>,
-    serde_reqs: &SerializationRequirements,
     opts: EnumOptions,
 ) -> String {
-    let derives = match serde_reqs {
-        SerializationRequirements::Serialize => "Serialize",
-        SerializationRequirements::Deserialize => "Deserialize",
-        SerializationRequirements::Both => "Serialize, Deserialize",
-    };
     let variants = variants
         .into_iter()
         .map(|variant| match variant.ty {
@@ -565,12 +522,11 @@ fn create_enum_definition(
         .join("\n");
 
     format!(
-        "#[derive(Clone, Debug, PartialEq, {})]\n\
+        "#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
         #[serde({})]\n\
         pub enum {} {{\n\
             {}\n\
         }}",
-        derives,
         opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
         variants
@@ -581,13 +537,7 @@ fn create_struct_definition(
     name: String,
     generic_args: Vec<GenericArgument>,
     fields: Vec<Field>,
-    serde_reqs: &SerializationRequirements,
 ) -> String {
-    let derives = match serde_reqs {
-        SerializationRequirements::Serialize => "Serialize",
-        SerializationRequirements::Deserialize => "Deserialize",
-        SerializationRequirements::Both => "Serialize, Deserialize",
-    };
     let fields = format_struct_fields(&fields)
         .iter()
         .flat_map(|field| field.split('\n'))
@@ -602,12 +552,11 @@ fn create_struct_definition(
         .join("");
 
     format!(
-        "#[derive(Clone, Debug, PartialEq, {})]\n\
+        "#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
         #[serde(rename_all = \"camelCase\")]\n\
         pub struct {} {{\n\
             {}\
         }}",
-        derives,
         format_name_with_generics(&name, &generic_args),
         fields
     )
