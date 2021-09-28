@@ -34,7 +34,7 @@ pub struct RuntimeInstanceData {
     pub(crate) __fp_free: LazyInit<NativeFunc<FatPtr>>,
 
     #[wasmer(export)]
-    pub(crate) __fp_guest_resolve_async_value: LazyInit<NativeFunc<FatPtr>>,
+    pub(crate) __fp_guest_resolve_async_value: LazyInit<NativeFunc<(FatPtr, FatPtr)>>,
 
     #[wasmer(export)]
     pub(crate) __fp_malloc: LazyInit<NativeFunc<u32, FatPtr>>,

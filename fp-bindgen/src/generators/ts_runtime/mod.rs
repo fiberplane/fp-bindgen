@@ -35,7 +35,13 @@ pub fn generate_bindings(
     let export_wrappers = format_export_wrappers(&export_functions);
 
     let contents = format!(
-        "import {{ encode, decode }} from \"@msgpack/msgpack\";
+        "// ============================================= //
+// WebAssembly runtime for TypeScript            //
+//                                               //
+// This file is generated. PLEASE DO NOT MODIFY. //
+// ============================================= //
+
+import {{ encode, decode }} from \"@msgpack/msgpack\";
 
 import type {{
 {}}} from \"./types\";
@@ -72,15 +78,6 @@ export async function createRuntime(
 ): Promise<Exports> {{
     const promises = new Map<FatPtr, (result: unknown) => void>();
 
-    function assignAsyncValue<T>(fatPtr: FatPtr, result: T) {{
-        const [ptr, len] = fromFatPtr(fatPtr);
-        const buffer = new Uint32Array(memory.buffer, ptr, len / 4);
-        const [resultPtr, resultLen] = fromFatPtr(serializeObject(result));
-        buffer[1] = resultPtr;
-        buffer[2] = resultLen;
-        buffer[0] = 1; // Set status to ready.
-    }}
-
     function createAsyncValue(): FatPtr {{
         const len = 12; // std::mem::size_of::<AsyncValue>()
         const fatPtr = malloc(len);
@@ -104,23 +101,13 @@ export async function createRuntime(
         }});
     }}
 
-    function resolvePromise(ptr: FatPtr) {{
-        const resolve = promises.get(ptr);
-        if (resolve) {{
-            const [asyncPtr, asyncLen] = fromFatPtr(ptr);
-            const buffer = new Uint32Array(memory.buffer, asyncPtr, asyncLen / 4);
-            switch (buffer[0]) {{
-                case 0:
-                    throw new FPRuntimeError(\"Tried to resolve promise that is not ready\");
-                case 1:
-                    resolve(parseObject(toFatPtr(buffer[1]!, buffer[2]!)));
-                    break;
-                default:
-                    throw new FPRuntimeError(\"Unexpected status: \" + buffer[0]);
-            }}
-        }} else {{
+    function resolvePromise(asyncValuePtr: FatPtr, resultPtr: FatPtr) {{
+        const resolve = promises.get(asyncValuePtr);
+        if (!resolve) {{
             throw new FPRuntimeError(\"Tried to resolve unknown promise\");
         }}
+
+        resolve(resultPtr ? parseObject(resultPtr) : undefined);
     }}
 
     function serializeObject<T>(object: T): FatPtr {{
@@ -149,7 +136,7 @@ export async function createRuntime(
     const memory = getExport<WebAssembly.Memory>(\"memory\");
     const malloc = getExport<(len: number) => FatPtr>(\"__fp_malloc\");
     const free = getExport<(ptr: FatPtr) => void>(\"__fp_free\");
-    const resolveFuture = getExport<(ptr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
+    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
 
     return {{
 {}    }};
@@ -258,17 +245,17 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
                 .join(", ");
             if function.is_async {
-                let assign_async_value = match &function.return_type {
-                    Type::Unit => "",
-                    _ => "\n            assignAsyncValue(_async_result_ptr, result);",
+                let async_result = match &function.return_type {
+                    Type::Unit => "0",
+                    _ => "serializeObject(result)",
                 };
 
                 format!(
                     "__fp_gen_{}: ({}){} => {{
 {}    const _async_result_ptr = createAsyncValue();
     importFunctions.{}({})
-        .then((result) => {{{}
-            resolveFuture(_async_result_ptr);
+        .then((result) => {{
+            resolveFuture(_async_result_ptr, {});
         }})
         .catch((error) => {{
             console.error(
@@ -288,7 +275,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                         .join(""),
                     name.to_camel_case(),
                     args,
-                    assign_async_value,
+                    async_result,
                     name
                 )
                 .split('\n')
@@ -439,7 +426,16 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
 
     write_bindings_file(
         format!("{}/types.ts", path),
-        format!("{}\n", type_defs.join("\n\n")),
+        format!(
+            "// ============================================= //
+// Types for WebAssembly runtime                 //
+//                                               //
+// This file is generated. PLEASE DO NOT MODIFY. //
+// ============================================= //
+
+{}\n",
+            type_defs.join("\n\n")
+        ),
     )
 }
 
@@ -618,6 +614,10 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 }
 
 fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+    let format_opts = FormatOptions {
+        optimize_binary_types: true,
+    };
+
     fields
         .iter()
         .flat_map(|field| {
@@ -628,10 +628,14 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                         "{}{}: {};",
                         field.name.to_camel_case(),
                         optional,
-                        format_type(ty)
+                        format_type_with_options(ty, format_opts)
                     )
                 }
-                ty => format!("{}: {};", field.name.to_camel_case(), format_type(ty)),
+                ty => format!(
+                    "{}: {};",
+                    field.name.to_camel_case(),
+                    format_type_with_options(ty, format_opts)
+                ),
             };
             if field.doc_lines.is_empty() {
                 vec![field_decl]
@@ -647,27 +651,51 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
 
 /// Formats a type so it's valid TypeScript.
 fn format_type(ty: &Type) -> String {
+    format_type_with_options(ty, FormatOptions::default())
+}
+
+#[derive(Clone, Copy)]
+struct FormatOptions {
+    optimize_binary_types: bool,
+}
+
+impl Default for FormatOptions {
+    fn default() -> Self {
+        FormatOptions {
+            // We can only optimize in limited contexts, so default is `false`.
+            optimize_binary_types: false,
+        }
+    }
+}
+
+fn format_type_with_options(ty: &Type, opts: FormatOptions) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => {
             if name == "Option" {
-                format!("{} | null", format_type(ty))
+                format!("{} | null", format_type_with_options(ty, opts))
             } else {
-                format_type(ty)
+                format_type_with_options(ty, opts)
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
         Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
-        Type::List(_, ty) => {
-            if ty.as_ref() == &Type::Primitive(Primitive::U8) {
-                // Special case so `Vec<u8>` becomes `ArrayBuffer` in TS:
+        Type::List(name, ty) => {
+            if opts.optimize_binary_types
+                && name == "Vec"
+                && ty.as_ref() == &Type::Primitive(Primitive::U8)
+            {
                 "ArrayBuffer".to_owned()
             } else {
-                format!("Array<{}>", format_type(ty))
+                format!("Array<{}>", format_type_with_options(ty, opts))
             }
         }
-        Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
+        Type::Map(_, k, v) => format!(
+            "Record<{}, {}>",
+            format_type_with_options(k, opts),
+            format_type_with_options(v, opts)
+        ),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
         Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
@@ -692,12 +720,10 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::I16 => "number",
         Primitive::I32 => "number",
         Primitive::I64 => "bigint",
-        Primitive::I128 => "bigint",
         Primitive::U8 => "number",
         Primitive::U16 => "number",
         Primitive::U32 => "number",
         Primitive::U64 => "bigint",
-        Primitive::U128 => "bigint",
     };
     string.to_owned()
 }

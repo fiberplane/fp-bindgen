@@ -2,6 +2,7 @@ use super::support::{from_fat_ptr, to_fat_ptr, FatPtr};
 use once_cell::unsync::Lazy;
 use std::collections::BTreeMap;
 use std::future::Future;
+use std::ptr::{read_volatile, write_volatile};
 use std::task::{Context, Poll, Waker};
 
 static mut WAKERS: Lazy<BTreeMap<FatPtr, Waker>> = Lazy::new(BTreeMap::new);
@@ -46,16 +47,15 @@ impl Future for HostFuture {
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let (ptr, _) = from_fat_ptr(self.ptr);
-        let async_value_ptr = ptr as *const AsyncValue;
-        let status = unsafe { (*async_value_ptr).status };
-        match status {
+        let async_value = unsafe { read_volatile(ptr as *const AsyncValue) };
+        match async_value.status {
             STATUS_PENDING => {
                 unsafe {
                     WAKERS.insert(self.ptr, cx.waker().clone());
                 }
                 Poll::Pending
             }
-            STATUS_READY => Poll::Ready(unsafe { (*async_value_ptr).buffer_ptr() }),
+            STATUS_READY => Poll::Ready(async_value.buffer_ptr()),
             status => panic!("Unexpected status: {}", status),
         }
     }
@@ -63,9 +63,21 @@ impl Future for HostFuture {
 
 #[doc(hidden)]
 #[no_mangle]
-pub fn __fp_guest_resolve_async_value(async_value_ptr: FatPtr) {
+pub fn __fp_guest_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr) {
     unsafe {
         if let Some(waker) = WAKERS.remove(&async_value_ptr) {
+            // First assign the result ptr and mark the async value as ready:
+            let (ptr, len) = from_fat_ptr(result_ptr);
+            let (async_value_ptr, _) = from_fat_ptr(async_value_ptr);
+            write_volatile(
+                async_value_ptr as *mut AsyncValue,
+                AsyncValue {
+                    status: STATUS_READY,
+                    ptr: ptr as u32,
+                    len,
+                },
+            );
+
             waker.wake();
         }
     }

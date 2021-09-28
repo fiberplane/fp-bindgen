@@ -341,26 +341,22 @@ pub fn generate_function_bindings(
                     _ => format!("    let ret = {}({}).await;", name, args),
                 });
 
-                async_body.push("    unsafe {".to_owned());
+                let result_ptr = if has_return_value {
+                    format!(
+                        "export_value_to_host::<{}>(&ret)",
+                        format_type(&function.return_type)
+                    )
+                } else {
+                    "0".to_owned()
+                };
 
                 // If there is a return type, put the result in the `AsyncValue`
                 // referenced by `ptr`:
-                if has_return_value {
-                    async_body.append(&mut vec![
-                        "        let (result_ptr, result_len) =".to_owned(),
-                        format!(
-                            "           from_fat_ptr(export_value_to_host::<{}>(&ret));",
-                            format_type(&function.return_type)
-                        ),
-                        "        (*ptr).ptr = result_ptr as u32;".to_owned(),
-                        "        (*ptr).len = result_len;".to_owned(),
-                    ]);
-                }
-
                 async_body.append(&mut vec![
                     // We're done, notify the host:
-                    "        (*ptr).status = 1;".to_owned(), // 1 = STATUS_READY
-                    "        __fp_host_resolve_async_value(fat_ptr);".to_owned(),
+                    "    unsafe {".to_owned(),
+                    format!("        let result_ptr = {};", result_ptr),
+                    "        __fp_host_resolve_async_value(fat_ptr, result_ptr);".to_owned(),
                     "    }".to_owned(),
                     "}));".to_owned(),
                     "".to_owned(),
@@ -448,7 +444,7 @@ pub fn generate_function_bindings(
             },
             extern_decls,
             if requires_async {
-                "\n    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);\n"
+                "\n    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr);\n"
             } else {
                 ""
             },
@@ -533,13 +529,24 @@ fn create_enum_definition(
         .map(|variant| match variant.ty {
             Type::Unit => format!("    {},", variant.name),
             Type::Struct(_, _, _, fields) => {
-                let fields = fields
-                    .iter()
-                    .map(|field| format!("{}: {}", field.name, format_type(&field.ty)))
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let fields = format_struct_fields(&fields);
+                let has_annotations = fields.iter().any(|field| field.contains('\n'));
+                let fields = if has_annotations {
+                    format!(
+                        "\n{}    ",
+                        fields
+                            .iter()
+                            .flat_map(|field| field.split('\n'))
+                            .map(|line| format!("        {}\n", line))
+                            .collect::<Vec<_>>()
+                            .join("")
+                    )
+                } else {
+                    let fields = fields.join(" ");
+                    format!(" {} ", &fields[0..fields.len() - 1])
+                };
                 format!(
-                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{ {} }},",
+                    "    #[serde(rename_all = \"camelCase\")]\n    {} {{{}}},",
                     variant.name, fields
                 )
             }
@@ -582,30 +589,24 @@ fn create_struct_definition(
         SerializationRequirements::Deserialize => "Deserialize",
         SerializationRequirements::Both => "Serialize, Deserialize",
     };
-    let fields = fields
-        .into_iter()
-        .map(|field| {
-            let skip = if matches!(&field.ty, Type::Enum(name, _, _, _, _) if name == "Option") {
-                "    #[serde(skip_serializing_if = \"Option::is_none\")]\n"
-            } else {
-                ""
-            };
-
+    let fields = format_struct_fields(&fields)
+        .iter()
+        .flat_map(|field| field.split('\n'))
+        .map(|line| {
             format!(
-                "{}    pub {}: {},",
-                skip,
-                field.name,
-                format_type(&field.ty)
+                "    {}{}\n",
+                if line.starts_with('#') { "" } else { "pub " },
+                line
             )
         })
         .collect::<Vec<_>>()
-        .join("\n");
+        .join("");
 
     format!(
         "{}#[derive(Clone, Debug, PartialEq, {})]\n\
         #[serde(rename_all = \"camelCase\")]\n\
         pub struct {} {{\n\
-            {}\n\
+            {}\
         }}",
         format_docs(doc_lines, FormatDocsOptions::with_indent(0)),
         derives,
@@ -651,6 +652,30 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
     }
 }
 
+fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+    fields
+        .iter()
+        .map(|field| {
+            let mut serde_attrs = vec![];
+            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
+                serde_attrs.push("skip_serializing_if = \"Option::is_none\"");
+            }
+
+            if is_binary_type(&field.ty) {
+                serde_attrs.push("with = \"serde_bytes\"");
+            }
+
+            let annotations = if serde_attrs.is_empty() {
+                "".to_owned()
+            } else {
+                format!("#[serde({})]\n", serde_attrs.join(", "))
+            };
+
+            format!("{}{}: {},", annotations, field.name, format_type(&field.ty))
+        })
+        .collect()
+}
+
 /// Formats a type so it's valid Rust again.
 pub fn format_type(ty: &Type) -> String {
     match ty {
@@ -685,14 +710,25 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::I16 => "i16",
         Primitive::I32 => "i32",
         Primitive::I64 => "i64",
-        Primitive::I128 => "i128",
         Primitive::U8 => "u8",
         Primitive::U16 => "u16",
         Primitive::U32 => "u32",
         Primitive::U64 => "u64",
-        Primitive::U128 => "u128",
     };
     string.to_owned()
+}
+
+/// Detects types that can be encoded as a binary blob.
+fn is_binary_type(ty: &Type) -> bool {
+    match ty {
+        Type::List(name, ty) if name == "Vec" && ty.as_ref() == &Type::Primitive(Primitive::U8) => {
+            true
+        }
+        Type::Container(name, ty) if (name == "Box" || name == "Option") => {
+            is_binary_type(ty.as_ref())
+        }
+        _ => false,
+    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

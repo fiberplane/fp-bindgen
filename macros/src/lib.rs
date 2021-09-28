@@ -288,12 +288,10 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
         Primitive::I16,
         Primitive::I32,
         Primitive::I64,
-        Primitive::I128,
         Primitive::U8,
         Primitive::U16,
         Primitive::U32,
         Primitive::U64,
-        Primitive::U128,
     ];
 
     let mut token_stream = TokenStream::new();
