@@ -343,26 +343,22 @@ pub fn generate_function_bindings(
                     _ => format!("    let ret = {}({}).await;", name, args),
                 });
 
-                async_body.push("    unsafe {".to_owned());
+                let result_ptr = if has_return_value {
+                    format!(
+                        "export_value_to_host::<{}>(&ret)",
+                        format_type(&function.return_type)
+                    )
+                } else {
+                    "0".to_owned()
+                };
 
                 // If there is a return type, put the result in the `AsyncValue`
                 // referenced by `ptr`:
-                if has_return_value {
-                    async_body.append(&mut vec![
-                        "        let (result_ptr, result_len) =".to_owned(),
-                        format!(
-                            "           from_fat_ptr(export_value_to_host::<{}>(&ret));",
-                            format_type(&function.return_type)
-                        ),
-                        "        (*ptr).ptr = result_ptr as u32;".to_owned(),
-                        "        (*ptr).len = result_len;".to_owned(),
-                    ]);
-                }
-
                 async_body.append(&mut vec![
                     // We're done, notify the host:
-                    "        (*ptr).status = 1;".to_owned(), // 1 = STATUS_READY
-                    "        __fp_host_resolve_async_value(fat_ptr);".to_owned(),
+                    "    unsafe {".to_owned(),
+                    format!("        let result_ptr = {};", result_ptr),
+                    "        __fp_host_resolve_async_value(fat_ptr, result_ptr);".to_owned(),
                     "    }".to_owned(),
                     "}));".to_owned(),
                     "".to_owned(),
@@ -450,7 +446,7 @@ pub fn generate_function_bindings(
             },
             extern_decls,
             if requires_async {
-                "\n    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr);\n"
+                "\n    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr);\n"
             } else {
                 ""
             },
@@ -694,12 +690,10 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::I16 => "i16",
         Primitive::I32 => "i32",
         Primitive::I64 => "i64",
-        Primitive::I128 => "i128",
         Primitive::U8 => "u8",
         Primitive::U16 => "u16",
         Primitive::U32 => "u32",
         Primitive::U64 => "u64",
-        Primitive::U128 => "u128",
     };
     string.to_owned()
 }

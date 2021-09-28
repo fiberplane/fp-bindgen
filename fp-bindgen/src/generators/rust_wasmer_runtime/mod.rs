@@ -218,12 +218,10 @@ pub fn generate_function_bindings(
                             I16 => "Value::I32(v) => v as i16",
                             I32 => "Value::I32(v) => v",
                             I64 => "Value::I64(v) => v",
-                            I128 => "Value::V128(v) => unsafe { std::mem::transmute(v) }",
                             U8 => "Value::I32(v) => v as u8",
                             U16 => "Value::I32(v) => v as u16",
                             U32 => "Value::I32(v) => unsafe { std::mem::transmute(v) }",
                             U64 => "Value::I64(v) => unsafe { std::mem::transmute(v) }",
-                            U128 => "Value::V128(v) => v",
                         };
 
                         format!(

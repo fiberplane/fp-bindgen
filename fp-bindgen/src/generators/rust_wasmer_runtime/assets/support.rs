@@ -57,6 +57,11 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
 fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+    if fat_ptr == 0 {
+        // This may happen with async calls that don't return a result:
+        return Vec::new();
+    }
+
     let memory = unsafe { env.memory.get_unchecked() };
 
     let (ptr, len) = to_wasm_ptr::<u8>(fat_ptr);
@@ -173,9 +178,6 @@ where
         let (async_ptr, async_len) = to_wasm_ptr(ptr);
         let values = async_ptr.deref(memory, 0, async_len).unwrap();
 
-        let result_ptr = values[1].get();
-        let result_len = values[2].get();
-
         match values[0].get() {
             FUTURE_STATUS_PENDING => {
                 let mut wakers = self.env.wakers.lock().unwrap();
@@ -183,6 +185,8 @@ where
                 Poll::Pending
             }
             FUTURE_STATUS_READY => {
+                let result_ptr = values[1].get();
+                let result_len = values[2].get();
                 let result = import_from_guest(&self.env, to_fat_ptr(result_ptr, result_len));
                 Poll::Ready(result)
             }
@@ -195,14 +199,30 @@ where
 /// want to deserialize it (which would actually free it as well).
 /// This function also doesn't call another function since everything is
 /// contained in the env object.
-pub(crate) fn resolve_async_value(env: &RuntimeInstanceData, ptr: FatPtr) {
+pub(crate) fn resolve_async_value(
+    env: &RuntimeInstanceData,
+    async_value_ptr: FatPtr,
+    result_ptr: FatPtr,
+) {
     let waker = {
         let mut wakers = env.wakers.lock().unwrap();
-        wakers.remove(&ptr)
+        wakers.remove(&async_value_ptr)
     };
 
     match waker {
-        Some(waker) => waker.wake_by_ref(),
+        Some(waker) => {
+            // First assign the result ptr and mark the async value as ready:
+            let memory = unsafe { env.memory.get_unchecked() };
+            let (async_ptr, async_len) = to_wasm_ptr(async_value_ptr);
+            let (result_ptr, result_len) = from_fat_ptr(result_ptr);
+            let values = async_ptr.deref(memory, 0, async_len).unwrap();
+
+            values[1].set(result_ptr);
+            values[2].set(result_len);
+            values[0].set(FUTURE_STATUS_READY);
+
+            waker.wake_by_ref()
+        }
         None => panic!("unknown async value"),
     }
 }

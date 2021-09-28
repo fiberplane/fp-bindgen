@@ -13,12 +13,10 @@ pub enum Primitive {
     I16,
     I32,
     I64,
-    I128,
     U8,
     U16,
     U32,
     U64,
-    U128,
 }
 
 impl Primitive {
@@ -58,12 +56,10 @@ impl Primitive {
             I16 => "i16",
             I32 => "i32",
             I64 => "i64",
-            I128 => "i128",
             U8 => "u8",
             U16 => "u16",
             U32 => "u32",
             U64 => "u64",
-            U128 => "u128",
         };
         Type::Path(parse_str(string))
     }
@@ -80,12 +76,10 @@ impl ToTokens for Primitive {
             I16 => "I16",
             I32 => "I32",
             I64 => "I64",
-            I128 => "I128",
             U8 => "U8",
             U16 => "U16",
             U32 => "U32",
             U64 => "U64",
-            U128 => "U128",
         };
         let ident = Ident::new(ident_str, Span::call_site());
         tokens.extend(vec![TokenTree::Ident(ident)].into_iter());
