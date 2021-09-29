@@ -3,7 +3,7 @@ use super::{
     structs::{Field, StructOptions},
     GenericArgument, Type,
 };
-use crate::casing::Casing;
+use crate::{casing::Casing, docs::get_doc_lines};
 use quote::ToTokens;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -28,6 +28,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
             _ => None,
         })
         .collect();
+    let doc_lines = get_doc_lines(&item.attrs);
     let variants = item
         .variants
         .iter()
@@ -55,10 +56,21 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                         let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
                             panic!("Unresolvable variant field type: {:?}", field.ty)
                         });
-                        Field { name, ty }
+                        let doc_lines = get_doc_lines(&field.attrs);
+                        Field {
+                            name,
+                            ty,
+                            doc_lines,
+                        }
                     })
                     .collect();
-                Type::Struct(name.clone(), vec![], fields, StructOptions::default())
+                Type::Struct(
+                    name.clone(),
+                    vec![],
+                    vec![],
+                    fields,
+                    StructOptions::default(),
+                )
             } else {
                 let item_types = variant
                     .fields
@@ -71,12 +83,17 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                     .collect();
                 Type::Tuple(item_types)
             };
+            let doc_lines = get_doc_lines(&variant.attrs);
 
-            Variant { name, ty }
+            Variant {
+                name,
+                ty,
+                doc_lines,
+            }
         })
         .collect();
     let opts = EnumOptions::from_attrs(&item.attrs);
-    Type::Enum(name, generic_args, variants, opts)
+    Type::Enum(name, generic_args, doc_lines, variants, opts)
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -243,4 +260,5 @@ impl Parse for EnumOptions {
 pub struct Variant {
     pub name: String,
     pub ty: Type,
+    pub doc_lines: Vec<String>,
 }

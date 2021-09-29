@@ -16,6 +16,8 @@ pub struct ComplexGuestToHost {
     pub map: BTreeMap<String, Simple>,
 }
 
+/// Multi-line doc comment with complex characters
+/// & " , \ ! '
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
@@ -23,15 +25,24 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
 }
 
+/// Represents an error with the request.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RequestError {
+    /// Used when we know we don't have an active network connection.
     Offline,
     NoRoute,
     ConnectionRefused,
     Timeout,
     #[serde(rename_all = "camelCase")]
-    ServerError { status_code: u16, response: Body },
+    ServerError {
+        /// HTTP status code.
+        status_code: u16,
+
+        /// Response body.
+        response: Body,
+    },
+    /// Misc.
     #[serde(rename_all = "camelCase")]
     Other { reason: String },
 }

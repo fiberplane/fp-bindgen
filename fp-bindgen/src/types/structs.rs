@@ -1,5 +1,5 @@
 use super::{resolve_type, GenericArgument, Type};
-use crate::casing::Casing;
+use crate::{casing::Casing, docs::get_doc_lines};
 use quote::ToTokens;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -24,6 +24,7 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
             _ => None,
         })
         .collect();
+    let doc_lines = get_doc_lines(&item.attrs);
     let fields = item
         .fields
         .iter()
@@ -35,11 +36,16 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
                 .to_string();
             let ty = resolve_type(&field.ty, dependencies)
                 .unwrap_or_else(|| panic!("Unresolvable field type: {:?}", field.ty));
-            Field { name, ty }
+            let doc_lines = get_doc_lines(&field.attrs);
+            Field {
+                name,
+                ty,
+                doc_lines,
+            }
         })
         .collect();
     let opts = StructOptions::from_attrs(&item.attrs);
-    Type::Struct(name, generic_args, fields, opts)
+    Type::Struct(name, generic_args, doc_lines, fields, opts)
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -157,4 +163,5 @@ impl Parse for StructOptions {
 pub struct Field {
     pub name: String,
     pub ty: Type,
+    pub doc_lines: Vec<String>,
 }

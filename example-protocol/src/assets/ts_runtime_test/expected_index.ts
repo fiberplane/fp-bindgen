@@ -169,7 +169,7 @@ export async function createRuntime(
         fetchData: (() => {
             const export_fn = instance.exports.__fp_gen_fetch_data as any;
             if (!export_fn) return;
-        
+
             return (url: string) => {
                 const url_ptr = serializeObject(url);
                 return promiseFromPtr<string>(export_fn(url_ptr));
@@ -178,13 +178,13 @@ export async function createRuntime(
         myAsyncExportedFunction: (() => {
             const export_fn = instance.exports.__fp_gen_my_async_exported_function as any;
             if (!export_fn) return;
-        
+
             return () => promiseFromPtr<ComplexGuestToHost>(export_fn());
         })(),
         myComplexExportedFunction: (() => {
             const export_fn = instance.exports.__fp_gen_my_complex_exported_function as any;
             if (!export_fn) return;
-        
+
             return (a: ComplexHostToGuest) => {
                 const a_ptr = serializeObject(a);
                 return parseObject<ComplexAlias>(export_fn(a_ptr));

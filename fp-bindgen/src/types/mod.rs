@@ -21,13 +21,25 @@ pub enum Type {
     Alias(String, Box<Type>),
     Container(String, Box<Type>),
     Custom(CustomType),
-    Enum(String, Vec<GenericArgument>, Vec<Variant>, EnumOptions),
+    Enum(
+        String,
+        Vec<GenericArgument>,
+        Vec<String>,
+        Vec<Variant>,
+        EnumOptions,
+    ),
     GenericArgument(Box<GenericArgument>),
     List(String, Box<Type>),
     Map(String, Box<Type>, Box<Type>),
     Primitive(Primitive),
     String,
-    Struct(String, Vec<GenericArgument>, Vec<Field>, StructOptions),
+    Struct(
+        String,
+        Vec<GenericArgument>,
+        Vec<String>,
+        Vec<Field>,
+        StructOptions,
+    ),
     Tuple(Vec<Type>),
     Unit,
 }
@@ -50,13 +62,13 @@ impl Type {
             Self::Alias(name, _) => name.clone(),
             Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Custom(custom) => custom.rs_ty.clone(),
-            Self::Enum(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+            Self::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
-            Self::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+            Self::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
             Self::Tuple(items) => format!(
                 "({})",
                 items
@@ -177,7 +189,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         Type::Custom(custom) => {
                             custom.name == path_without_args && custom.type_args == type_args
                         }
-                        Type::Enum(name, generic_args, _, _) => {
+                        Type::Enum(name, generic_args, _, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()
@@ -208,7 +220,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,
                         Type::String => path_without_args == "String",
-                        Type::Struct(name, generic_args, _, _) => {
+                        Type::Struct(name, generic_args, _, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()
