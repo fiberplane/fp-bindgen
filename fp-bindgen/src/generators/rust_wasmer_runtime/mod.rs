@@ -17,7 +17,12 @@ pub fn generate_bindings(
 
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:
-    generate_type_bindings(deserializable_types, serializable_types, &spec_path);
+    generate_type_bindings(
+        deserializable_types,
+        serializable_types,
+        &spec_path,
+        "rust_wasmer_runtime",
+    );
 
     generate_function_bindings(import_functions, export_functions, &spec_path);
 

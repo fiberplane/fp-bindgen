@@ -1,6 +1,8 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
+use crate::types::{
+    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+};
 use inflector::Inflector;
 use std::collections::BTreeSet;
 use std::fs;
@@ -25,7 +27,7 @@ pub fn generate_bindings(
         .filter_map(|ty| match ty {
             Type::Alias(name, _) => Some(name),
             Type::Enum(name, _, _, _) => Some(name),
-            Type::Struct(name, _, _) => Some(name),
+            Type::Struct(name, _, _, _) => Some(name),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -423,9 +425,12 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
                 variants,
                 opts.clone(),
             )),
-            Type::Struct(name, generic_args, fields) => {
-                Some(create_struct_definition(name, generic_args, fields))
-            }
+            Type::Struct(name, generic_args, fields, opts) => Some(create_struct_definition(
+                name,
+                generic_args,
+                fields,
+                opts.clone(),
+            )),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -464,7 +469,7 @@ fn create_enum_definition(
                         format!("    | \"{}\"", variant_name)
                     }
                 }
-                Type::Struct(_, _, fields) => {
+                Type::Struct(_, _, fields, _) => {
                     if opts.untagged {
                         format!("    | {{ {} }}", format_struct_fields(fields).join("; "))
                     } else {
@@ -545,6 +550,7 @@ fn create_struct_definition(
     name: &str,
     generic_args: &[GenericArgument],
     fields: &[Field],
+    _: StructOptions,
 ) -> String {
     format!(
         "export type {} = {{\n{}\n}};",
@@ -650,7 +656,7 @@ fn format_type_with_options(ty: &Type, opts: FormatOptions) -> String {
         ),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
-        Type::Struct(name, generic_args, _) => format_name_with_types(name, generic_args),
+        Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
             items
