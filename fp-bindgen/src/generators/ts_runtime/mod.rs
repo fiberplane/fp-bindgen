@@ -1,6 +1,8 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
+use crate::types::{
+    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+};
 use inflector::Inflector;
 use std::collections::BTreeSet;
 use std::fs;
@@ -25,7 +27,7 @@ pub fn generate_bindings(
         .filter_map(|ty| match ty {
             Type::Alias(name, _) => Some(name),
             Type::Enum(name, _, _, _, _) => Some(name),
-            Type::Struct(name, _, _, _) => Some(name),
+            Type::Struct(name, _, _, _, _) => Some(name),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -404,24 +406,23 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
 }
 
 fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let mut type_defs =
-        types
-            .iter()
-            .filter_map(|ty| match ty {
-                Type::Alias(name, ty) => Some(format!(
-                    "export type {} = {};",
-                    name,
-                    format_type(ty.as_ref())
-                )),
-                Type::Enum(name, generic_args, doc_lines, variants, opts) => Some(
-                    create_enum_definition(name, generic_args, doc_lines, variants, opts.clone()),
-                ),
-                Type::Struct(name, generic_args, doc_lines, fields) => Some(
-                    create_struct_definition(name, generic_args, doc_lines, fields),
-                ),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
+    let mut type_defs = types
+        .iter()
+        .filter_map(|ty| match ty {
+            Type::Alias(name, ty) => Some(format!(
+                "export type {} = {};",
+                name,
+                format_type(ty.as_ref())
+            )),
+            Type::Enum(name, generic_args, doc_lines, variants, opts) => Some(
+                create_enum_definition(name, generic_args, doc_lines, variants, opts.clone()),
+            ),
+            Type::Struct(name, generic_args, doc_lines, fields, opts) => Some(
+                create_struct_definition(name, generic_args, doc_lines, fields, opts.clone()),
+            ),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
     type_defs.dedup();
 
     write_bindings_file(
@@ -458,7 +459,7 @@ fn create_enum_definition(
                         format!("| \"{}\"", variant_name)
                     }
                 }
-                Type::Struct(_, _, _, fields) => {
+                Type::Struct(_, _, _, fields, _) => {
                     if opts.untagged {
                         format!("| {{ {} }}", format_struct_fields(fields).join("; "))
                     } else {
@@ -565,6 +566,7 @@ fn create_struct_definition(
     generic_args: &[GenericArgument],
     doc_lines: &[String],
     fields: &[Field],
+    _: StructOptions,
 ) -> String {
     format!(
         "{}export type {} = {{\n{}}};",
@@ -698,7 +700,7 @@ fn format_type_with_options(ty: &Type, opts: FormatOptions) -> String {
         ),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
-        Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+        Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
             items

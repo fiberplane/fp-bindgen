@@ -1,10 +1,12 @@
-use crate::{casing::Casing, docs::get_doc_lines, primitives::Primitive};
-use quote::ToTokens;
-use std::{collections::BTreeSet, convert::TryFrom, str::FromStr};
-use syn::{
-    ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
-    Ident, Item, ItemEnum, ItemStruct, LitStr, PathArguments, Result, Token,
-};
+use crate::primitives::Primitive;
+use std::{collections::BTreeSet, str::FromStr};
+use syn::{Item, PathArguments};
+
+mod enums;
+mod structs;
+
+pub use enums::{EnumOptions, Variant};
+pub use structs::{Field, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
@@ -31,7 +33,13 @@ pub enum Type {
     Map(String, Box<Type>, Box<Type>),
     Primitive(Primitive),
     String,
-    Struct(String, Vec<GenericArgument>, Vec<String>, Vec<Field>),
+    Struct(
+        String,
+        Vec<GenericArgument>,
+        Vec<String>,
+        Vec<Field>,
+        StructOptions,
+    ),
     Tuple(Vec<Type>),
     Unit,
 }
@@ -40,8 +48,8 @@ impl Type {
     pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
         let item = syn::parse_str::<Item>(item_str).unwrap();
         match item {
-            Item::Enum(item) => parse_enum_item(item, dependencies),
-            Item::Struct(item) => parse_struct_item(item, dependencies),
+            Item::Enum(item) => enums::parse_enum_item(item, dependencies),
+            Item::Struct(item) => structs::parse_struct_item(item, dependencies),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item
@@ -60,7 +68,7 @@ impl Type {
             Self::Map(name, key, value) => format!("{}<{}, {}>", name, key.name(), value.name()),
             Self::Primitive(primitive) => primitive.name(),
             Self::String => "String".to_owned(),
-            Self::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+            Self::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
             Self::Tuple(items) => format!(
                 "({})",
                 items
@@ -101,113 +109,6 @@ pub struct CustomType {
     pub ts_ty: String,
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct EnumOptions {
-    pub variant_casing: Casing,
-    pub content_prop_name: Option<String>,
-    pub tag_prop_name: Option<String>,
-    pub untagged: bool,
-}
-
-impl EnumOptions {
-    pub fn to_serde_attrs(&self) -> Vec<String> {
-        let mut serde_attrs = vec![];
-        if self.untagged {
-            serde_attrs.push("untagged".to_owned());
-        } else {
-            if let Some(prop_name) = &self.tag_prop_name {
-                serde_attrs.push(format!("tag = \"{}\"", prop_name));
-
-                if let Some(prop_name) = &self.content_prop_name {
-                    serde_attrs.push(format!("content = \"{}\"", prop_name));
-                }
-            }
-            if let Some(casing) = &self.variant_casing.as_maybe_str() {
-                serde_attrs.push(format!("rename_all = \"{}\"", casing));
-            }
-        }
-        serde_attrs
-    }
-}
-
-impl Parse for EnumOptions {
-    fn parse(input: ParseStream) -> Result<Self> {
-        let content;
-        parenthesized!(content in input);
-
-        let mut result = Self::default();
-        loop {
-            let key: Ident = content.call(IdentExt::parse_any)?;
-            match &*key.to_string() {
-                "content" => {
-                    content.parse::<Token![=]>()?;
-                    result.content_prop_name = Some(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"')
-                            .to_owned(),
-                    );
-                }
-                "tag" => {
-                    content.parse::<Token![=]>()?;
-                    result.tag_prop_name = Some(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"')
-                            .to_owned(),
-                    );
-                }
-                "rename_all" => {
-                    content.parse::<Token![=]>()?;
-                    result.variant_casing = Casing::try_from(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"'),
-                    )
-                    .map_err(|err| Error::new(content.span(), err))?;
-                }
-                "untagged" => {
-                    result.untagged = true;
-                }
-                other => {
-                    return Err(Error::new(
-                        content.span(),
-                        format!("Unexpected attribute: {}", other),
-                    ))
-                }
-            }
-
-            if content.is_empty() {
-                break;
-            }
-
-            content.parse::<Token![,]>()?;
-        }
-
-        Ok(result)
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Field {
-    pub name: String,
-    pub ty: Type,
-    pub doc_lines: Vec<String>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Variant {
-    pub name: String,
-    pub ty: Type,
-    pub doc_lines: Vec<String>,
-}
-
 pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -> String {
     if generic_args.is_empty() {
         name.to_owned()
@@ -241,129 +142,6 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
                 .join(", ")
         )
     }
-}
-
-fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
-    let name = item.ident.to_string();
-    let generic_args = item
-        .generics
-        .params
-        .iter()
-        .filter_map(|param| match param {
-            GenericParam::Type(ty) => Some(GenericArgument {
-                name: ty.ident.to_string(),
-                ty: None,
-            }),
-            _ => None,
-        })
-        .collect();
-    let doc_lines = get_doc_lines(&item.attrs);
-    let variants = item
-        .variants
-        .iter()
-        .map(|variant| {
-            if variant.discriminant.is_some() {
-                panic!(
-                    "Discriminants in enum variants are not supported. Found: {:?}",
-                    item
-                );
-            }
-
-            let name = variant.ident.to_string();
-            let ty = if variant.fields.is_empty() {
-                Type::Unit
-            } else if variant.fields.iter().any(|field| field.ident.is_some()) {
-                let fields = variant
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        let name = field
-                            .ident
-                            .as_ref()
-                            .expect("Expected all enum variant fields to be named")
-                            .to_string();
-                        let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
-                            panic!("Unresolvable variant field type: {:?}", field.ty)
-                        });
-                        let doc_lines = get_doc_lines(&field.attrs);
-                        Field {
-                            name,
-                            ty,
-                            doc_lines,
-                        }
-                    })
-                    .collect();
-                Type::Struct(name.clone(), vec![], vec![], fields)
-            } else {
-                let item_types = variant
-                    .fields
-                    .iter()
-                    .map(|field| {
-                        resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
-                            panic!("Unresolvable variant item type: {:?}", field.ty)
-                        })
-                    })
-                    .collect();
-                Type::Tuple(item_types)
-            };
-            let doc_lines = get_doc_lines(&variant.attrs);
-
-            Variant {
-                name,
-                ty,
-                doc_lines,
-            }
-        })
-        .collect();
-    let opts = parse_enum_options(&item.attrs);
-    Type::Enum(name, generic_args, doc_lines, variants, opts)
-}
-
-fn parse_enum_options(attrs: &[Attribute]) -> EnumOptions {
-    attrs
-        .iter()
-        .find(|attr| attr.path.is_ident("fp") || attr.path.is_ident("serde"))
-        .map(|attr| {
-            syn::parse2::<EnumOptions>(attr.tokens.clone()).expect("Could not parse attributes")
-        })
-        .unwrap_or_else(EnumOptions::default)
-}
-
-fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
-    let name = item.ident.to_string();
-    let generic_args = item
-        .generics
-        .params
-        .into_iter()
-        .filter_map(|param| match param {
-            GenericParam::Type(ty) => Some(GenericArgument {
-                name: ty.ident.to_string(),
-                ty: None,
-            }),
-            _ => None,
-        })
-        .collect();
-    let doc_lines = get_doc_lines(&item.attrs);
-    let fields = item
-        .fields
-        .iter()
-        .map(|field| {
-            let name = field
-                .ident
-                .as_ref()
-                .expect("Struct fields must be named")
-                .to_string();
-            let ty = resolve_type(&field.ty, dependencies)
-                .unwrap_or_else(|| panic!("Unresolvable field type: {:?}", field.ty));
-            let doc_lines = get_doc_lines(&field.attrs);
-            Field {
-                name,
-                ty,
-                doc_lines,
-            }
-        })
-        .collect();
-    Type::Struct(name, generic_args, doc_lines, fields)
 }
 
 /// Resolves a type based on its type path and a set of user-defined types to match against.
@@ -442,7 +220,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         }
                         Type::Primitive(primitive) => primitive.name() == path_without_args,
                         Type::String => path_without_args == "String",
-                        Type::Struct(name, generic_args, _, _) => {
+                        Type::Struct(name, generic_args, _, _, _) => {
                             name == &path_without_args
                                 && generic_args
                                     .iter()

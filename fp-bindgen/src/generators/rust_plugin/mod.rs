@@ -1,31 +1,10 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{format_name_with_generics, EnumOptions, Field, GenericArgument, Type, Variant};
+use crate::types::{
+    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+};
 use std::collections::BTreeSet;
 use std::fs;
-
-enum SerializationRequirements {
-    Serialize,
-    Deserialize,
-    Both,
-}
-
-impl SerializationRequirements {
-    pub fn from_sets(
-        ty: &Type,
-        serializable_types: &BTreeSet<Type>,
-        deserializable_types: &BTreeSet<Type>,
-    ) -> Self {
-        let needs_serialization = serializable_types.contains(ty);
-        let needs_deserialization = deserializable_types.contains(ty);
-        match (needs_serialization, needs_deserialization) {
-            (true, true) => SerializationRequirements::Both,
-            (true, false) => SerializationRequirements::Serialize,
-            (false, true) => SerializationRequirements::Deserialize,
-            _ => panic!("Type cannot be (de)serialized: {:?}", ty),
-        }
-    }
-}
 
 pub fn generate_bindings(
     import_functions: FunctionList,
@@ -36,7 +15,12 @@ pub fn generate_bindings(
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
-    generate_type_bindings(serializable_types, deserializable_types, path);
+    generate_type_bindings(
+        serializable_types,
+        deserializable_types,
+        path,
+        "rust_plugin",
+    );
     generate_function_bindings(import_functions, export_functions, path, requires_async);
 
     write_bindings_file(
@@ -98,11 +82,12 @@ pub mod prelude {{
 
 pub fn generate_type_bindings(
     serializable_types: BTreeSet<Type>,
-    deserializable_types: BTreeSet<Type>,
+    mut deserializable_types: BTreeSet<Type>,
     path: &str,
+    module_key: &str,
 ) {
-    let mut all_types = serializable_types.clone();
-    all_types.append(&mut deserializable_types.clone());
+    let mut all_types = serializable_types;
+    all_types.append(&mut deserializable_types);
 
     let std_types = all_types
         .iter()
@@ -119,37 +104,59 @@ pub fn generate_type_bindings(
         )
     };
 
+    let type_imports = all_types
+        .iter()
+        .filter_map(|ty| {
+            let (name, native_modules) = match ty {
+                Type::Enum(name, _, _, _, opts) => (name, &opts.native_modules),
+                Type::Struct(name, _, _, _, opts) => (name, &opts.native_modules),
+                _ => return None,
+            };
+            native_modules
+                .get(module_key)
+                .map(|module| format!("pub use {}::{};", module, name))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let type_imports = if type_imports.is_empty() {
+        type_imports
+    } else {
+        format!("{}\n\n", type_imports)
+    };
+
     let type_defs = all_types
         .into_iter()
-        .filter_map(|ty| {
-            let serde_reqs = SerializationRequirements::from_sets(
-                &ty,
-                &serializable_types,
-                &deserializable_types,
-            );
-            match ty {
-                Type::Alias(name, ty) => {
-                    Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
-                }
-                Type::Enum(name, generic_args, doc_lines, variants, opts) => {
-                    if name == "Result" {
-                        None // No need to define our own.
-                    } else {
-                        Some(create_enum_definition(
-                            name,
-                            generic_args,
-                            &doc_lines,
-                            variants,
-                            &serde_reqs,
-                            opts,
-                        ))
-                    }
-                }
-                Type::Struct(name, generic_args, doc_lines, fields) => Some(
-                    create_struct_definition(name, generic_args, &doc_lines, fields, &serde_reqs),
-                ),
-                _ => None,
+        .filter_map(|ty| match ty {
+            Type::Alias(name, ty) => {
+                Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
             }
+            Type::Enum(name, generic_args, doc_lines, variants, opts) => {
+                if opts.native_modules.contains_key(module_key) || name == "Result" {
+                    None
+                } else {
+                    Some(create_enum_definition(
+                        name,
+                        generic_args,
+                        &doc_lines,
+                        variants,
+                        opts,
+                    ))
+                }
+            }
+            Type::Struct(name, generic_args, doc_lines, fields, opts) => {
+                if opts.native_modules.contains_key(module_key) {
+                    None
+                } else {
+                    Some(create_struct_definition(
+                        name,
+                        generic_args,
+                        &doc_lines,
+                        fields,
+                        opts,
+                    ))
+                }
+            }
+            _ => None,
         })
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -157,8 +164,8 @@ pub fn generate_type_bindings(
     write_bindings_file(
         format!("{}/types.rs", path),
         format!(
-            "use serde::{{Deserialize, Serialize}};\n{}\n{}\n",
-            std_imports, type_defs
+            "use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
+            std_imports, type_imports, type_defs
         ),
     );
 }
@@ -493,7 +500,7 @@ fn collect_std_types(ty: &Type) -> BTreeSet<String> {
         }
         Type::Primitive(_) => BTreeSet::new(),
         Type::String => BTreeSet::new(),
-        Type::Struct(_, _, _, fields) => {
+        Type::Struct(_, _, _, fields, _) => {
             let mut types = BTreeSet::new();
             for field in fields {
                 types.append(&mut collect_std_types(&field.ty));
@@ -516,20 +523,14 @@ fn create_enum_definition(
     generic_args: Vec<GenericArgument>,
     doc_lines: &[String],
     variants: Vec<Variant>,
-    serde_reqs: &SerializationRequirements,
     opts: EnumOptions,
 ) -> String {
-    let derives = match serde_reqs {
-        SerializationRequirements::Serialize => "Serialize",
-        SerializationRequirements::Deserialize => "Deserialize",
-        SerializationRequirements::Both => "Serialize, Deserialize",
-    };
     let variants = variants
         .into_iter()
         .flat_map(|variant| {
             let variant_decl = match variant.ty {
                 Type::Unit => format!("{},", variant.name),
-                Type::Struct(_, _, _, fields) => {
+                Type::Struct(_, _, _, fields, _) => {
                     let fields = format_struct_fields(&fields);
                     let has_multiple_lines = fields.iter().any(|field| field.contains('\n'));
                     let fields = if has_multiple_lines {
@@ -602,13 +603,12 @@ fn create_enum_definition(
         .join("\n");
 
     format!(
-        "{}#[derive(Clone, Debug, PartialEq, {})]\n\
+        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
         #[serde({})]\n\
         pub enum {} {{\n\
             {}\n\
         }}",
         format_docs(doc_lines),
-        derives,
         opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
         variants
@@ -620,13 +620,8 @@ fn create_struct_definition(
     generic_args: Vec<GenericArgument>,
     doc_lines: &[String],
     fields: Vec<Field>,
-    serde_reqs: &SerializationRequirements,
+    opts: StructOptions,
 ) -> String {
-    let derives = match serde_reqs {
-        SerializationRequirements::Serialize => "Serialize",
-        SerializationRequirements::Deserialize => "Deserialize",
-        SerializationRequirements::Both => "Serialize, Deserialize",
-    };
     let fields = format_struct_fields(&fields)
         .iter()
         .flat_map(|field| field.split('\n'))
@@ -649,13 +644,13 @@ fn create_struct_definition(
         .join("\n");
 
     format!(
-        "{}#[derive(Clone, Debug, PartialEq, {})]\n\
-        #[serde(rename_all = \"camelCase\")]\n\
+        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
+        #[serde({})]\n\
         pub struct {} {{\n\
             {}\n\
         }}",
         format_docs(doc_lines),
-        derives,
+        opts.to_serde_attrs().join(", "),
         format_name_with_generics(&name, &generic_args),
         fields.trim_start_matches('\n')
     )
@@ -744,7 +739,7 @@ pub fn format_type(ty: &Type) -> String {
         Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "String".to_owned(),
-        Type::Struct(name, generic_args, _, _) => format_name_with_types(name, generic_args),
+        Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "({})",
             items
