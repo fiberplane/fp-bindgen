@@ -87,6 +87,8 @@ version = "0.1.0"
 dependencies = [
  "fp-bindgen",
  "pretty_assertions",
+ "serde",
+ "serde_bytes",
 ]
 
 [[package]]

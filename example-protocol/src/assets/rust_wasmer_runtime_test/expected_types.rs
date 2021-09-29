@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap};
 
+pub use my_crate::other::RequestMethod;
+pub use my_crate::prelude::RequestOptions;
+pub use my_crate::prelude::Response;
+
 pub type Body = Vec<u8>;
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -30,33 +34,6 @@ pub enum RequestError {
     ServerError { status_code: u16, response: Body },
     #[serde(rename_all = "camelCase")]
     Other { reason: String },
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RequestMethod {
-    Delete,
-    Get,
-    Options,
-    Post,
-    Update,
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RequestOptions {
-    pub url: String,
-    pub method: RequestMethod,
-    pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none", with = "serde_bytes")]
-    pub body: Option<Vec<u8>>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Response {
-    pub headers: HashMap<String, String>,
-    pub body: Body,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

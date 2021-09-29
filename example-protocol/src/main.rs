@@ -1,4 +1,5 @@
 use fp_bindgen::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
 pub type Body = Vec<u8>;
@@ -28,8 +29,9 @@ pub struct ComplexGuestToHost {
     pub map: BTreeMap<String, Simple>,
 }
 
-#[derive(Serializable)]
-#[fp(rename_all = "SCREAMING_SNAKE_CASE")]
+#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
+#[fp(rust_wasmer_runtime_module = "my_crate::other")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RequestMethod {
     Delete,
     Get,
@@ -38,15 +40,20 @@ pub enum RequestMethod {
     Update,
 }
 
-#[derive(Serializable)]
+#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
+#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[serde(rename_all = "camelCase")]
 pub struct RequestOptions {
     pub url: String,
     pub method: RequestMethod,
     pub headers: HashMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none", with = "serde_bytes")]
     pub body: Option<Vec<u8>>,
 }
 
-#[derive(Serializable)]
+#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
+#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[serde(rename_all = "camelCase")]
 pub struct Response {
     pub headers: HashMap<String, String>,
     pub body: Body,
