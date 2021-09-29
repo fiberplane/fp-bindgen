@@ -6,9 +6,9 @@ Macros for generating WebAssembly bindings.
 
 `fp-bindgen` is an alternative to `wasm-bindgen`, but diverges primarily in two ways:
 
-- It doesn't assume the Wasm host is a browser or other JS-based runtime. Our communication
-  primitives are [documented](#specification) so that bindings for other languages can be
-  contributed.
+- It doesn't assume the Wasm host is a browser or other JS-based runtime. Instead, it can generate
+  bindings for both JS and Rust runtimes and our communication primitives are
+  [documented](#specification) so that bindings for other languages can be contributed.
 - It uses [MessagePack](https://msgpack.org/index.html) for serializing complex data structures, to
   improve performance over `wasm-bindgen`'s JSON serialization.
 
@@ -104,6 +104,12 @@ runtime, under the assumption the runtime can import it from `my_crate::prelude`
 Please note that in this case, you do have a bigger responsibility to make sure the definition
 fulfills the requirements of the code generator, hence why Serde's trait derives and annotations
 have to be added manually here, in accordance with how the generator would otherwise generate them.
+
+For now, this feature is limited to the Rust generators through either the
+`rust_wasmer_runtime_module` or `rust_plugin_module` annotations. For us, this makes sense given the
+protocol itself is specified using Rust syntax as well. If desired, we could extend this to the
+TypeScript generator as well, though that would imply an even bigger responsibility for the user to
+keep their TypeScript types in sync with the protocol.
 
 ## Generating bindings
 
