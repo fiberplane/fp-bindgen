@@ -3,8 +3,11 @@ mod primitives;
 use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use std::collections::HashSet;
-use syn::{FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments, ReturnType, Type};
+use std::collections::{HashSet, VecDeque};
+use syn::{
+    punctuated::Punctuated, FnArg, ForeignItemFn, Generics, Ident, Item, ItemUse, Path,
+    PathArguments, PathSegment, ReturnType, Type,
+};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
@@ -115,7 +118,7 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
 /// Declares functions the plugin can import from the host runtime.
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
-    let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let (functions, serializable_types, deserializable_types) = parse_statements(token_stream);
     let serializable_aliases = serializable_types
         .iter()
         .map(get_alias_from_path)
@@ -146,7 +149,7 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 /// Declares functions the plugin may export to the host runtime.
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
-    let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
+    let (functions, serializable_types, deserializable_types) = parse_statements(token_stream);
     let serializable_aliases = serializable_types
         .iter()
         .map(get_alias_from_path)
@@ -182,12 +185,53 @@ fn get_alias_from_path(path: &Path) -> String {
         .unwrap_or_else(|| "".to_owned())
 }
 
-/// Parses function declarations and returns them in a list.
+/// Use statements are well complicated...
+/// Essentially you can have some rather absurd nested ones like: `use foobar::{bar::{A,B}, baz::{C,D}};`
+/// This function takes that mess and returns an iterator of [foobar::bar::A, foobar::bar::B, foobar::baz::C, foobar::baz::D]
+fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Path> {
+    let mut result = Vec::new();
+    let mut queue = VecDeque::new();
+    let mut path_segments = VecDeque::<PathSegment>::new();
+    queue.push_back(using.tree);
+
+    while let Some(tree) = queue.pop_back() {
+        result.push(match tree {
+            syn::UseTree::Name(name) => {
+                let mut segments = Punctuated::new();
+                for ps in &path_segments {
+                    segments.push(ps.clone());
+                }
+                segments.push(name.ident.into());
+
+                Path {
+                    leading_colon: None,
+                    segments,
+                }
+            }
+            syn::UseTree::Path(path) => {
+                path_segments.push_back(PathSegment::from(path.ident));
+                queue.push_back(*path.tree);
+                continue;
+            }
+            syn::UseTree::Group(group) => {
+                for t in group.items {
+                    queue.push_back(t);
+                }
+                continue;
+            }
+            _ => panic!("Glob and renames use statements are not supported at this time, sorry..."),
+        });
+    }
+
+    result.into_iter()
+}
+
+/// Parses statements like function declearations and 'use Foobar;' and returns them in a list.
 /// In addition, it returns a list of doc lines for every function as well.
 /// Finally, it returns two sets: one with all the paths for types that may need serialization
 /// to call the functions, and one with all the paths for types that may need deserialization to
 /// call the functions.
-fn parse_functions(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
+fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
     let mut functions = Vec::new();
     let mut serializable_type_names = HashSet::new();
     let mut deserializable_type_names = HashSet::new();
@@ -198,44 +242,50 @@ fn parse_functions(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, Ha
                 current_item_tokens.push(TokenTree::Punct(punct));
 
                 let stream = current_item_tokens.into_iter().collect::<TokenStream>();
-                let function = syn::parse::<ForeignItemFn>(stream).unwrap();
 
-                for input in &function.sig.inputs {
-                    match input {
-                        FnArg::Receiver(_) => panic!(
-                            "Methods are not supported. Found `self` in function declaration: {:?}",
-                            function.sig
-                        ),
-                        FnArg::Typed(arg) => {
-                            serializable_type_names.insert(
-                                extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
+                if let Ok(function) = syn::parse::<ForeignItemFn>(stream.clone()) {
+                    for input in &function.sig.inputs {
+                        match input {
+                            FnArg::Receiver(_) => panic!(
+                                "Methods are not supported. Found `self` in function declaration: {:?}",
+                                function.sig
+                            ),
+                            FnArg::Typed(arg) => {
+                                serializable_type_names.insert(
+                                    extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
+                                        panic!(
+                                            "Only value types are supported. \
+                                                Incompatible argument type in function declaration: {:?}",
+                                            function.sig
+                                        )
+                                    }),
+                                );
+                            }
+                        }
+                    }
+
+                    match &function.sig.output {
+                        ReturnType::Default => { /* No return value. */ }
+                        ReturnType::Type(_, ty) => {
+                            deserializable_type_names.insert(
+                                extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
                                     panic!(
                                         "Only value types are supported. \
-                                            Incompatible argument type in function declaration: {:?}",
+                                            Incompatible return type in function declaration: {:?}",
                                         function.sig
                                     )
                                 }),
                             );
                         }
                     }
-                }
 
-                match &function.sig.output {
-                    ReturnType::Default => { /* No return value. */ }
-                    ReturnType::Type(_, ty) => {
-                        deserializable_type_names.insert(
-                            extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
-                                panic!(
-                                    "Only value types are supported. \
-                                        Incompatible return type in function declaration: {:?}",
-                                    function.sig
-                                )
-                            }),
-                        );
+                    functions.push(function.into_token_stream().to_string());
+                } else if let Ok(using) = syn::parse::<ItemUse>(stream) {
+                    for p in flatten_using_statement(using) {
+                        deserializable_type_names.insert(p.clone());
+                        serializable_type_names.insert(p);
                     }
                 }
-
-                functions.push(function.into_token_stream().to_string());
 
                 current_item_tokens = Vec::new();
             }
