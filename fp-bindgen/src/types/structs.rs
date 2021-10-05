@@ -34,8 +34,12 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
                 .as_ref()
                 .expect("Struct fields must be named")
                 .to_string();
-            let ty = resolve_type(&field.ty, dependencies)
-                .unwrap_or_else(|| panic!("Unresolvable field type: {:?}", field.ty));
+            let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
+                panic!(
+                    "Unresolvable field type: {:?}\ndependencies: {:?}",
+                    field.ty, dependencies
+                )
+            });
             let doc_lines = get_doc_lines(&field.attrs);
             Field {
                 name,

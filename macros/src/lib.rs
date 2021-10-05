@@ -46,6 +46,8 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     // the paths of dependencies with their expected names:
     let aliases = dependencies.iter().map(get_alias_from_path);
 
+    let generics_str = generics.to_token_stream().to_string();
+
     let where_clause = if generics.params.is_empty() {
         quote! {}
     } else {
@@ -67,8 +69,13 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
+                let generics = #generics_str;
                 let mut dependencies = std::collections::BTreeSet::new();
-                #( #dependencies::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
+                #( #dependencies::add_type_with_dependencies_and_alias(
+                    &mut dependencies,
+                    generics,
+                    #aliases
+                ); )*
                 dependencies
             }
         }
@@ -116,23 +123,17 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let serializable_aliases = serializable_types
-        .iter()
-        .map(get_alias_from_path)
-        .collect::<Vec<_>>();
+    let serializable_aliases = serializable_types.iter().map(get_alias_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_aliases = deserializable_types
-        .iter()
-        .map(get_alias_from_path)
-        .collect::<Vec<_>>();
+    let deserializable_aliases = deserializable_types.iter().map(get_alias_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_import_types, #serializable_aliases); )*
+            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_import_types, "", #serializable_aliases); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_import_types, #deserializable_aliases); )*
+            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_import_types, "", #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
@@ -147,23 +148,17 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let serializable_aliases = serializable_types
-        .iter()
-        .map(get_alias_from_path)
-        .collect::<Vec<_>>();
+    let serializable_aliases = serializable_types.iter().map(get_alias_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_aliases = deserializable_types
-        .iter()
-        .map(get_alias_from_path)
-        .collect::<Vec<_>>();
+    let deserializable_aliases = deserializable_types.iter().map(get_alias_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_export_types, #serializable_aliases); )*
+            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_export_types, "", #serializable_aliases); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_export_types, #deserializable_aliases); )*
+            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_export_types, "", #deserializable_aliases); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*

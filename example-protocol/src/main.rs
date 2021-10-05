@@ -10,6 +10,11 @@ pub struct DeadCode {
 }
 
 #[derive(Serializable)]
+pub struct Point<T> {
+    pub value: T,
+}
+
+#[derive(Serializable)]
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
@@ -21,6 +26,7 @@ pub struct Simple {
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
+    pub points: Vec<Point<f64>>,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;

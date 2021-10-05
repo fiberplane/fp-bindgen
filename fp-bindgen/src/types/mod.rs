@@ -57,6 +57,14 @@ impl Type {
         }
     }
 
+    pub fn generic_args(&self) -> Vec<GenericArgument> {
+        match self {
+            Self::Enum(_, generic_args, _, _, _) => generic_args.clone(),
+            Self::Struct(_, generic_args, _, _, _) => generic_args.clone(),
+            _ => vec![],
+        }
+    }
+
     pub fn name(&self) -> String {
         match self {
             Self::Alias(name, _) => name.clone(),
@@ -86,6 +94,31 @@ impl Type {
             name: name.to_owned(),
             ty: None,
         }))
+    }
+
+    pub fn with_specialized_args(self, specialized_args: &[GenericArgument]) -> Self {
+        let specialize_args = |args: Vec<GenericArgument>| {
+            args.into_iter()
+                .zip(specialized_args.iter())
+                .map(|(arg, specialized_arg)| GenericArgument {
+                    name: arg.name,
+                    ty: match arg.ty {
+                        Some(ty) => Some(ty),
+                        None => specialized_arg.ty.clone(),
+                    },
+                })
+                .collect()
+        };
+
+        match self {
+            Self::Enum(name, args, doc_lines, variants, opts) => {
+                Self::Enum(name, specialize_args(args), doc_lines, variants, opts)
+            }
+            Self::Struct(name, args, doc_lines, fields, opts) => {
+                Self::Struct(name, specialize_args(args), doc_lines, fields, opts)
+            }
+            other => other,
+        }
     }
 }
 
@@ -172,6 +205,10 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                     _ => None,
                 })
                 .unwrap_or_else(Vec::new);
+            println!(
+                "path_without_args: {:?}\ntype_args: {:?}",
+                path_without_args, type_args
+            );
             match Primitive::from_str(&path_without_args) {
                 Ok(primitive) => Some(Type::Primitive(primitive)),
                 Err(_) => types
@@ -191,11 +228,16 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         }
                         Type::Enum(name, generic_args, _, _, _) => {
                             name == &path_without_args
-                                && generic_args
-                                    .iter()
-                                    .filter_map(|arg| arg.ty.clone())
-                                    .collect::<Vec<_>>()
-                                    == type_args
+                                && generic_args.len() == type_args.len()
+                                && generic_args.iter().zip(type_args.iter()).all(|(arg, ty)| {
+                                    arg.name == ty.name()
+                                        || match ty {
+                                            Type::GenericArgument(ty_arg) if arg.ty.is_some() => {
+                                                arg.ty == ty_arg.ty
+                                            }
+                                            _ => false,
+                                        }
+                                })
                         }
                         Type::GenericArgument(arg) => {
                             arg.name == path_without_args && type_args.is_empty()
@@ -222,11 +264,24 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         Type::String => path_without_args == "String",
                         Type::Struct(name, generic_args, _, _, _) => {
                             name == &path_without_args
-                                && generic_args
-                                    .iter()
-                                    .filter_map(|arg| arg.ty.clone())
-                                    .collect::<Vec<_>>()
-                                    == type_args
+                                && generic_args.len() == type_args.len()
+                                && generic_args.iter().zip(type_args.iter()).all(
+                                    |(generic_arg, type_arg)| {
+                                        generic_arg.name == type_arg.name()
+                                            || match type_arg {
+                                                Type::GenericArgument(ty_arg)
+                                                    if generic_arg.ty.is_some() =>
+                                                {
+                                                    generic_arg.ty == ty_arg.ty
+                                                }
+                                                ty => generic_arg
+                                                    .ty
+                                                    .as_ref()
+                                                    .map(|generic_ty| generic_ty == ty)
+                                                    .unwrap_or(false),
+                                            }
+                                    },
+                                )
                         }
                         Type::Tuple(_) => false,
                         Type::Unit => false,
@@ -256,5 +311,99 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
             "Only value types are supported. Incompatible type: {:?}",
             ty
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_type;
+    use crate::{
+        primitives::Primitive,
+        types::{GenericArgument, StructOptions},
+        Type,
+    };
+    use std::collections::BTreeSet;
+    use syn::parse_quote;
+
+    #[test]
+    fn test_resolve_generic_type() {
+        let ty: syn::Type = parse_quote!(Vec<Point<T>>);
+
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        }));
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![],
+            StructOptions::default(),
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+
+        let mut types = BTreeSet::new();
+        types.insert(t);
+        types.insert(point);
+        types.insert(vec.clone());
+
+        assert_eq!(resolve_type(&ty, &types), Some(vec));
+    }
+
+    #[test]
+    fn test_resolve_specialized_type() {
+        let ty: syn::Type = parse_quote!(Point<f64>);
+
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        }));
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }],
+            vec![],
+            vec![],
+            StructOptions::default(),
+        );
+
+        let mut types = BTreeSet::new();
+        types.insert(t);
+        types.insert(point.clone());
+
+        assert_eq!(resolve_type(&ty, &types), Some(point));
+    }
+
+    #[test]
+    fn test_resolve_nested_specialized_type() {
+        let ty: syn::Type = parse_quote!(Vec<Point<f64>>);
+
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        }));
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }],
+            vec![],
+            vec![],
+            StructOptions::default(),
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+
+        let mut types = BTreeSet::new();
+        types.insert(t);
+        types.insert(point);
+        types.insert(vec.clone());
+
+        assert_eq!(resolve_type(&ty, &types), Some(vec));
     }
 }

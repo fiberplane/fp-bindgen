@@ -25,11 +25,18 @@ pub trait Serializable {
     fn dependencies() -> BTreeSet<Type>;
 
     fn add_type_with_dependencies(dependencies: &mut BTreeSet<Type>) {
+        Self::add_type_with_dependencies_and_specialized_args(dependencies, &[])
+    }
+
+    fn add_type_with_dependencies_and_specialized_args(
+        dependencies: &mut BTreeSet<Type>,
+        specialized_args: &[GenericArgument],
+    ) {
         if Self::is_primitive() {
             return;
         }
 
-        let ty = Self::ty();
+        let ty = Self::ty().with_specialized_args(specialized_args);
         if dependencies.contains(&ty) {
             return;
         }
@@ -38,12 +45,37 @@ pub trait Serializable {
         dependencies.append(&mut Self::dependencies());
     }
 
-    fn add_type_with_dependencies_and_alias(dependencies: &mut BTreeSet<Type>, alias: &str) {
-        Self::add_type_with_dependencies(dependencies);
+    fn add_type_with_dependencies_and_alias(
+        dependencies: &mut BTreeSet<Type>,
+        generic_args: &str,
+        alias: &str,
+    ) {
+        let generic_args = if generic_args.is_empty() {
+            syn::Generics::default()
+        } else {
+            syn::parse_str(generic_args).unwrap()
+        };
+        let specialized_args = generic_args
+            .params
+            .iter()
+            .filter_map(|param| match param {
+                syn::GenericParam::Type(ty) => Some(GenericArgument {
+                    name: ty.ident.to_string(),
+                    ty: Some(Self::ty()),
+                }),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        Self::add_type_with_dependencies_and_specialized_args(dependencies, &specialized_args);
 
         if !alias.is_empty() && alias != Self::name() {
-            let alias = Type::Alias(alias.to_owned(), Box::new(Self::ty()));
-            dependencies.insert(alias);
+            let generic_arg_or_alias = specialized_args
+                .into_iter()
+                .find(|arg| arg.name == alias)
+                .map(|arg| Type::GenericArgument(Box::new(arg)))
+                .unwrap_or_else(|| Type::Alias(alias.to_owned(), Box::new(Self::ty())));
+            dependencies.insert(generic_arg_or_alias);
         }
     }
 }
@@ -310,5 +342,52 @@ where
         let mut dependencies = BTreeSet::new();
         T::add_type_with_dependencies(&mut dependencies);
         dependencies
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Serializable;
+    use crate::{primitives::Primitive, types::GenericArgument, Type};
+    use std::collections::BTreeSet;
+
+    pub struct Point<T>
+    where
+        T: Serializable,
+    {
+        pub value: T,
+    }
+
+    // Reflects actual macro output:
+    impl<T> Serializable for Point<T>
+    where
+        T: Serializable,
+    {
+        fn name() -> String {
+            "Point".to_owned()
+        }
+        fn ty() -> Type {
+            Type::from_item(
+                "pub struct Point < T > {pub value : T ,}",
+                &Self::dependencies(),
+            )
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "< T >";
+            let mut dependencies = BTreeSet::new();
+            T::add_type_with_dependencies_and_alias(&mut dependencies, generics, "T");
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_dependencies() {
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        })));
+
+        assert_eq!(Point::<f64>::dependencies(), expected_dependencies);
     }
 }
