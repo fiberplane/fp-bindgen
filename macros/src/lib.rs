@@ -195,7 +195,7 @@ fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Path> {
     queue.push_back(using.tree);
 
     while let Some(tree) = queue.pop_back() {
-        result.push(match tree {
+        match tree {
             syn::UseTree::Name(name) => {
                 let mut segments = Punctuated::new();
                 for ps in &path_segments {
@@ -203,24 +203,22 @@ fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Path> {
                 }
                 segments.push(name.ident.into());
 
-                Path {
+                result.push(Path {
                     leading_colon: None,
                     segments,
-                }
+                });
             }
             syn::UseTree::Path(path) => {
                 path_segments.push_back(PathSegment::from(path.ident));
                 queue.push_back(*path.tree);
-                continue;
             }
             syn::UseTree::Group(group) => {
-                for t in group.items {
-                    queue.push_back(t);
+                for item in group.items {
+                    queue.push_back(item);
                 }
-                continue;
             }
             _ => panic!("Glob and renames use statements are not supported at this time, sorry..."),
-        });
+        }
     }
 
     result.into_iter()
@@ -281,9 +279,9 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, H
 
                     functions.push(function.into_token_stream().to_string());
                 } else if let Ok(using) = syn::parse::<ItemUse>(stream) {
-                    for p in flatten_using_statement(using) {
-                        deserializable_type_names.insert(p.clone());
-                        serializable_type_names.insert(p);
+                    for path in flatten_using_statement(using) {
+                        deserializable_type_names.insert(path.clone());
+                        serializable_type_names.insert(path);
                     }
                 }
 
