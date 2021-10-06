@@ -14,7 +14,6 @@ use syn::{
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item, generics) = parse_type_item(item);
-    let item_name_str = item_name.to_string();
 
     let dependencies = match item {
         syn::Item::Enum(ty) => ty
@@ -49,6 +48,13 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 
     let generics_str = generics.to_token_stream().to_string();
 
+    let name = if generics.params.is_empty() {
+        let item_name = item_name.to_string();
+        quote! { #item_name.to_owned() }
+    } else {
+        quote! { Self::ty().name() }
+    };
+
     let where_clause = if generics.params.is_empty() {
         quote! {}
     } else {
@@ -62,7 +68,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let implementation = quote! {
         impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
             fn name() -> String {
-                #item_name_str.to_owned()
+                #name
             }
 
             fn ty() -> fp_bindgen::prelude::Type {

@@ -28,36 +28,7 @@ pub trait Serializable {
     ///
     /// Dependencies of `Self` are recursively added to the `dependencies` as well.
     fn add_type_with_dependencies(dependencies: &mut BTreeSet<Type>) {
-        Self::add_type_with_dependencies_and_specialized_args(dependencies, &[])
-    }
-
-    /// Adds `Self` to the set of `dependencies`, but specializes any given generic
-    /// arguments with specialized types.
-    ///
-    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
-    ///
-    /// ## Example:
-    ///
-    /// If `Self` refers to `Option<T>`, but `specialized_args` contains
-    /// `GenericArgument { name: "T", ty: Some(Type::Primitive(Primitive::F64)) }`,
-    /// the actual type added would be `Option<f64>`.
-    fn add_type_with_dependencies_and_specialized_args(
-        dependencies: &mut BTreeSet<Type>,
-        specialized_args: &[GenericArgument],
-    ) {
-        if Self::is_primitive() {
-            return;
-        }
-
-        let ty = Self::ty().with_specialized_args(specialized_args);
-        if dependencies.contains(&ty) {
-            return;
-        }
-
-        dependencies.insert(ty);
-        for dependency in Self::dependencies() {
-            dependencies.insert(dependency.with_specialized_args(specialized_args));
-        }
+        Self::add_type_with_dependencies_and_generic_args(dependencies, &[])
     }
 
     /// Adds `Self` with the given `name` to the set of `dependencies`.
@@ -67,6 +38,13 @@ pub trait Serializable {
         Self::add_named_type_with_dependencies_and_generics(dependencies, name, "")
     }
 
+    /// Adds `Self` with the given `name` to the set of `dependencies`.
+    ///
+    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
+    ///
+    /// In addition, we receive the declaration of the generic arguments of the type
+    /// whose `dependencies` we are gathering. This allows us to determine whether the
+    /// given `name` refers to a generic argument or is a stand-alone alias.
     fn add_named_type_with_dependencies_and_generics(
         dependencies: &mut BTreeSet<Type>,
         name: &str,
@@ -77,7 +55,7 @@ pub trait Serializable {
         } else {
             syn::parse_str(generic_args).unwrap()
         };
-        let specialized_args = generic_args
+        let generic_args = generic_args
             .params
             .iter()
             .filter_map(|param| match param {
@@ -93,15 +71,52 @@ pub trait Serializable {
             })
             .collect::<Vec<_>>();
 
-        Self::add_type_with_dependencies_and_specialized_args(dependencies, &specialized_args);
+        Self::add_type_with_dependencies_and_generic_args(dependencies, &generic_args);
 
         if !name.is_empty() && name != Self::name() {
-            let generic_arg_or_alias = specialized_args
+            if let Some(generic_arg_or_alias) = generic_args
                 .into_iter()
                 .find(|arg| arg.name == name)
-                .map(|arg| Type::GenericArgument(Box::new(arg)))
-                .unwrap_or_else(|| Type::Alias(name.to_owned(), Box::new(Self::ty())));
-            dependencies.insert(generic_arg_or_alias);
+                .map(|arg| Some(Type::GenericArgument(Box::new(arg))))
+                .unwrap_or_else(|| {
+                    if name.contains('<') {
+                        None // Aliases can never contain generic arguments
+                    } else {
+                        Some(Type::Alias(name.to_owned(), Box::new(Self::ty())))
+                    }
+                })
+            {
+                dependencies.insert(generic_arg_or_alias);
+            }
+        }
+    }
+
+    /// Adds `Self` to the set of `dependencies`, but specializes generic arguments
+    /// with specialized types.
+    ///
+    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
+    ///
+    /// ## Example:
+    ///
+    /// If `Self` refers to `Option<T>`, but `specialized_args` contains
+    /// `GenericArgument { name: "T", ty: Some(Type::Primitive(Primitive::F64)) }`,
+    /// the actual type added would be `Option<f64>`.
+    fn add_type_with_dependencies_and_generic_args(
+        dependencies: &mut BTreeSet<Type>,
+        generic_args: &[GenericArgument],
+    ) {
+        if Self::is_primitive() {
+            return;
+        }
+
+        let ty = Self::ty().with_specialized_args(generic_args);
+        if dependencies.contains(&ty) {
+            return;
+        }
+
+        dependencies.insert(ty);
+        for dependency in Self::dependencies() {
+            dependencies.insert(dependency.with_specialized_args(generic_args));
         }
     }
 }
@@ -395,7 +410,7 @@ mod tests {
         T: Serializable,
     {
         fn name() -> String {
-            "Point".to_owned()
+            Self::ty().name()
         }
         fn ty() -> Type {
             Type::from_item(
@@ -450,12 +465,11 @@ mod tests {
 
     #[test]
     pub fn test_complex_dependencies() {
-        let mut expected_dependencies = BTreeSet::new();
-        expected_dependencies.insert(Type::Struct(
+        let point = Type::Struct(
             "Point".to_owned(),
             vec![GenericArgument {
                 name: "T".to_owned(),
-                ty: None,
+                ty: Some(Type::Primitive(Primitive::F64)),
             }],
             vec![],
             vec![Field {
@@ -470,11 +484,15 @@ mod tests {
                 field_casing: Casing::CamelCase,
                 native_modules: BTreeMap::new(),
             },
-        ));
+        );
+
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(point.clone());
         expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
             name: "T".to_owned(),
             ty: Some(Type::Primitive(Primitive::F64)),
         })));
+        expected_dependencies.insert(Type::List("Vec".to_owned(), Box::new(point)));
 
         assert_eq!(Complex::dependencies(), expected_dependencies);
     }

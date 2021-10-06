@@ -206,10 +206,6 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                     _ => None,
                 })
                 .unwrap_or_else(Vec::new);
-            println!(
-                "path_without_args: {:?}\ntype_args: {:?}",
-                path_without_args, type_args
-            );
             match Primitive::from_str(&path_without_args) {
                 Ok(primitive) => Some(Type::Primitive(primitive)),
                 Err(_) => types
