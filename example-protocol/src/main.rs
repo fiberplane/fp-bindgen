@@ -85,7 +85,31 @@ pub enum RequestError {
     },
 }
 
+#[derive(Serializable)]
+pub struct ExplicitedlyImportedType {
+    pub you_will_see_this: bool,
+}
+
+mod foobar {
+    use fp_bindgen::prelude::*;
+    pub mod baz {
+        use fp_bindgen::prelude::*;
+        #[derive(Serializable)]
+        pub struct GroupImportedType1 {
+            pub you_will_see_this: bool,
+        }
+    }
+    #[derive(Serializable)]
+    pub struct GroupImportedType2 {
+        pub you_will_see_this: bool,
+    }
+}
+
 fp_import! {
+    use ExplicitedlyImportedType;
+
+    use foobar::{baz::GroupImportedType1, GroupImportedType2};
+
     /// Logs a message to the (development) console.
     fn log(message: String);
 
@@ -104,6 +128,8 @@ fp_import! {
 }
 
 fp_export! {
+    use ExplicitedlyImportedType;
+
     fn my_plain_exported_function(a: u32, b: u32) -> u32;
 
     fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexAlias;

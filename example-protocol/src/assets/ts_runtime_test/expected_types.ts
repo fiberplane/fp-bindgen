@@ -22,6 +22,18 @@ export type ComplexHostToGuest = {
     list: Array<number>;
 };
 
+export type ExplicitedlyImportedType = {
+    youWillSeeThis: boolean;
+};
+
+export type GroupImportedType1 = {
+    youWillSeeThis: boolean;
+};
+
+export type GroupImportedType2 = {
+    youWillSeeThis: boolean;
+};
+
 /**
  * Represents an error with the request.
  */
