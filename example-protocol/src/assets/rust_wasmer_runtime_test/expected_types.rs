@@ -62,9 +62,7 @@ pub enum RequestError {
     },
     /// Misc.
     #[serde(rename_all = "camelCase")]
-    Other {
-        reason: String,
-    },
+    Other { reason: String },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
