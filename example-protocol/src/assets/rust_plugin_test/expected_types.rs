@@ -21,6 +21,24 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
 }
 
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplicitedlyImportedType {
+    pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupImportedType1 {
+    pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupImportedType2 {
+    pub you_will_see_this: bool,
+}
+
 /// Represents an error with the request.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -40,7 +58,9 @@ pub enum RequestError {
     },
     /// Misc.
     #[serde(rename_all = "camelCase")]
-    Other { reason: String },
+    Other {
+        reason: String,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
