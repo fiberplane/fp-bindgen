@@ -97,23 +97,24 @@ impl Type {
     }
 
     pub fn with_specialized_args(self, specialized_args: &[GenericArgument]) -> Self {
-        let specialize_args = |args: Vec<GenericArgument>| {
-            args.into_iter()
-                .zip(specialized_args.iter())
-                .map(|(arg, specialized_arg)| GenericArgument {
-                    name: arg.name,
-                    ty: match arg.ty {
-                        Some(ty) => Some(ty),
-                        None => specialized_arg.ty.clone(),
-                    },
-                })
-                .collect()
+        let specialize_arg = |arg: GenericArgument| {
+            let name = arg.name;
+            let ty = arg.ty.or_else(|| {
+                specialized_args
+                    .iter()
+                    .find(|specialized| specialized.name == name)
+                    .and_then(|specialized| specialized.ty.clone())
+            });
+            GenericArgument { name, ty }
         };
+        let specialize_args =
+            |args: Vec<GenericArgument>| args.into_iter().map(specialize_arg).collect();
 
         match self {
             Self::Enum(name, args, doc_lines, variants, opts) => {
                 Self::Enum(name, specialize_args(args), doc_lines, variants, opts)
             }
+            Self::GenericArgument(arg) => Self::GenericArgument(Box::new(specialize_arg(*arg))),
             Self::Struct(name, args, doc_lines, fields, opts) => {
                 Self::Struct(name, specialize_args(args), doc_lines, fields, opts)
             }

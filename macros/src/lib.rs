@@ -4,7 +4,10 @@ use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
 use std::collections::HashSet;
-use syn::{FnArg, ForeignItemFn, Generics, Ident, Item, Path, PathArguments, ReturnType, Type};
+use syn::{
+    FnArg, ForeignItemFn, GenericArgument, Generics, Ident, Item, Path, PathArguments, ReturnType,
+    Type,
+};
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
@@ -42,9 +45,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
         _ => vec![],
     };
 
-    // Aliases cannot be derived, but we can detect their presence by comparing
-    // the paths of dependencies with their expected names:
-    let aliases = dependencies.iter().map(get_alias_from_path);
+    let names = dependencies.iter().map(get_name_from_path);
 
     let generics_str = generics.to_token_stream().to_string();
 
@@ -71,10 +72,10 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
                 let generics = #generics_str;
                 let mut dependencies = std::collections::BTreeSet::new();
-                #( #dependencies::add_type_with_dependencies_and_alias(
+                #( #dependencies::add_named_type_with_dependencies_and_generics(
                     &mut dependencies,
+                    #names,
                     generics,
-                    #aliases
                 ); )*
                 dependencies
             }
@@ -123,17 +124,17 @@ fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let serializable_aliases = serializable_types.iter().map(get_alias_from_path);
+    let serializable_names = serializable_types.iter().map(get_name_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_aliases = deserializable_types.iter().map(get_alias_from_path);
+    let deserializable_named = deserializable_types.iter().map(get_name_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_import_types, "", #serializable_aliases); )*
+            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_import_types, #serializable_names); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_import_types, "", #deserializable_aliases); )*
+            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_import_types, #deserializable_named); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
@@ -148,17 +149,17 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_functions(token_stream);
-    let serializable_aliases = serializable_types.iter().map(get_alias_from_path);
+    let serializable_names = serializable_types.iter().map(get_name_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_aliases = deserializable_types.iter().map(get_alias_from_path);
+    let deserializable_names = deserializable_types.iter().map(get_name_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_type_with_dependencies_and_alias(&mut serializable_export_types, "", #serializable_aliases); )*
+            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_export_types, #serializable_names); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_type_with_dependencies_and_alias(&mut deserializable_export_types, "", #deserializable_aliases); )*
+            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_export_types, #deserializable_names); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
@@ -169,12 +170,38 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     replacement.into()
 }
 
-fn get_alias_from_path(path: &Path) -> String {
-    // FIXME: For now, this only works for plain identifiers, so nesting an
-    //        alias inside of a container is still likely to fail.
-    path.get_ident()
-        .map(|ident| ident.to_string())
-        .unwrap_or_else(|| "".to_owned())
+/// Returns the name of the type based on its path. The result of this should be the same as
+/// provided by `Type::name()`, but without the need for constructing an intermediate `Type`.
+///
+/// If the returned name does *not* match the one returned by `Type::name()` we use that as an
+/// indication there's either an alias or a generic argument present in the type, because
+/// those show up in the path, but neither aliases nor the specialized types can be known to
+/// the `Type` at the implementation site.
+fn get_name_from_path(path: &Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| match &segment.arguments {
+            PathArguments::None => segment.ident.to_string(),
+            PathArguments::AngleBracketed(bracketed) => format!(
+                "{}<{}>",
+                segment.ident,
+                bracketed
+                    .args
+                    .iter()
+                    .map(|arg| match arg {
+                        GenericArgument::Type(Type::Path(path)) if path.qself.is_none() =>
+                            get_name_from_path(&path.path),
+                        _ => panic!("Unsupported generic argument in path: {:?}", path),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            PathArguments::Parenthesized(_) => {
+                panic!("Unsupported arguments in path: {:?}", path)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("::")
 }
 
 /// Parses function declarations and returns them in a list.

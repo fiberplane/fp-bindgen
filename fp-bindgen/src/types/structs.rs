@@ -36,8 +36,13 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
                 .to_string();
             let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
                 panic!(
-                    "Unresolvable field type: {:?}\ndependencies: {:?}",
-                    field.ty, dependencies
+                    "Unresolvable field type: {:?}\ndependencies:\n  {}",
+                    field.ty,
+                    dependencies
+                        .iter()
+                        .map(|ty| ty.name())
+                        .collect::<Vec<_>>()
+                        .join("\n  ")
                 )
             });
             let doc_lines = get_doc_lines(&field.attrs);
