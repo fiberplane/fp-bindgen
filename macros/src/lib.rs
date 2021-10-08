@@ -16,7 +16,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let (item_name, item, generics) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
-    let dependencies = match item {
+    let field_types : Vec<Path> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()
@@ -29,7 +29,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<Vec<_>>(),
+            .collect::<HashSet<_>>(),
         syn::Item::Struct(ty) => ty
             .fields
             .into_iter()
@@ -41,13 +41,13 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<Vec<_>>(),
-        _ => vec![],
-    };
+            .collect::<HashSet<_>>(),
+        _ => HashSet::default(),
+    }.into_iter().collect();
 
     // Aliases cannot be derived, but we can detect their presence by comparing
     // the paths of dependencies with their expected names:
-    let aliases = dependencies.iter().map(get_alias_from_path);
+    let aliases = field_types.iter().map(get_alias_from_path);
 
     let where_clause = if generics.params.is_empty() {
         quote! {}
@@ -71,7 +71,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
                 let mut dependencies = std::collections::BTreeSet::new();
-                #( #dependencies::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
+                #( #field_types::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
                 dependencies
             }
         }
