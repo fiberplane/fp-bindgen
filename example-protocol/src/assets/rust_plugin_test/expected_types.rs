@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap};
 
@@ -10,6 +11,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
+    pub timestamp: DateTime<Utc>,
 }
 
 /// Multi-line doc comment with complex characters
@@ -19,6 +21,7 @@ pub struct ComplexGuestToHost {
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
+    pub timestamp: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -58,7 +61,9 @@ pub enum RequestError {
     },
     /// Misc.
     #[serde(rename_all = "camelCase")]
-    Other { reason: String },
+    Other {
+        reason: String,
+    },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
