@@ -30,12 +30,10 @@ pub trait Serializable {
         }
 
         let ty = Self::ty();
-        if dependencies.contains(&ty) {
-            return;
-        }
 
-        dependencies.insert(ty);
-        dependencies.append(&mut Self::dependencies());
+        if dependencies.insert(ty) {
+            dependencies.append(&mut Self::dependencies());
+        }
     }
 
     fn add_type_with_dependencies_and_alias(dependencies: &mut BTreeSet<Type>, alias: &str) {
