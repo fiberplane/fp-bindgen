@@ -1,6 +1,7 @@
 #[cfg(feature = "chrono-compat")]
 use crate::CustomType;
 use crate::{
+    generics::{contains_generic_arg, specialize_type_with_dependencies},
     types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
@@ -28,7 +29,7 @@ pub trait Serializable {
     ///
     /// Dependencies of `Self` are recursively added to the `dependencies` as well.
     fn add_type_with_dependencies(dependencies: &mut BTreeSet<Type>) {
-        Self::add_type_with_dependencies_and_generic_args(dependencies, &[])
+        Self::add_named_type_with_dependencies(dependencies, "")
     }
 
     /// Adds `Self` with the given `name` to the set of `dependencies`.
@@ -38,86 +39,70 @@ pub trait Serializable {
         Self::add_named_type_with_dependencies_and_generics(dependencies, name, "")
     }
 
-    /// Adds `Self` with the given `name` to the set of `dependencies`.
+    /// Adds `Self` with the given `name` to the set of `dependencies`, but specializes
+    /// generic arguments with specialized types.
     ///
     /// Dependencies of `Self` are recursively added to the `dependencies` as well.
     ///
     /// In addition, we receive the declaration of the generic arguments of the type
-    /// whose `dependencies` we are gathering. This allows us to determine whether the
-    /// given `name` refers to a generic argument or is a stand-alone alias.
+    /// whose `dependencies` we are gathering. This helps us to determine generic
+    /// arguments and/or aliases in the given `name`.
+    ///
+    /// ## Example:
+    ///
+    /// If `Self` refers to `Option<T>`, but `name` is `Option<f64>`, we can specialize
+    /// the `T` argument of the `Option` to be `f64` instead.
     fn add_named_type_with_dependencies_and_generics(
         dependencies: &mut BTreeSet<Type>,
         name: &str,
         generic_args: &str,
     ) {
-        let generic_args = if generic_args.is_empty() {
-            syn::Generics::default()
-        } else {
-            syn::parse_str(generic_args).unwrap()
-        };
-        let generic_args = generic_args
-            .params
-            .iter()
-            .filter_map(|param| match param {
-                syn::GenericParam::Type(ty) => Some(GenericArgument {
-                    name: ty.ident.to_string(),
-                    ty: if ty.ident == name {
-                        Some(Self::ty())
-                    } else {
-                        None
-                    },
-                }),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-
-        Self::add_type_with_dependencies_and_generic_args(dependencies, &generic_args);
-
-        if !name.is_empty() && name != Self::name() {
-            if let Some(generic_arg_or_alias) = generic_args
-                .into_iter()
-                .find(|arg| arg.name == name)
-                .map(|arg| Some(Type::GenericArgument(Box::new(arg))))
-                .unwrap_or_else(|| {
-                    if name.contains('<') {
-                        None // Aliases can never contain generic arguments
-                    } else {
-                        Some(Type::Alias(name.to_owned(), Box::new(Self::ty())))
+        let ty = Self::ty();
+        if !name.is_empty() && ty.name() != name {
+            let generic_args = if generic_args.is_empty() {
+                syn::Generics::default()
+            } else {
+                syn::parse_str(generic_args).expect("Cannot parse generic arguments")
+            };
+            let generic_arg = generic_args
+                .params
+                .iter()
+                .find_map(|param| match param {
+                    syn::GenericParam::Type(generic_ty) if generic_ty.ident == name => {
+                        Some(generic_ty)
                     }
+                    _ => None,
                 })
-            {
-                dependencies.insert(generic_arg_or_alias);
+                .map(|generic_ty| GenericArgument {
+                    name: generic_ty.ident.to_string(),
+                    ty: Some(ty.clone()),
+                });
+
+            if let Some(dependency) = match generic_arg {
+                Some(arg) => Some(Type::GenericArgument(Box::new(arg))),
+                None if !contains_generic_arg(name) => {
+                    Some(Type::Alias(name.to_owned(), Box::new(ty.clone())))
+                }
+                _ => None,
+            } {
+                dependencies.insert(dependency);
             }
         }
-    }
 
-    /// Adds `Self` to the set of `dependencies`, but specializes generic arguments
-    /// with specialized types.
-    ///
-    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
-    ///
-    /// ## Example:
-    ///
-    /// If `Self` refers to `Option<T>`, but `specialized_args` contains
-    /// `GenericArgument { name: "T", ty: Some(Type::Primitive(Primitive::F64)) }`,
-    /// the actual type added would be `Option<f64>`.
-    fn add_type_with_dependencies_and_generic_args(
-        dependencies: &mut BTreeSet<Type>,
-        generic_args: &[GenericArgument],
-    ) {
         if Self::is_primitive() {
             return;
         }
 
-        let ty = Self::ty().with_specialized_args(generic_args);
         if dependencies.contains(&ty) {
             return;
         }
 
-        dependencies.insert(ty);
-        for dependency in Self::dependencies() {
-            dependencies.insert(dependency.with_specialized_args(generic_args));
-        }
+        dependencies.append(&mut specialize_type_with_dependencies(
+            ty,
+            name,
+            generic_args,
+            &Self::dependencies(),
+        ));
     }
 }
 
