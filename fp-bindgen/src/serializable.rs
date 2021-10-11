@@ -279,7 +279,7 @@ impl Serializable for chrono::Utc {
             name: "DateTime".to_owned(),
             type_args: vec![],
             rs_ty: "chrono::Utc".to_owned(),
-            ts_ty: "string".to_owned(), // *should* never appear in the generated output
+            ts_ty: "string".to_owned(),
         })
     }
 

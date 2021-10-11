@@ -12,6 +12,7 @@ pub fn generate_bindings(
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     mut deserializable_types: BTreeSet<Type>,
+    path: &str,
 ) {
     let mut all_types = serializable_types;
     all_types.append(&mut deserializable_types);
