@@ -185,7 +185,6 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
 /// the `Type` at the implementation site.
 fn get_name_from_path(path: &Path) -> String {
     path.segments
-        .iter()
         .last()
         .map(|segment| match &segment.arguments {
             PathArguments::None => segment.ident.to_string(),
