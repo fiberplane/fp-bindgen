@@ -111,10 +111,21 @@ impl Type {
             |args: Vec<GenericArgument>| args.into_iter().map(specialize_arg).collect();
 
         match self {
+            Self::Container(name, item) => {
+                Self::Container(name, Box::new(item.with_specialized_args(specialized_args)))
+            }
+            Self::Map(name, key, value) => Self::Map(
+                name,
+                key,
+                Box::new(value.with_specialized_args(specialized_args)),
+            ),
             Self::Enum(name, args, doc_lines, variants, opts) => {
                 Self::Enum(name, specialize_args(args), doc_lines, variants, opts)
             }
             Self::GenericArgument(arg) => Self::GenericArgument(Box::new(specialize_arg(*arg))),
+            Self::List(name, item) => {
+                Self::List(name, Box::new(item.with_specialized_args(specialized_args)))
+            }
             Self::Struct(name, args, doc_lines, fields, opts) => {
                 Self::Struct(name, specialize_args(args), doc_lines, fields, opts)
             }

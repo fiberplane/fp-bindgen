@@ -2,12 +2,12 @@ mod casing;
 mod docs;
 mod functions;
 mod generators;
-mod generics;
-mod primitives;
 mod serializable;
-mod types;
 
+pub mod generics;
 pub mod prelude;
+pub mod primitives;
+pub mod types;
 
 use fp_bindgen_macros::primitive_impls;
 use prelude::*;

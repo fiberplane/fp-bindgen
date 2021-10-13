@@ -473,10 +473,6 @@ mod tests {
 
         let mut expected_dependencies = BTreeSet::new();
         expected_dependencies.insert(point.clone());
-        expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
-            name: "T".to_owned(),
-            ty: Some(Type::Primitive(Primitive::F64)),
-        })));
         expected_dependencies.insert(Type::List("Vec".to_owned(), Box::new(point)));
 
         assert_eq!(Complex::dependencies(), expected_dependencies);
