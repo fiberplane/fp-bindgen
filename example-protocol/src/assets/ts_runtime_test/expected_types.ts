@@ -23,6 +23,18 @@ export type ComplexHostToGuest = {
     points: Array<Point<number>>;
 };
 
+export type ExplicitedlyImportedType = {
+    youWillSeeThis: boolean;
+};
+
+export type GroupImportedType1 = {
+    youWillSeeThis: boolean;
+};
+
+export type GroupImportedType2 = {
+    youWillSeeThis: boolean;
+};
+
 export type Point<T> = {
     value: T;
 };

@@ -28,6 +28,24 @@ pub struct ComplexHostToGuest {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ExplicitedlyImportedType {
+    pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupImportedType1 {
+    pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GroupImportedType2 {
+    pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Point<T> {
     pub value: T,
 }
