@@ -20,6 +20,11 @@ export type ComplexGuestToHost = {
 export type ComplexHostToGuest = {
     simple: Simple;
     list: Array<number>;
+    points: Array<Point<number>>;
+};
+
+export type Point<T> = {
+    value: T;
 };
 
 /**

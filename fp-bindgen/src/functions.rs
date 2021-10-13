@@ -92,7 +92,16 @@ impl Function {
             ReturnType::Default => Type::Unit,
             ReturnType::Type(_, return_type) => {
                 resolve_type(return_type.as_ref(), deserializable_types).unwrap_or_else(|| {
-                    panic!("Unresolvable return type: {:?}", return_type.as_ref())
+                    println!(
+                        "Unresolvable return type: {:?}\namong: {}",
+                        return_type.as_ref(),
+                        deserializable_types
+                            .iter()
+                            .map(|ty| format!("  {}", ty.name()))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    );
+                    panic!("I'm dead")
                 })
             }
         };

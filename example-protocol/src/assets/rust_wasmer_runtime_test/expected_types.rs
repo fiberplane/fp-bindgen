@@ -23,6 +23,13 @@ pub struct ComplexGuestToHost {
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
+    pub points: Vec<Point<f64>>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Point<T> {
+    pub value: T,
 }
 
 /// Represents an error with the request.

@@ -11,6 +11,7 @@ import type {
     ComplexAlias,
     ComplexGuestToHost,
     ComplexHostToGuest,
+    Point,
     RequestError,
     RequestMethod,
     RequestOptions,

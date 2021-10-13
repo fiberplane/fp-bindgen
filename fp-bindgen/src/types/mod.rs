@@ -236,16 +236,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         }
                         Type::Enum(name, generic_args, _, _, _) => {
                             name == &path_without_args
-                                && generic_args.len() == type_args.len()
-                                && generic_args.iter().zip(type_args.iter()).all(|(arg, ty)| {
-                                    arg.name == ty.name()
-                                        || match ty {
-                                            Type::GenericArgument(ty_arg) if arg.ty.is_some() => {
-                                                arg.ty == ty_arg.ty
-                                            }
-                                            _ => false,
-                                        }
-                                })
+                                && generic_args_match_type_args(generic_args, &type_args)
                         }
                         Type::GenericArgument(arg) => {
                             arg.name == path_without_args && type_args.is_empty()
@@ -272,24 +263,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                         Type::String => path_without_args == "String",
                         Type::Struct(name, generic_args, _, _, _) => {
                             name == &path_without_args
-                                && generic_args.len() == type_args.len()
-                                && generic_args.iter().zip(type_args.iter()).all(
-                                    |(generic_arg, type_arg)| {
-                                        generic_arg.name == type_arg.name()
-                                            || match type_arg {
-                                                Type::GenericArgument(ty_arg)
-                                                    if generic_arg.ty.is_some() =>
-                                                {
-                                                    generic_arg.ty == ty_arg.ty
-                                                }
-                                                ty => generic_arg
-                                                    .ty
-                                                    .as_ref()
-                                                    .map(|generic_ty| generic_ty == ty)
-                                                    .unwrap_or(false),
-                                            }
-                                    },
-                                )
+                                && generic_args_match_type_args(generic_args, &type_args)
                         }
                         Type::Tuple(_) => false,
                         Type::Unit => false,
@@ -320,6 +294,29 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
             ty
         ),
     }
+}
+
+fn generic_args_match_type_args(generic_args: &[GenericArgument], type_args: &[Type]) -> bool {
+    if generic_args.len() != type_args.len() {
+        return false;
+    }
+
+    generic_args
+        .iter()
+        .zip(type_args.iter())
+        .all(|(generic_arg, type_arg)| {
+            generic_arg.name == type_arg.name()
+                || match type_arg {
+                    Type::GenericArgument(ty_arg) if generic_arg.ty.is_some() => {
+                        generic_arg.ty == ty_arg.ty
+                    }
+                    ty => generic_arg
+                        .ty
+                        .as_ref()
+                        .map(|generic_ty| generic_ty == ty)
+                        .unwrap_or(false),
+                }
+        })
 }
 
 #[cfg(test)]
