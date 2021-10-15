@@ -124,9 +124,21 @@ fn parse_generic_args_for_type(
     }
 
     let resolve_name = |name| {
+        let (name, args) = if contains_generic_arg(name) {
+            peel(name)
+        } else {
+            (name, "")
+        };
         let ty = syn::Type::Path(syn::TypePath {
             qself: None,
-            path: syn::Path::from(syn::Ident::new(name, proc_macro2::Span::call_site())),
+            path: syn::Path::from(syn::PathSegment {
+                ident: syn::Ident::new(name, proc_macro2::Span::call_site()),
+                arguments: if args.is_empty() {
+                    syn::PathArguments::None
+                } else {
+                    syn::PathArguments::AngleBracketed(syn::parse_str(args).unwrap())
+                },
+            }),
         });
         resolve_type(&ty, dependencies)
     };
@@ -139,6 +151,10 @@ fn parse_generic_args_for_type(
     match ty {
         Type::Enum(_, args, _, _, _) | Type::Struct(_, args, _, _, _) => {
             let generic_args_from_name = peel(name).1;
+            if generic_args_from_name.is_empty() {
+                return args.clone();
+            }
+
             let names = generic_args_from_name[1..generic_args_from_name.len() - 1]
                 .split(',')
                 .map(str::trim);

@@ -27,6 +27,7 @@ pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
+    pub recursive: Vec<Point<Point<f64>>>,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;

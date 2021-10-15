@@ -21,6 +21,7 @@ export type ComplexHostToGuest = {
     simple: Simple;
     list: Array<number>;
     points: Array<Point<number>>;
+    recursive: Array<Point<Point<number>>>;
 };
 
 export type ExplicitedlyImportedType = {
