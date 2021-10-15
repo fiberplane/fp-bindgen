@@ -11,6 +11,7 @@ export type ComplexAlias = ComplexGuestToHost;
 export type ComplexGuestToHost = {
     simple: Simple;
     map: Record<string, Simple>;
+    timestamp: string;
 };
 
 /**
@@ -20,6 +21,7 @@ export type ComplexGuestToHost = {
 export type ComplexHostToGuest = {
     simple: Simple;
     list: Array<number>;
+    timestamp: string;
 };
 
 export type ExplicitedlyImportedType = {

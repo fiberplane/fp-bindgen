@@ -1,5 +1,6 @@
 mod example_protocol;
 
+use chrono::Utc;
 use example_protocol::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 use std::panic;
@@ -36,11 +37,13 @@ fp_export!(
         my_complex_imported_function(ComplexGuestToHost {
             map: BTreeMap::new(),
             simple: simple.clone(),
+            timestamp: Utc::now(),
         });
 
         ComplexGuestToHost {
             map: BTreeMap::new(),
             simple,
+            timestamp: Utc::now(),
         }
     }
 );
@@ -53,6 +56,7 @@ fp_export!(
         ComplexGuestToHost {
             map: BTreeMap::new(),
             simple: result.simple,
+            timestamp: Utc::now(),
         }
     }
 );

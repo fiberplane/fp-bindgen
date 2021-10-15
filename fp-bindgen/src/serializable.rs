@@ -274,7 +274,7 @@ impl Serializable for chrono::Utc {
 
     fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "DateTime".to_owned(),
+            name: "Utc".to_owned(),
             type_args: vec![],
             rs_ty: "chrono::Utc".to_owned(),
             ts_ty: "UNIMPLEMENTED".to_owned(), // *should* never appear in the generated output
