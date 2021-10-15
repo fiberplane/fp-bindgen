@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use fp_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -28,6 +29,7 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
+    pub timestamp: DateTime<Utc>,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -36,6 +38,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
+    pub timestamp: DateTime<Utc>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
