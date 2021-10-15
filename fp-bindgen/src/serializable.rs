@@ -358,7 +358,7 @@ where
     fn ty() -> Type {
         Type::Custom(CustomType {
             name: "DateTime".to_owned(),
-            type_args: vec![T::ty()],
+            type_args: vec![],
             rs_ty: format!("chrono::DateTime<{}>", T::name()),
             ts_ty: "string".to_owned(),
         })
