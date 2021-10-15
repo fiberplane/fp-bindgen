@@ -14,7 +14,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 /// Multi-line doc comment with complex characters
@@ -24,7 +24,7 @@ pub struct ComplexGuestToHost {
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
