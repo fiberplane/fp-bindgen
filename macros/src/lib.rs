@@ -3,7 +3,7 @@ mod primitives;
 use crate::primitives::Primitive;
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use std::collections::{HashSet, VecDeque};
+use std::collections::VecDeque;
 use syn::{
     punctuated::Punctuated, FnArg, ForeignItemFn, GenericArgument, Generics, Ident, Item, ItemUse,
     Path, PathArguments, PathSegment, ReturnType, Type,
@@ -15,7 +15,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item, generics) = parse_type_item(item);
 
-    let field_types: Vec<Path> = match item {
+    let mut field_types: Vec<Path> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()
@@ -28,7 +28,7 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<HashSet<_>>(),
+            .collect::<Vec<_>>(),
         syn::Item::Struct(ty) => ty
             .fields
             .into_iter()
@@ -40,9 +40,10 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<HashSet<_>>(),
-        _ => HashSet::default(),
-    }.into_iter().collect();
+            .collect::<Vec<_>>(),
+        _ => Vec::default(),
+    };
+    field_types.dedup();
 
     let names = field_types.iter().map(get_name_from_path);
 
@@ -253,10 +254,10 @@ fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Path> {
 /// Finally, it returns two sets: one with all the paths for types that may need serialization
 /// to call the functions, and one with all the paths for types that may need deserialization to
 /// call the functions.
-fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
+fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<Path>) {
     let mut functions = Vec::new();
-    let mut serializable_type_names = HashSet::new();
-    let mut deserializable_type_names = HashSet::new();
+    let mut serializable_type_names = Vec::new();
+    let mut deserializable_type_names = Vec::new();
     let mut current_item_tokens = Vec::<TokenTree>::new();
     for token in token_stream.into_iter() {
         match token {
@@ -273,7 +274,7 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, H
                                 function.sig
                             ),
                             FnArg::Typed(arg) => {
-                                serializable_type_names.insert(
+                                serializable_type_names.push(
                                     extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
                                         panic!(
                                             "Only value types are supported. \
@@ -289,7 +290,7 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, H
                     match &function.sig.output {
                         ReturnType::Default => { /* No return value. */ }
                         ReturnType::Type(_, ty) => {
-                            deserializable_type_names.insert(
+                            deserializable_type_names.push(
                                 extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
                                     panic!(
                                         "Only value types are supported. \
@@ -304,8 +305,8 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, H
                     functions.push(function.into_token_stream().to_string());
                 } else if let Ok(using) = syn::parse::<ItemUse>(stream) {
                     for path in flatten_using_statement(using) {
-                        deserializable_type_names.insert(path.clone());
-                        serializable_type_names.insert(path);
+                        deserializable_type_names.push(path.clone());
+                        serializable_type_names.push(path);
                     }
                 }
 
@@ -314,6 +315,9 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, H
             other => current_item_tokens.push(other),
         }
     }
+
+    serializable_type_names.dedup();
+    deserializable_type_names.dedup();
 
     (
         functions,
