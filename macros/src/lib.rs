@@ -1,118 +1,21 @@
 mod primitives;
+mod serializable;
+mod utils;
 
-use crate::primitives::Primitive;
+use crate::{
+    primitives::Primitive,
+    utils::{extract_path_from_type, get_alias_from_path},
+};
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
-use std::collections::{HashSet, VecDeque};
-use syn::{
-    punctuated::Punctuated, FnArg, ForeignItemFn, Generics, Ident, Item, ItemUse, Path,
-    PathArguments, PathSegment, ReturnType, Type,
-};
+use std::collections::HashSet;
+use syn::{FnArg, ForeignItemFn, ItemUse, Path, ReturnType};
+use utils::flatten_using_statement;
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
 pub fn derive_serializable(item: TokenStream) -> TokenStream {
-    let item_str = item.to_string();
-    let (item_name, item, generics) = parse_type_item(item);
-    let item_name_str = item_name.to_string();
-
-    let field_types : Vec<Path> = match item {
-        syn::Item::Enum(ty) => ty
-            .variants
-            .into_iter()
-            .flat_map(|variant| variant.fields)
-            .map(|field| {
-                extract_path_from_type(&field.ty).unwrap_or_else(|| {
-                    panic!(
-                        "Only value types are supported. Incompatible type in enum variant field: {:?}",
-                        field
-                    )
-                })
-            })
-            .collect::<HashSet<_>>(),
-        syn::Item::Struct(ty) => ty
-            .fields
-            .into_iter()
-            .map(|field| {
-                extract_path_from_type(&field.ty).unwrap_or_else(|| {
-                    panic!(
-                        "Only value types are supported. Incompatible type in struct field: {:?}",
-                        field
-                    )
-                })
-            })
-            .collect::<HashSet<_>>(),
-        _ => HashSet::default(),
-    }.into_iter().collect();
-
-    // Aliases cannot be derived, but we can detect their presence by comparing
-    // the paths of dependencies with their expected names:
-    let aliases = field_types.iter().map(get_alias_from_path);
-
-    let where_clause = if generics.params.is_empty() {
-        quote! {}
-    } else {
-        let params = generics.type_params();
-        quote! {
-            where
-                #( #params: Serializable ),*
-        }
-    };
-
-    let implementation = quote! {
-        impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
-            fn name() -> String {
-                #item_name_str.to_owned()
-            }
-
-            fn ty() -> fp_bindgen::prelude::Type {
-                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
-            }
-
-            fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
-                let mut dependencies = std::collections::BTreeSet::new();
-                #( #field_types::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
-                dependencies
-            }
-        }
-    };
-    implementation.into()
-}
-
-fn extract_path_from_type(ty: &Type) -> Option<Path> {
-    match ty {
-        Type::Path(path) if path.qself.is_none() => {
-            let mut path = path.path.clone();
-            for segment in &mut path.segments {
-                if let PathArguments::AngleBracketed(args) = &mut segment.arguments {
-                    // When calling a static function on `Vec<T>`, it gets invoked
-                    // as `Vec::<T>::some_func()`, so we need to insert extra colons
-                    // to make the famed Rust "turbofish":
-                    args.colon2_token = Some(syn::parse_quote!(::));
-                }
-            }
-            Some(path)
-        }
-        _ => None,
-    }
-}
-
-fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
-    let item = syn::parse::<Item>(item).unwrap();
-    match item {
-        Item::Enum(item) => {
-            let generics = item.generics.clone();
-            (item.ident.clone(), Item::Enum(item), generics)
-        }
-        Item::Struct(item) => {
-            let generics = item.generics.clone();
-            (item.ident.clone(), Item::Struct(item), generics)
-        }
-        item => panic!(
-            "Only struct and enum types can be constructed from an item. Found: {:?}",
-            item
-        ),
-    }
+    serializable::impl_derive_serializable(item)
 }
 
 /// Declares functions the plugin can import from the host runtime.
@@ -175,53 +78,6 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
         }
     };
     replacement.into()
-}
-
-fn get_alias_from_path(path: &Path) -> String {
-    // FIXME: For now, this only works for plain identifiers, so nesting an
-    //        alias inside of a container is still likely to fail.
-    path.get_ident()
-        .map(|ident| ident.to_string())
-        .unwrap_or_else(|| "".to_owned())
-}
-
-/// Use statements are well complicated...
-/// Essentially you can have some rather absurd nested ones like: `use foobar::{bar::{A,B}, baz::{C,D}};`
-/// This function takes that mess and returns an iterator of [foobar::bar::A, foobar::bar::B, foobar::baz::C, foobar::baz::D]
-fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Path> {
-    let mut result = Vec::new();
-    let mut queue = VecDeque::new();
-    let mut path_segments = VecDeque::<PathSegment>::new();
-    queue.push_back(using.tree);
-
-    while let Some(tree) = queue.pop_back() {
-        match tree {
-            syn::UseTree::Name(name) => {
-                let mut segments = Punctuated::new();
-                for ps in &path_segments {
-                    segments.push(ps.clone());
-                }
-                segments.push(name.ident.into());
-
-                result.push(Path {
-                    leading_colon: None,
-                    segments,
-                });
-            }
-            syn::UseTree::Path(path) => {
-                path_segments.push_back(PathSegment::from(path.ident));
-                queue.push_back(*path.tree);
-            }
-            syn::UseTree::Group(group) => {
-                for item in group.items {
-                    queue.push_back(item);
-                }
-            }
-            _ => panic!("Glob and renames use statements are not supported at this time, sorry..."),
-        }
-    }
-
-    result.into_iter()
 }
 
 /// Parses statements like function declearations and 'use Foobar;' and returns them in a list.
