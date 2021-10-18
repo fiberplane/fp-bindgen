@@ -124,7 +124,7 @@ pub fn generate_type_bindings(
         format!("{}\n\n", type_imports)
     };
 
-    let type_defs = all_types
+    let mut type_defs = all_types
         .into_iter()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => {
@@ -158,14 +158,16 @@ pub fn generate_type_bindings(
             }
             _ => None,
         })
-        .collect::<Vec<_>>()
-        .join("\n\n");
+        .collect::<Vec<_>>();
+    type_defs.dedup();
 
     write_bindings_file(
         format!("{}/types.rs", path),
         format!(
             "use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
-            std_imports, type_imports, type_defs
+            std_imports,
+            type_imports,
+            type_defs.join("\n\n")
         ),
     );
 }

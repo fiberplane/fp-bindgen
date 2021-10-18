@@ -21,6 +21,9 @@ export type ComplexGuestToHost = {
 export type ComplexHostToGuest = {
     simple: Simple;
     list: Array<number>;
+    points: Array<Point<number>>;
+    recursive: Array<Point<Point<number>>>;
+    complexNested?: Record<string, Array<Point<number>>>;
     timestamp: string;
 };
 
@@ -34,6 +37,10 @@ export type GroupImportedType1 = {
 
 export type GroupImportedType2 = {
     youWillSeeThis: boolean;
+};
+
+export type Point<T> = {
+    value: T;
 };
 
 /**
