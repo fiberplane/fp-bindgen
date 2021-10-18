@@ -89,11 +89,7 @@ pub trait Serializable {
             }
         }
 
-        if Self::is_primitive() {
-            return;
-        }
-
-        if dependencies.contains(&ty) {
+        if Self::is_primitive() || dependencies.contains(&ty) {
             return;
         }
 
@@ -380,6 +376,7 @@ mod tests {
         types::{Field, GenericArgument, StructOptions},
         Type,
     };
+    use pretty_assertions::assert_eq;
     use std::collections::{BTreeMap, BTreeSet};
 
     pub struct Point<T>
@@ -476,5 +473,86 @@ mod tests {
         expected_dependencies.insert(Type::List("Vec".to_owned(), Box::new(point)));
 
         assert_eq!(Complex::dependencies(), expected_dependencies);
+    }
+
+    pub struct ComplexNested {
+        pub complex_nested: BTreeMap<String, Vec<Point<f64>>>,
+    }
+
+    // Reflects actual macro output:
+    impl Serializable for ComplexNested {
+        fn name() -> String {
+            "ComplexNested".to_owned()
+        }
+        fn ty() -> Type {
+            Type::from_item("pub struct ComplexNested {pub complex_nested : BTreeMap < String , Vec < Point < f64 >>>,}", &Self::dependencies())
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "";
+            let mut dependencies = BTreeSet::new();
+            BTreeMap::<String, Vec<Point<f64>>>::add_named_type_with_dependencies_and_generics(
+                &mut dependencies,
+                "BTreeMap<String, Vec<Point<f64>>>",
+                generics,
+            );
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_complex_nested_dependencies() {
+        let specialized_argument = GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        };
+
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                doc_lines: vec![],
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                })),
+            }],
+            StructOptions {
+                field_casing: Casing::CamelCase,
+                native_modules: BTreeMap::new(),
+            },
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+        let map = Type::Map(
+            "BTreeMap".to_owned(),
+            Box::new(Type::String),
+            Box::new(
+                vec.clone()
+                    .with_specialized_args(&[specialized_argument.clone()]),
+            ),
+        );
+
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(
+            point
+                .clone()
+                .with_specialized_args(&[specialized_argument.clone()]),
+        );
+        expected_dependencies.insert(vec.clone().with_specialized_args(&[specialized_argument]));
+        expected_dependencies.insert(map);
+        expected_dependencies.insert(Type::String);
+        // FIXME: Should these really be necessary to be inserted?
+        expected_dependencies.insert(point);
+        expected_dependencies.insert(vec);
+        expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        })));
+
+        assert_eq!(ComplexNested::dependencies(), expected_dependencies);
     }
 }

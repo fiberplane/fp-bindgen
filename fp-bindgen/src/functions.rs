@@ -1,6 +1,6 @@
 use crate::{
     docs::get_doc_lines,
-    types::{resolve_type, Type},
+    types::{resolve_type_or_panic, Type},
 };
 use quote::ToTokens;
 use std::collections::BTreeSet;
@@ -82,28 +82,21 @@ impl Function {
                 ),
                 FnArg::Typed(arg) => FunctionArg {
                     name: arg.pat.to_token_stream().to_string(),
-                    ty: resolve_type(arg.ty.as_ref(), serializable_types).unwrap_or_else(|| {
-                        panic!("Unresolvable argument type: {:?}", arg.ty.as_ref())
-                    }),
+                    ty: resolve_type_or_panic(
+                        arg.ty.as_ref(),
+                        serializable_types,
+                        "Unresolvable argument type",
+                    ),
                 },
             })
             .collect();
         let return_type = match &item.sig.output {
             ReturnType::Default => Type::Unit,
-            ReturnType::Type(_, return_type) => {
-                resolve_type(return_type.as_ref(), deserializable_types).unwrap_or_else(|| {
-                    println!(
-                        "Unresolvable return type: {:?}\namong: {}",
-                        return_type.as_ref(),
-                        deserializable_types
-                            .iter()
-                            .map(|ty| format!("  {}", ty.name()))
-                            .collect::<Vec<_>>()
-                            .join("\n")
-                    );
-                    panic!("I'm dead")
-                })
-            }
+            ReturnType::Type(_, return_type) => resolve_type_or_panic(
+                return_type.as_ref(),
+                deserializable_types,
+                "Unresolvable return type",
+            ),
         };
         let is_async = item.sig.asyncness.is_some();
 

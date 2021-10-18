@@ -1,7 +1,6 @@
-use syn::Generics;
-
 use crate::types::{resolve_type, GenericArgument, Type};
 use std::collections::BTreeSet;
+use syn::{AngleBracketedGenericArguments, Path, PathArguments};
 
 /// Specializes a type with optional generic arguments, including its dependencies.
 ///
@@ -60,10 +59,11 @@ pub fn specialize_type_with_dependencies(
 ) -> BTreeSet<Type> {
     let mut specialized_types = BTreeSet::new();
 
-    for dependency in dependencies {
-        if contains_generic_arg(name) {
+    if contains_generic_arg(name) {
+        let args = extract_args(name);
+        for dependency in dependencies {
             let dependency_name = dependency.name();
-            for arg in extract_args(name).split(',').map(str::trim) {
+            for arg in args.iter() {
                 let (name, _) = peel(arg);
                 let (dependency_name, dependency_args) = peel(&dependency_name);
                 if name == dependency_name {
@@ -75,13 +75,15 @@ pub fn specialize_type_with_dependencies(
                     ));
                 }
             }
-        } else {
+        }
+    } else {
+        for dependency in dependencies {
             specialized_types.insert(dependency.clone());
         }
     }
 
-    let generic_args = parse_generic_args_for_type(generic_args, &ty, name, &specialized_types);
-    specialized_types.insert(ty.with_specialized_args(&generic_args));
+    let specialized_args = parse_generic_args_for_type(generic_args, &ty, name, &specialized_types);
+    specialized_types.insert(ty.with_specialized_args(&specialized_args));
 
     specialized_types
 }
@@ -90,10 +92,50 @@ pub fn contains_generic_arg(name: &str) -> bool {
     name.contains('<')
 }
 
-pub fn extract_args(name: &str) -> &str {
+pub fn extract_args(name: &str) -> Vec<String> {
+    let generic_args = syn::parse_str::<AngleBracketedGenericArguments>(peel(name).1).unwrap();
+    generic_args
+        .args
+        .iter()
+        .filter_map(|param| match param {
+            syn::GenericArgument::Type(syn::Type::Path(generic_ty)) => Some(generic_ty),
+            _ => None,
+        })
+        .map(|generic_arg| get_name_from_path(&generic_arg.path))
+        .collect()
+}
+
+pub fn extract_args_str(name: &str) -> &str {
     let args_start_index = name.find('<').expect("Generic brackets expected");
     let args_end_index = name.rfind('>').expect("Generic brackets expected");
     &name[args_start_index + 1..args_end_index]
+}
+
+fn get_name_from_path(path: &Path) -> String {
+    path.segments
+        .last()
+        .map(|segment| match &segment.arguments {
+            PathArguments::None => segment.ident.to_string(),
+            PathArguments::AngleBracketed(bracketed) => format!(
+                "{}<{}>",
+                segment.ident,
+                bracketed
+                    .args
+                    .iter()
+                    .map(|arg| match arg {
+                        syn::GenericArgument::Type(syn::Type::Path(path))
+                            if path.qself.is_none() =>
+                            get_name_from_path(&path.path),
+                        _ => panic!("Unsupported generic argument in path: {:?}", path),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            PathArguments::Parenthesized(_) => {
+                panic!("Unsupported arguments in path: {:?}", path)
+            }
+        })
+        .unwrap_or_else(String::new)
 }
 
 fn parse_generic_args_for_type(
@@ -102,25 +144,27 @@ fn parse_generic_args_for_type(
     name: &str,
     dependencies: &BTreeSet<Type>,
 ) -> Vec<GenericArgument> {
-    if generic_args.is_empty() {
+    match ty {
         // Some of our types contain "implicit" generics, mainly container types
         // we treat specially. For those, we just pass the buck to their inner
         // types:
-        return match ty {
-            Type::Container(_, item) | Type::List(_, item) | Type::Map(_, _, item) => {
-                parse_generic_args_for_type(
-                    peel(&item.name()).1,
-                    item.as_ref(),
-                    if contains_generic_arg(name) {
-                        extract_args(name)
-                    } else {
-                        ""
-                    },
-                    dependencies,
-                )
+        Type::Container(_, item) | Type::List(_, item) | Type::Map(_, _, item) => {
+            return parse_generic_args_for_type(
+                peel(&item.name()).1,
+                item.as_ref(),
+                if contains_generic_arg(name) {
+                    extract_args_str(name)
+                } else {
+                    ""
+                },
+                dependencies,
+            );
+        }
+        _ => {
+            if generic_args.is_empty() {
+                return Vec::new();
             }
-            _ => Vec::new(),
-        };
+        }
     }
 
     let resolve_name = |name| {
@@ -143,9 +187,9 @@ fn parse_generic_args_for_type(
         resolve_type(&ty, dependencies)
     };
 
-    let generic_args = syn::parse_str::<Generics>(generic_args).unwrap();
-    let generic_params = generic_args.params.iter().filter_map(|param| match param {
-        syn::GenericParam::Type(generic_ty) => Some(generic_ty),
+    let generic_args = syn::parse_str::<AngleBracketedGenericArguments>(generic_args).unwrap();
+    let generic_args = generic_args.args.iter().filter_map(|param| match param {
+        syn::GenericArgument::Type(syn::Type::Path(generic_ty)) => Some(generic_ty),
         _ => None,
     });
     match ty {
@@ -159,10 +203,15 @@ fn parse_generic_args_for_type(
                 .split(',')
                 .map(str::trim);
             args.iter()
-                .zip(generic_params.zip(names))
-                .map(|(arg, (param, name))| GenericArgument {
+                .zip(generic_args.zip(names))
+                .map(|(arg, (generic_arg, name))| GenericArgument {
                     name: arg.name.clone(),
-                    ty: if param.ident == arg.name {
+                    ty: if generic_arg
+                        .path
+                        .get_ident()
+                        .map(|ident| *ident == arg.name)
+                        .unwrap_or_default()
+                    {
                         resolve_name(name)
                     } else {
                         None
@@ -170,10 +219,15 @@ fn parse_generic_args_for_type(
                 })
                 .collect()
         }
-        Type::GenericArgument(arg) => generic_params
-            .map(|param| GenericArgument {
+        Type::GenericArgument(arg) => generic_args
+            .map(|generic_arg| GenericArgument {
                 name: arg.name.clone(),
-                ty: if param.ident == arg.name {
+                ty: if generic_arg
+                    .path
+                    .get_ident()
+                    .map(|ident| *ident == arg.name)
+                    .unwrap_or_default()
+                {
                     match arg.ty.as_ref() {
                         Some(ty) => Some(ty.clone()),
                         None => resolve_name(name),

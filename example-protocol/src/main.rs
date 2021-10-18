@@ -29,6 +29,7 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
+    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: DateTime<Utc>,
 }
 

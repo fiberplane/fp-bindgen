@@ -23,6 +23,7 @@ export type ComplexHostToGuest = {
     list: Array<number>;
     points: Array<Point<number>>;
     recursive: Array<Point<Point<number>>>;
+    complexNested?: Record<string, Array<Point<number>>>;
     timestamp: string;
 };
 
