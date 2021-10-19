@@ -233,7 +233,10 @@ pub fn fp_export_impl(_attributes: TokenStream, input: TokenStream) -> TokenStre
         Err(e) => abort!(e.to_compile_error(), "Not a valid function signature"),
     };
 
-    typing::type_check_export(&func.sig);
+    {
+        let lock = EXPORTED_SIGNATURES.read().unwrap();
+        typing::type_check_export(&*lock, &func.sig);
+    }
 
     let args = func
         .sig

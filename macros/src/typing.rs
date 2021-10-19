@@ -93,14 +93,13 @@ pub(crate) fn is_type_complex(ty: &Type) -> bool {
     }
 }
 
-pub(crate) fn type_check_export(sig: &Signature) {
+pub(crate) fn type_check_export(map: &HashMap<String, FnSignature>, sig: &Signature) {
     let checked: FnSignature = match sig.try_into() {
         Ok(sig) => sig,
         Err(e) => abort!(sig, "failed to convert signature: {:?}", e),
     };
 
-    let lock = EXPORTED_SIGNATURES.read().unwrap();
-    let exported = match lock.get(&checked.name) {
+    let exported = match map.get(&checked.name) {
         Some(e) => e,
         None => {
             println!("SPAN: {:?}", sig.ident.span());
