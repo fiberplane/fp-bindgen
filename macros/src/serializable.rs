@@ -10,7 +10,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     let (item_name, item, generics) = parse_type_item(item);
     let item_name_str = item_name.to_string();
 
-    let field_types : Vec<Path> = match item {
+    let field_types: Vec<Path> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()
