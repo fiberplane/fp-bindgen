@@ -1,14 +1,19 @@
 mod primitives;
 mod serializable;
+mod typing;
 mod utils;
 
 use crate::{
     primitives::Primitive,
     utils::{extract_path_from_type, get_name_from_path},
 };
+use once_cell::sync::Lazy;
 use proc_macro::{TokenStream, TokenTree};
-use quote::{quote, ToTokens};
-use syn::{FnArg, ForeignItemFn, ItemUse, Path, ReturnType};
+use proc_macro_error::{abort, emit_error, proc_macro_error};
+use quote::{format_ident, quote, ToTokens};
+use std::{collections::HashMap, sync::RwLock};
+use syn::{FnArg, ForeignItemFn, ItemFn, ItemUse, Path, ReturnType};
+use typing::FnSignature;
 use utils::flatten_using_statement;
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
@@ -193,4 +198,128 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
         token_stream.extend(primitive.gen_impl().into_iter());
     }
     token_stream
+}
+
+static EXPORTED_SIGNATURES: Lazy<RwLock<HashMap<String, FnSignature>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> TokenStream {
+    proc_macro_error::set_dummy(input.clone().into());
+    let func = match syn::parse_macro_input::parse::<ForeignItemFn>(input.clone()) {
+        Ok(func) => func,
+        Err(e) => abort!(e),
+    };
+    let sig: FnSignature = (&func.sig).into();
+    if EXPORTED_SIGNATURES
+        .write()
+        .unwrap()
+        .insert(sig.name.clone(), sig)
+        .is_some()
+    {
+        emit_error!(func, "Can't export the same function name multiple times");
+    }
+    TokenStream::default() //eat the signature
+}
+
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn fp_export_impl(_attributes: TokenStream, input: TokenStream) -> TokenStream {
+    proc_macro_error::set_dummy(input.clone().into());
+
+    let func = match syn::parse_macro_input::parse::<ItemFn>(input.clone()) {
+        Ok(func) => func,
+        Err(e) => abort!(e.to_compile_error(), "Not a valid function signature"),
+    };
+
+    typing::type_check_export(&func.sig);
+
+    let args = func
+        .sig
+        .inputs
+        .iter()
+        .map(|arg| {
+            let pt = typing::get_type(arg);
+            (arg, pt, typing::is_type_complex(&pt.ty))
+        })
+        .collect::<Vec<_>>();
+
+    // Check each argument and replace with FatPtr for complex types
+    let formatted_args = args
+        .iter()
+        .map(|&(arg, pt, is_complex)| {
+            if is_complex {
+                let arg_name = pt.pat.as_ref();
+                quote! {#arg_name : protocol::FatPtr}
+            } else {
+                arg.to_token_stream()
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let (names, types): (Vec<_>, Vec<_>) = args
+        .iter()
+        .filter_map(|&(_, pt, is_complex)| {
+            if is_complex {
+                Some((pt.pat.as_ref(), pt.ty.as_ref()))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    let call_args = args
+        .iter()
+        .map(|&(_, pt, _)| pt.pat.as_ref())
+        .collect::<Vec<_>>();
+    let fn_name = &func.sig.ident;
+
+    // Check the output type and replace complex ones with FatPtr
+    let (output, return_wrapper) = if typing::is_ret_type_complex(&func.sig.output) {
+        (
+            quote! {-> protocol::FatPtr},
+            quote! {let ret = protocol::export_value_to_host(&ret);},
+        )
+    } else {
+        (func.sig.output.to_token_stream(), Default::default())
+    };
+
+    let func_call = if func.sig.asyncness.is_some() {
+        quote! {
+                let len = std::mem::size_of::<protocol::AsyncValue>() as u32;
+                let ptr = protocol::malloc(len);
+                let fat_ptr = protocol::to_fat_ptr(ptr, len);
+
+                Task::spawn(Box::pin(async move {
+                    let ret = #fn_name(#(#call_args),*).await;
+                    unsafe {
+                        let result_ptr = protocol::export_value_to_host(&ret);
+                        protocol::host_resolve_async_value(fat_ptr, result_ptr);
+                    }
+                }));
+
+                let ret = fat_ptr;
+        }
+    } else {
+        quote! {
+            let ret = #fn_name(#(#call_args),*);
+            #return_wrapper
+        }
+    };
+
+    let ts: proc_macro2::TokenStream = input.clone().into();
+    let exported_fn_name = format_ident!("__fp_gen_{}", fn_name);
+
+    //build the actual exported wrapper function
+    (quote! {
+        #[no_mangle]
+        fn #exported_fn_name( #(#formatted_args),* ) #output {
+            #(let #names = unsafe { protocol::import_value_from_host::<#types>(#names) };)*
+            #func_call
+            ret
+        }
+        #ts
+    })
+    .into()
 }
