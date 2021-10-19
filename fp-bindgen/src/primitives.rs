@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 /// Type of primitive that is supported out-of-the-box.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Primitive {
     Bool,
     F32,

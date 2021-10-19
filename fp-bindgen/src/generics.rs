@@ -8,8 +8,6 @@ use syn::{AngleBracketedGenericArguments, Path, PathArguments};
 /// type may contain additional type information that is unknown to the generic type itself,
 /// which gives us the opportunity to specialize.
 ///
-/// `generic_args` is the definition of the generic arguments that require specialization.
-///
 /// `dependencies` are dependencies of the type being specialized. Whenever we need to look up
 /// a concrete type for a generic argument, it is assumed to be part of these dependencies.
 ///
@@ -47,14 +45,13 @@ use syn::{AngleBracketedGenericArguments, Path, PathArguments};
 /// expected_types.insert(Type::Primitive(Primitive::F64));
 ///
 /// assert_eq!(
-///     specialize_type_with_dependencies(ty, "Point<f64>", "<T>", &dependencies),
+///     specialize_type_with_dependencies(ty, "Point<f64>", &dependencies),
 ///     expected_types
 /// );
 /// ```
 pub fn specialize_type_with_dependencies(
     ty: Type,
     name: &str,
-    generic_args: &str,
     dependencies: &BTreeSet<Type>,
 ) -> BTreeSet<Type> {
     let mut specialized_types = BTreeSet::new();
@@ -64,13 +61,10 @@ pub fn specialize_type_with_dependencies(
         for dependency in dependencies {
             let dependency_name = dependency.name();
             for arg in args.iter() {
-                let (name, _) = peel(arg);
-                let (dependency_name, dependency_args) = peel(&dependency_name);
-                if name == dependency_name {
+                if peel(arg).0 == peel(&dependency_name).0 {
                     specialized_types.append(&mut specialize_type_with_dependencies(
                         dependency.clone(),
                         arg,
-                        dependency_args,
                         dependencies,
                     ));
                 }
@@ -82,6 +76,8 @@ pub fn specialize_type_with_dependencies(
         }
     }
 
+    let ty_name = ty.name();
+    let generic_args = peel(&ty_name).1;
     let specialized_args = parse_generic_args_for_type(generic_args, &ty, name, &specialized_types);
     specialized_types.insert(ty.with_specialized_args(&specialized_args));
 
@@ -245,11 +241,13 @@ fn parse_generic_args_for_type(
 ///
 /// ## Examples
 ///
-/// ```rs
+/// ```
+/// use fp_bindgen::generics::*;
+///
 /// assert_eq!(peel("Point<T>"), ("Point", "<T>"));
 /// assert_eq!(peel("ConcreteType"), ("ConcreteType", ""));
 /// ```
-fn peel(name: &str) -> (&str, &str) {
+pub fn peel(name: &str) -> (&str, &str) {
     match (name.find('<'), name.rfind('>')) {
         (Some(start_index), Some(end_index)) => (
             name[0..start_index].trim(),
