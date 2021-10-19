@@ -24,6 +24,10 @@ pub struct ComplexGuestToHost {
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
+    pub points: Vec<Point<f64>>,
+    pub recursive: Vec<Point<Point<f64>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: chrono::DateTime<chrono::Utc>,
 }
 
@@ -43,6 +47,12 @@ pub struct GroupImportedType1 {
 #[serde(rename_all = "camelCase")]
 pub struct GroupImportedType2 {
     pub you_will_see_this: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Point<T> {
+    pub value: T,
 }
 
 /// Represents an error with the request.

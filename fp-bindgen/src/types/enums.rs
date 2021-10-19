@@ -1,5 +1,5 @@
 use super::{
-    resolve_type,
+    resolve_type_or_panic,
     structs::{Field, StructOptions},
     GenericArgument, Type,
 };
@@ -53,9 +53,11 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                             .as_ref()
                             .expect("Expected all enum variant fields to be named")
                             .to_string();
-                        let ty = resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
-                            panic!("Unresolvable variant field type: {:?}", field.ty)
-                        });
+                        let ty = resolve_type_or_panic(
+                            &field.ty,
+                            dependencies,
+                            "Unresolvable variant field type",
+                        );
                         let doc_lines = get_doc_lines(&field.attrs);
                         Field {
                             name,
@@ -76,9 +78,11 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                     .fields
                     .iter()
                     .map(|field| {
-                        resolve_type(&field.ty, dependencies).unwrap_or_else(|| {
-                            panic!("Unresolvable variant item type: {:?}", field.ty)
-                        })
+                        resolve_type_or_panic(
+                            &field.ty,
+                            dependencies,
+                            "Unresolvable variant item type",
+                        )
                     })
                     .collect();
                 Type::Tuple(item_types)

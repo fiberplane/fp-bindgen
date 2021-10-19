@@ -1,6 +1,7 @@
 #[cfg(feature = "chrono-compat")]
 use crate::CustomType;
 use crate::{
+    generics::{contains_generic_arg, specialize_type_with_dependencies},
     types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
@@ -24,25 +25,80 @@ pub trait Serializable {
     /// Other (non-primitive) data structures this data structure depends on.
     fn dependencies() -> BTreeSet<Type>;
 
+    /// Adds `Self` to the set of `dependencies`.
+    ///
+    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
     fn add_type_with_dependencies(dependencies: &mut BTreeSet<Type>) {
-        if Self::is_primitive() {
+        Self::add_named_type_with_dependencies(dependencies, "")
+    }
+
+    /// Adds `Self` with the given `name` to the set of `dependencies`.
+    ///
+    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
+    fn add_named_type_with_dependencies(dependencies: &mut BTreeSet<Type>, name: &str) {
+        Self::add_named_type_with_dependencies_and_generics(dependencies, name, "")
+    }
+
+    /// Adds `Self` with the given `name` to the set of `dependencies`, but specializes
+    /// generic arguments with specialized types.
+    ///
+    /// Dependencies of `Self` are recursively added to the `dependencies` as well.
+    ///
+    /// In addition, we receive the declaration of the generic arguments of the type
+    /// whose `dependencies` we are gathering. This helps us to determine generic
+    /// arguments and/or aliases in the given `name`.
+    ///
+    /// ## Example:
+    ///
+    /// If `Self` refers to `Option<T>`, but `name` is `Option<f64>`, we can specialize
+    /// the `T` argument of the `Option` to be `f64` instead.
+    fn add_named_type_with_dependencies_and_generics(
+        dependencies: &mut BTreeSet<Type>,
+        name: &str,
+        generic_args: &str,
+    ) {
+        let ty = Self::ty();
+        if !name.is_empty() && ty.name() != name {
+            let generic_args = if generic_args.is_empty() {
+                syn::Generics::default()
+            } else {
+                syn::parse_str(generic_args).expect("Cannot parse generic arguments")
+            };
+            let generic_arg = generic_args
+                .params
+                .iter()
+                .find_map(|param| match param {
+                    syn::GenericParam::Type(generic_ty) if generic_ty.ident == name => {
+                        Some(generic_ty)
+                    }
+                    _ => None,
+                })
+                .map(|generic_ty| GenericArgument {
+                    name: generic_ty.ident.to_string(),
+                    ty: Some(ty.clone()),
+                });
+
+            if let Some(dependency) = match generic_arg {
+                Some(arg) => Some(Type::GenericArgument(Box::new(arg))),
+                None if !contains_generic_arg(name) => {
+                    Some(Type::Alias(name.to_owned(), Box::new(ty.clone())))
+                }
+                _ => None,
+            } {
+                dependencies.insert(dependency);
+            }
+        }
+
+        if Self::is_primitive() || dependencies.contains(&ty) {
             return;
         }
 
-        let ty = Self::ty();
-
-        if dependencies.insert(ty) {
-            dependencies.append(&mut Self::dependencies());
-        }
-    }
-
-    fn add_type_with_dependencies_and_alias(dependencies: &mut BTreeSet<Type>, alias: &str) {
-        Self::add_type_with_dependencies(dependencies);
-
-        if !alias.is_empty() && alias != Self::name() {
-            let alias = Type::Alias(alias.to_owned(), Box::new(Self::ty()));
-            dependencies.insert(alias);
-        }
+        dependencies.append(&mut specialize_type_with_dependencies(
+            ty,
+            name,
+            generic_args,
+            &Self::dependencies(),
+        ));
     }
 }
 
@@ -298,7 +354,7 @@ where
     fn ty() -> Type {
         Type::Custom(CustomType {
             name: "DateTime".to_owned(),
-            type_args: vec![T::ty()],
+            type_args: vec![],
             rs_ty: format!("chrono::DateTime<{}>", T::name()),
             ts_ty: "string".to_owned(),
         })
@@ -308,5 +364,195 @@ where
         let mut dependencies = BTreeSet::new();
         T::add_type_with_dependencies(&mut dependencies);
         dependencies
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Serializable;
+    use crate::{
+        casing::Casing,
+        primitives::Primitive,
+        types::{Field, GenericArgument, StructOptions},
+        Type,
+    };
+    use pretty_assertions::assert_eq;
+    use std::collections::{BTreeMap, BTreeSet};
+
+    pub struct Point<T>
+    where
+        T: Serializable,
+    {
+        pub value: T,
+    }
+
+    // Reflects actual macro output:
+    impl<T> Serializable for Point<T>
+    where
+        T: Serializable,
+    {
+        fn name() -> String {
+            Self::ty().name()
+        }
+        fn ty() -> Type {
+            Type::from_item(
+                "pub struct Point < T > {pub value : T ,}",
+                &Self::dependencies(),
+            )
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "< T >";
+            let mut dependencies = BTreeSet::new();
+            T::add_named_type_with_dependencies_and_generics(&mut dependencies, "T", generics);
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_point_dependencies() {
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        })));
+
+        assert_eq!(Point::<f64>::dependencies(), expected_dependencies);
+    }
+
+    pub struct Complex {
+        pub points: Vec<Point<f64>>,
+    }
+
+    impl Serializable for Complex {
+        fn name() -> String {
+            "Complex".to_owned()
+        }
+        fn ty() -> Type {
+            Type::from_item(
+                "pub struct Complex {pub points : Vec < Point < f64 >>,}",
+                &Self::dependencies(),
+            )
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "";
+            let mut dependencies = BTreeSet::new();
+            Vec::<Point<f64>>::add_named_type_with_dependencies_and_generics(
+                &mut dependencies,
+                "Vec<Point<f64>>",
+                generics,
+            );
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_complex_dependencies() {
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                doc_lines: vec![],
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                })),
+            }],
+            StructOptions {
+                field_casing: Casing::CamelCase,
+                native_modules: BTreeMap::new(),
+            },
+        );
+
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(point.clone());
+        expected_dependencies.insert(Type::List("Vec".to_owned(), Box::new(point)));
+
+        assert_eq!(Complex::dependencies(), expected_dependencies);
+    }
+
+    pub struct ComplexNested {
+        pub complex_nested: BTreeMap<String, Vec<Point<f64>>>,
+    }
+
+    // Reflects actual macro output:
+    impl Serializable for ComplexNested {
+        fn name() -> String {
+            "ComplexNested".to_owned()
+        }
+        fn ty() -> Type {
+            Type::from_item("pub struct ComplexNested {pub complex_nested : BTreeMap < String , Vec < Point < f64 >>>,}", &Self::dependencies())
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "";
+            let mut dependencies = BTreeSet::new();
+            BTreeMap::<String, Vec<Point<f64>>>::add_named_type_with_dependencies_and_generics(
+                &mut dependencies,
+                "BTreeMap<String, Vec<Point<f64>>>",
+                generics,
+            );
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_complex_nested_dependencies() {
+        let specialized_argument = GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        };
+
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                doc_lines: vec![],
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                })),
+            }],
+            StructOptions {
+                field_casing: Casing::CamelCase,
+                native_modules: BTreeMap::new(),
+            },
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+        let map = Type::Map(
+            "BTreeMap".to_owned(),
+            Box::new(Type::String),
+            Box::new(
+                vec.clone()
+                    .with_specialized_args(&[specialized_argument.clone()]),
+            ),
+        );
+
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(
+            point
+                .clone()
+                .with_specialized_args(&[specialized_argument.clone()]),
+        );
+        expected_dependencies.insert(vec.clone().with_specialized_args(&[specialized_argument]));
+        expected_dependencies.insert(map);
+        expected_dependencies.insert(Type::String);
+        // FIXME: Should these really be necessary to be inserted?
+        expected_dependencies.insert(point);
+        expected_dependencies.insert(vec);
+        expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        })));
+
+        assert_eq!(ComplexNested::dependencies(), expected_dependencies);
     }
 }

@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use syn::{
-    punctuated::Punctuated, Generics, Item, ItemUse, Path, PathArguments, PathSegment, Type,
+    punctuated::Punctuated, GenericArgument, Generics, Item, ItemUse, Path, PathArguments,
+    PathSegment, Type,
 };
 
 pub(crate) fn extract_path_from_type(ty: &Type) -> Option<Path> {
@@ -42,12 +43,37 @@ pub(crate) fn parse_type_item(item: TokenStream) -> (Ident, Item, Generics) {
     }
 }
 
-pub(crate) fn get_alias_from_path(path: &Path) -> String {
-    // FIXME: For now, this only works for plain identifiers, so nesting an
-    //        alias inside of a container is still likely to fail.
-    path.get_ident()
-        .map(|ident| ident.to_string())
-        .unwrap_or_else(|| "".to_owned())
+/// Returns the name of the type based on its path. The result of this should be the same as
+/// provided by `Type::name()`, but without the need for constructing an intermediate `Type`.
+///
+/// If the returned name does *not* match the one returned by `Type::name()` we use that as an
+/// indication there's either an alias or a generic argument present in the type, because
+/// those show up in the path, but neither aliases nor the specialized types can be known to
+/// the `Type` at the implementation site.
+pub(crate) fn get_name_from_path(path: &Path) -> String {
+    path.segments
+        .last()
+        .map(|segment| match &segment.arguments {
+            PathArguments::None => segment.ident.to_string(),
+            PathArguments::AngleBracketed(bracketed) => format!(
+                "{}<{}>",
+                segment.ident,
+                bracketed
+                    .args
+                    .iter()
+                    .map(|arg| match arg {
+                        GenericArgument::Type(Type::Path(path)) if path.qself.is_none() =>
+                            get_name_from_path(&path.path),
+                        _ => panic!("Unsupported generic argument in path: {:?}", path),
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            PathArguments::Parenthesized(_) => {
+                panic!("Unsupported arguments in path: {:?}", path)
+            }
+        })
+        .unwrap_or_else(String::new)
 }
 
 /// Use statements are well complicated...

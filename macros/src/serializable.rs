@@ -1,16 +1,13 @@
+use crate::utils::{extract_path_from_type, get_name_from_path, parse_type_item};
 use proc_macro::TokenStream;
-use quote::quote;
-use std::collections::HashSet;
+use quote::{quote, ToTokens};
 use syn::Path;
-
-use crate::utils::{extract_path_from_type, get_alias_from_path, parse_type_item};
 
 pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item, generics) = parse_type_item(item);
-    let item_name_str = item_name.to_string();
 
-    let field_types: Vec<Path> = match item {
+    let mut field_types: Vec<Path> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()
@@ -23,7 +20,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<HashSet<_>>(),
+            .collect::<Vec<_>>(),
         syn::Item::Struct(ty) => ty
             .fields
             .into_iter()
@@ -35,13 +32,21 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                     )
                 })
             })
-            .collect::<HashSet<_>>(),
-        _ => HashSet::default(),
-    }.into_iter().collect();
+            .collect::<Vec<_>>(),
+        _ => Vec::default(),
+    };
+    field_types.dedup();
 
-    // Aliases cannot be derived, but we can detect their presence by comparing
-    // the paths of dependencies with their expected names:
-    let aliases = field_types.iter().map(get_alias_from_path);
+    let names = field_types.iter().map(get_name_from_path);
+
+    let generics_str = generics.to_token_stream().to_string();
+
+    let name = if generics.params.is_empty() {
+        let item_name = item_name.to_string();
+        quote! { #item_name.to_owned() }
+    } else {
+        quote! { Self::ty().name() }
+    };
 
     let where_clause = if generics.params.is_empty() {
         quote! {}
@@ -56,7 +61,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     let implementation = quote! {
         impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
             fn name() -> String {
-                #item_name_str.to_owned()
+                #name
             }
 
             fn ty() -> fp_bindgen::prelude::Type {
@@ -64,8 +69,13 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
             }
 
             fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
+                let generics = #generics_str;
                 let mut dependencies = std::collections::BTreeSet::new();
-                #( #field_types::add_type_with_dependencies_and_alias(&mut dependencies, #aliases); )*
+                #( #field_types::add_named_type_with_dependencies_and_generics(
+                    &mut dependencies,
+                    #names,
+                    generics,
+                ); )*
                 dependencies
             }
         }
