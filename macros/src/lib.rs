@@ -202,6 +202,9 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
     token_stream
 }
 
+/// Exports a signature in a provider crate.
+/// This is not meant to be used directly.
+// (not currently in use by the generator)
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> TokenStream {
@@ -300,6 +303,16 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     .into()
 }
 
+/// Exports an implementation of a specific provider function
+///
+/// Example usage of implementing a `log` function of a `logger` provider:
+/// ```
+/// #[fp_export_impl(logger)]
+/// pub fn log(msg: String, foo: String) -> String {
+///     format!("{} + {} => {0}{1}", msg, foo)
+/// }
+/// ```
+// (not currently in use anywhere)
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
