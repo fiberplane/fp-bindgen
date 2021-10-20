@@ -1,15 +1,16 @@
-mod primitives;
-mod serializable;
-mod utils;
-
 use crate::{
     primitives::Primitive,
     utils::{extract_path_from_type, get_name_from_path},
 };
 use proc_macro::{TokenStream, TokenTree};
 use quote::{quote, ToTokens};
+use std::collections::HashSet;
 use syn::{FnArg, ForeignItemFn, ItemUse, Path, ReturnType};
 use utils::flatten_using_statement;
+
+mod primitives;
+mod serializable;
+mod utils;
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]

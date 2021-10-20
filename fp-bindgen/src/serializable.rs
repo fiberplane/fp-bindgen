@@ -75,7 +75,7 @@ pub trait Serializable {
                 })
                 .map(|generic_ty| GenericArgument {
                     name: generic_ty.ident.to_string(),
-                    ty: Some(ty.clone()),
+                    ty: None,
                 });
 
             if let Some(dependency) = match generic_arg {
@@ -253,11 +253,11 @@ where
             vec![
                 GenericArgument {
                     name: "T".to_owned(),
-                    ty: Some(T::ty()),
+                    ty: None,
                 },
                 GenericArgument {
                     name: "E".to_owned(),
-                    ty: Some(E::ty()),
+                    ty: None,
                 },
             ],
             vec![
@@ -412,7 +412,7 @@ mod tests {
         let mut expected_dependencies = BTreeSet::new();
         expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
             name: "T".to_owned(),
-            ty: Some(Type::Primitive(Primitive::F64)),
+            ty: None,
         })));
 
         assert_eq!(Point::<f64>::dependencies(), expected_dependencies);
@@ -517,7 +517,7 @@ mod tests {
                 doc_lines: vec![],
                 ty: Type::GenericArgument(Box::new(GenericArgument {
                     name: "T".to_owned(),
-                    ty: Some(Type::Primitive(Primitive::F64)),
+                    ty: None,
                 })),
             }],
             StructOptions {
@@ -549,7 +549,7 @@ mod tests {
         expected_dependencies.insert(vec);
         expected_dependencies.insert(Type::GenericArgument(Box::new(GenericArgument {
             name: "T".to_owned(),
-            ty: Some(Type::Primitive(Primitive::F64)),
+            ty: None,
         })));
 
         assert_eq!(ComplexNested::dependencies(), expected_dependencies);
@@ -588,7 +588,7 @@ mod tests {
             "Point".to_owned(),
             vec![GenericArgument {
                 name: "T".to_owned(),
-                ty: Some(Type::Primitive(Primitive::F64)),
+                ty: None,
             }],
             vec![],
             vec![Field {
@@ -596,27 +596,7 @@ mod tests {
                 doc_lines: vec![],
                 ty: Type::GenericArgument(Box::new(GenericArgument {
                     name: "T".to_owned(),
-                    ty: Some(Type::Primitive(Primitive::F64)),
-                })),
-            }],
-            StructOptions {
-                field_casing: Casing::CamelCase,
-                native_modules: BTreeMap::new(),
-            },
-        );
-        let point_point = Type::Struct(
-            "Point".to_owned(),
-            vec![GenericArgument {
-                name: "T".to_owned(),
-                ty: Some(point.clone()),
-            }],
-            vec![],
-            vec![Field {
-                name: "value".to_owned(),
-                doc_lines: vec![],
-                ty: Type::GenericArgument(Box::new(GenericArgument {
-                    name: "T".to_owned(),
-                    ty: Some(point.clone()),
+                    ty: None,
                 })),
             }],
             StructOptions {
@@ -627,7 +607,64 @@ mod tests {
 
         let mut expected_dependencies = BTreeSet::new();
         expected_dependencies.insert(point);
-        expected_dependencies.insert(point_point);
+
+        assert_eq!(Recursive::dependencies(), expected_dependencies);
+    }
+
+    pub struct NestedRecursive {
+        pub nested_recursive: Vec<Point<Point<f64>>>,
+    }
+
+    // Reflects actual macro output:
+    impl Serializable for NestedRecursive {
+        fn name() -> String {
+            "NestedRecursive".to_owned()
+        }
+        fn ty() -> Type {
+            Type::from_item(
+                "pub struct NestedRecursive {pub nested_recursive : Vec < Point < Point < f64 >>>,}",
+                &Self::dependencies(),
+            )
+        }
+        fn dependencies() -> BTreeSet<Type> {
+            let generics = "";
+            let mut dependencies = BTreeSet::new();
+            Vec::<Point<Point<f64>>>::add_named_type_with_dependencies_and_generics(
+                &mut dependencies,
+                "Vec<Point<Point<f64>>>",
+                generics,
+            );
+            dependencies
+        }
+    }
+
+    #[test]
+    pub fn test_nested_recursive_dependencies() {
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                doc_lines: vec![],
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+            }],
+            StructOptions {
+                field_casing: Casing::CamelCase,
+                native_modules: BTreeMap::new(),
+            },
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+
+        let mut expected_dependencies = BTreeSet::new();
+        expected_dependencies.insert(point);
+        expected_dependencies.insert(vec);
 
         assert_eq!(Recursive::dependencies(), expected_dependencies);
     }

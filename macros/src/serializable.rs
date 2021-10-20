@@ -1,13 +1,14 @@
 use crate::utils::{extract_path_from_type, get_name_from_path, parse_type_item};
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
+use std::collections::HashSet;
 use syn::Path;
 
 pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item, generics) = parse_type_item(item);
 
-    let mut field_types: HashSet<Path> = match item {
+    let field_types: HashSet<Path> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()
