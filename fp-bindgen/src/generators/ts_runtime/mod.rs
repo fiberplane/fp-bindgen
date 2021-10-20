@@ -1,5 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
+use crate::serializable::Serializable;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
@@ -406,7 +407,31 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
 }
 
 fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let mut type_defs = types
+    let types = types
+        .iter()
+        .filter_map(|ty| match ty {
+            Type::Enum(name, generic_args, _, _, _) => {
+                if name == "Result" {
+                    // Just make sure we get an unspecialized version of the type...
+                    Some(Result::<u8, u8>::ty())
+                } else if generic_args.iter().all(|arg| arg.ty.is_none()) {
+                    Some(ty.clone())
+                } else {
+                    None // We don't generate definitions for specialized types.
+                }
+            }
+            Type::Struct(_, generic_args, _, _, _) => {
+                if generic_args.iter().all(|arg| arg.ty.is_none()) {
+                    Some(ty.clone())
+                } else {
+                    None // We don't generate definitions for specialized types.
+                }
+            }
+            other => Some(other.clone()),
+        })
+        .collect::<BTreeSet<_>>();
+
+    let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => Some(format!(
@@ -423,7 +448,6 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
             _ => None,
         })
         .collect::<Vec<_>>();
-    type_defs.dedup();
 
     write_bindings_file(
         format!("{}/types.ts", path),
@@ -461,7 +485,7 @@ fn create_enum_definition(
                 }
                 Type::Struct(_, _, _, fields, _) => {
                     if opts.untagged {
-                        format!("| {{ {} }}", format_struct_fields(fields).join("; "))
+                        format!("| {{ {} }}", format_struct_fields(fields).join(" "))
                     } else {
                         let field_lines = format_struct_fields(fields);
                         let formatted_fields = if field_lines.len() > fields.len() {
