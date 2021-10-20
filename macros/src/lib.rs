@@ -34,10 +34,10 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_import_types, #serializable_names); )*
+            #( serializable_import_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_import_types, #deserializable_named); )*
+            #( deserializable_import_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_named)); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
@@ -59,10 +59,10 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_export_types, #serializable_names); )*
+            #( serializable_export_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_export_types, #deserializable_names); )*
+            #( deserializable_export_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_names)); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
