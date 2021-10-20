@@ -307,6 +307,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 ///
 /// Example usage of implementing a `log` function of a `logger` provider:
 /// ```
+/// use macros::fp_export_impl; //this would be `logger::fp_export_impl` inside the plugin crate
 /// #[fp_export_impl(logger)]
 /// pub fn log(msg: String, foo: String) -> String {
 ///     format!("{} + {} => {0}{1}", msg, foo)
