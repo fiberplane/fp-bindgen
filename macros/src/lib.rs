@@ -3,17 +3,19 @@ mod serializable;
 mod typing;
 mod utils;
 
+use std::iter::once;
+
 use crate::{
     primitives::Primitive,
     utils::{extract_path_from_type, get_name_from_path},
 };
-use once_cell::sync::Lazy;
 use proc_macro::{TokenStream, TokenTree};
-use proc_macro_error::{abort, emit_error, proc_macro_error};
+use proc_macro_error::{abort, proc_macro_error, ResultExt};
 use quote::{format_ident, quote, ToTokens};
-use std::{collections::HashMap, sync::RwLock};
-use syn::{FnArg, ForeignItemFn, ItemFn, ItemUse, Path, ReturnType};
-use typing::FnSignature;
+use syn::{
+    AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemUse, Pat, PatPath, Path,
+    PathArguments, PathSegment, ReturnType,
+};
 use utils::flatten_using_statement;
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
@@ -200,68 +202,47 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
     token_stream
 }
 
-static EXPORTED_SIGNATURES: Lazy<RwLock<HashMap<String, FnSignature>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> TokenStream {
     proc_macro_error::set_dummy(input.clone().into());
-    let func = match syn::parse_macro_input::parse::<ForeignItemFn>(input.clone()) {
-        Ok(func) => func,
-        Err(e) => abort!(e),
-    };
-    let sig: FnSignature = (&func.sig).into();
-    if EXPORTED_SIGNATURES
-        .write()
-        .unwrap()
-        .insert(sig.name.clone(), sig)
-        .is_some()
+
+    let func = syn::parse_macro_input::parse::<ForeignItemFn>(input.clone()).unwrap_or_abort();
+    let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
+
+    let mut sig = func.sig.clone();
+    //Massage the signature into what we wish to export
     {
-        emit_error!(func, "Can't export the same function name multiple times");
+        typing::morph_signature(&mut sig);
+        sig.inputs = sig
+            .inputs
+            .into_iter()
+            //append a function ptr to the end which signature matches the original exported function
+            .chain(once({
+                let input_types = args.iter().map(|(_, pt, _)| pt.ty.as_ref());
+                let output = if func.sig.asyncness.is_some() {
+                    syn::parse::<ReturnType>((quote! {-> FUT}).into()).unwrap_or_abort()
+                } else {
+                    func.sig.output.clone()
+                };
+
+                syn::parse::<FnArg>((quote! {fptr: fn (#(#input_types),*) #output}).into())
+                    .unwrap_or_abort()
+            }))
+            .collect();
+        sig.generics.params.clear();
+        if func.sig.asyncness.is_some() {
+            let output = typing::get_output_type(&func.sig.output);
+            sig.generics.params.push(
+                syn::parse::<GenericParam>(
+                    (quote! {FUT: std::future::Future<Output=#output>}).into(),
+                )
+                .unwrap_or_abort(),
+            )
+        }
     }
-    TokenStream::default() //eat the signature
-}
 
-#[proc_macro_attribute]
-#[proc_macro_error]
-pub fn fp_export_impl(_attributes: TokenStream, input: TokenStream) -> TokenStream {
-    proc_macro_error::set_dummy(input.clone().into());
-
-    let func = match syn::parse_macro_input::parse::<ItemFn>(input.clone()) {
-        Ok(func) => func,
-        Err(e) => abort!(e.to_compile_error(), "Not a valid function signature"),
-    };
-
-    {
-        let lock = EXPORTED_SIGNATURES.read().unwrap();
-        typing::type_check_export(&*lock, &func.sig);
-    }
-
-    let args = func
-        .sig
-        .inputs
-        .iter()
-        .map(|arg| {
-            let pt = typing::get_type(arg);
-            (arg, pt, typing::is_type_complex(&pt.ty))
-        })
-        .collect::<Vec<_>>();
-
-    // Check each argument and replace with FatPtr for complex types
-    let formatted_args = args
-        .iter()
-        .map(|&(arg, pt, is_complex)| {
-            if is_complex {
-                let arg_name = pt.pat.as_ref();
-                quote! {#arg_name : protocol::FatPtr}
-            } else {
-                arg.to_token_stream()
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let (names, types): (Vec<_>, Vec<_>) = args
+    let (complex_names, complex_types): (Vec<_>, Vec<_>) = args
         .iter()
         .filter_map(|&(_, pt, is_complex)| {
             if is_complex {
@@ -272,33 +253,28 @@ pub fn fp_export_impl(_attributes: TokenStream, input: TokenStream) -> TokenStre
         })
         .unzip();
 
-    let call_args = args
-        .iter()
-        .map(|&(_, pt, _)| pt.pat.as_ref())
-        .collect::<Vec<_>>();
-    let fn_name = &func.sig.ident;
+    let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
 
     // Check the output type and replace complex ones with FatPtr
-    let (output, return_wrapper) = if typing::is_ret_type_complex(&func.sig.output) {
-        (
-            quote! {-> protocol::FatPtr},
-            quote! {let ret = protocol::export_value_to_host(&ret);},
-        )
+    let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
+        quote! {let ret = fp_bindgen_lib::export_value_to_host(&ret);}
     } else {
-        (func.sig.output.to_token_stream(), Default::default())
+        Default::default()
     };
 
-    let func_call = if func.sig.asyncness.is_some() {
-        quote! {
-                let len = std::mem::size_of::<protocol::AsyncValue>() as u32;
-                let ptr = protocol::malloc(len);
-                let fat_ptr = protocol::to_fat_ptr(ptr, len);
+    let func_call = quote! {(fptr)(#(#names),*)};
 
-                Task::spawn(Box::pin(async move {
-                    let ret = #fn_name(#(#call_args),*).await;
+    let func_wrapper = if func.sig.asyncness.is_some() {
+        quote! {
+                let len = std::mem::size_of::<fp_bindgen_lib::AsyncValue>() as u32;
+                let ptr = fp_bindgen_lib::malloc(len);
+                let fat_ptr = fp_bindgen_lib::to_fat_ptr(ptr, len);
+
+                fp_bindgen_lib::Task::spawn(Box::pin(async move {
+                    let ret = #func_call.await;
                     unsafe {
-                        let result_ptr = protocol::export_value_to_host(&ret);
-                        protocol::host_resolve_async_value(fat_ptr, result_ptr);
+                        let result_ptr = fp_bindgen_lib::export_value_to_host(&ret);
+                        fp_bindgen_lib::host_resolve_async_value(fat_ptr, result_ptr);
                     }
                 }));
 
@@ -306,21 +282,76 @@ pub fn fp_export_impl(_attributes: TokenStream, input: TokenStream) -> TokenStre
         }
     } else {
         quote! {
-            let ret = #fn_name(#(#call_args),*);
+            let ret = #func_call;
             #return_wrapper
         }
     };
 
-    let ts: proc_macro2::TokenStream = input.clone().into();
-    let exported_fn_name = format_ident!("__fp_gen_{}", fn_name);
+    //build the actual exported wrapper function
+    (quote! {
+        /// This is a implementation detail an should not be called directly
+        #[inline(always)]
+        pub #sig {
+            #(let #complex_names = unsafe { fp_bindgen_lib::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #func_wrapper
+            ret
+        }
+    })
+    .into()
+}
 
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
+    proc_macro_error::set_dummy(input.clone().into());
+
+    let func = syn::parse_macro_input::parse::<ItemFn>(input.clone()).unwrap_or_abort();
+    let attrs =
+        syn::parse_macro_input::parse::<AttributeArgs>(attributes.clone()).unwrap_or_abort();
+
+    let protocol_path = attrs
+        .get(0)
+        .map(|om| match om {
+            syn::NestedMeta::Meta(meta) => match meta {
+                syn::Meta::Path(path) => path,
+                _ => abort!(meta, "unsupported attribute, must name a path"),
+            },
+            _ => abort!(om, "unsupported attribute, must name a path"),
+        })
+        .unwrap_or_else(|| abort!(func, "missing attribute. Must name which provider is being implemented eg: #[fp_export_impl(foobar)]"));
+
+    let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
+
+    let mut sig = func.sig.clone();
+    //Massage the signature into what we wish to export
+    {
+        typing::morph_signature(&mut sig);
+        sig.ident = format_ident!("__fp_gen_{}", sig.ident);
+    }
+
+    let fn_name = &func.sig.ident;
+
+    let impl_fn_pat = Pat::Path(PatPath {
+        attrs: vec![],
+        qself: None,
+        path: PathSegment {
+            ident: func.sig.ident.clone(),
+            arguments: PathArguments::None,
+        }
+        .into(),
+    });
+    let call_args = args
+        .iter()
+        .map(|&(_, pt, _)| pt.pat.as_ref())
+        .chain(once(&impl_fn_pat))
+        .collect::<Vec<_>>();
+
+    let ts: proc_macro2::TokenStream = input.clone().into();
     //build the actual exported wrapper function
     (quote! {
         #[no_mangle]
-        fn #exported_fn_name( #(#formatted_args),* ) #output {
-            #(let #names = unsafe { protocol::import_value_from_host::<#types>(#names) };)*
-            #func_call
-            ret
+        pub #sig {
+            #protocol_path::#fn_name(#(#call_args),*)
         }
         #ts
     })
