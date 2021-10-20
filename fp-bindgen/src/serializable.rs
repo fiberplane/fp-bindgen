@@ -584,6 +584,10 @@ mod tests {
 
     #[test]
     pub fn test_recursive_dependencies() {
+        let specialized_argument = GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        };
         let point = Type::Struct(
             "Point".to_owned(),
             vec![GenericArgument {
@@ -604,9 +608,15 @@ mod tests {
                 native_modules: BTreeMap::new(),
             },
         );
+        let specialized_point = point.clone().with_specialized_args(&[specialized_argument]);
+        let point_point = point.with_specialized_args(&[GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(specialized_point.clone()),
+        }]);
 
         let mut expected_dependencies = BTreeSet::new();
-        expected_dependencies.insert(point);
+        expected_dependencies.insert(specialized_point);
+        expected_dependencies.insert(point_point);
 
         assert_eq!(Recursive::dependencies(), expected_dependencies);
     }
@@ -640,6 +650,10 @@ mod tests {
 
     #[test]
     pub fn test_nested_recursive_dependencies() {
+        let specialized_argument = GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        };
         let point = Type::Struct(
             "Point".to_owned(),
             vec![GenericArgument {
@@ -660,12 +674,18 @@ mod tests {
                 native_modules: BTreeMap::new(),
             },
         );
-        let vec = Type::List("Vec".to_owned(), Box::new(point.clone()));
+        let specialized_point = point.clone().with_specialized_args(&[specialized_argument]);
+        let point_point = point.with_specialized_args(&[GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(specialized_point.clone()),
+        }]);
+        let vec = Type::List("Vec".to_owned(), Box::new(point_point.clone()));
 
         let mut expected_dependencies = BTreeSet::new();
-        expected_dependencies.insert(point);
+        expected_dependencies.insert(specialized_point);
+        expected_dependencies.insert(point_point);
         expected_dependencies.insert(vec);
 
-        assert_eq!(Recursive::dependencies(), expected_dependencies);
+        assert_eq!(NestedRecursive::dependencies(), expected_dependencies);
     }
 }
