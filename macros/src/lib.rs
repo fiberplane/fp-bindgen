@@ -266,19 +266,19 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-                let len = std::mem::size_of::<fp_bindgen_lib::AsyncValue>() as u32;
-                let ptr = fp_bindgen_lib::malloc(len);
-                let fat_ptr = fp_bindgen_lib::to_fat_ptr(ptr, len);
+            let len = std::mem::size_of::<fp_bindgen_lib::AsyncValue>() as u32;
+            let ptr = fp_bindgen_lib::malloc(len);
+            let fat_ptr = fp_bindgen_lib::to_fat_ptr(ptr, len);
 
-                fp_bindgen_lib::Task::spawn(Box::pin(async move {
-                    let ret = #func_call.await;
-                    unsafe {
-                        let result_ptr = fp_bindgen_lib::export_value_to_host(&ret);
-                        fp_bindgen_lib::host_resolve_async_value(fat_ptr, result_ptr);
-                    }
-                }));
+            fp_bindgen_lib::Task::spawn(Box::pin(async move {
+                let ret = #func_call.await;
+                unsafe {
+                    let result_ptr = fp_bindgen_lib::export_value_to_host(&ret);
+                    fp_bindgen_lib::host_resolve_async_value(fat_ptr, result_ptr);
+                }
+            }));
 
-                let ret = fat_ptr;
+            let ret = fat_ptr;
         }
     } else {
         quote! {

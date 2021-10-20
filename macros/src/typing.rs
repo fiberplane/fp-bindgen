@@ -21,15 +21,26 @@ pub(crate) fn is_ret_type_complex(output: &ReturnType) -> bool {
         ReturnType::Type(_, ty) => is_type_complex(ty.as_ref()),
     }
 }
+
 pub(crate) fn is_type_complex(ty: &Type) -> bool {
     match ty {
         Type::Path(tp) if tp.qself.is_none() => {
             let name = tp.path.to_token_stream().to_string();
-            match name.as_str() {
-                "bool" | "f32" | "f64" | "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32"
-                | "u64" | "usize" => false,
-                _ => true,
-            }
+            !matches!(
+                name.as_str(),
+                "bool"
+                    | "f32"
+                    | "f64"
+                    | "i8"
+                    | "i16"
+                    | "i32"
+                    | "i64"
+                    | "u8"
+                    | "u16"
+                    | "u32"
+                    | "u64"
+                    | "usize"
+            )
         }
         //the tuple is complex if any elements are complex
         Type::Tuple(tup) => tup
@@ -75,6 +86,7 @@ pub(crate) fn morph_signature(sig: &mut Signature) {
     }
 }
 
+//Extracts the arguments of a function signature and checks if it's complex
 pub(crate) fn extract_args(sig: &Signature) -> impl Iterator<Item = (&FnArg, &PatType, bool)> {
     sig.inputs.iter().map(|arg| {
         let pt = get_pat_type(arg);
