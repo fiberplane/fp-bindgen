@@ -42,14 +42,7 @@ pub(crate) fn is_type_complex(ty: &Type) -> bool {
                     | "usize"
             )
         }
-        //the tuple is complex if any elements are complex
-        Type::Tuple(tup) => tup
-            .elems
-            .iter()
-            .map(is_type_complex)
-            .collect::<Vec<_>>()
-            .into_iter()
-            .any(std::convert::identity),
+        Type::Tuple(_) => true,
         t => abort!(t, "unsupported type"),
     }
 }
