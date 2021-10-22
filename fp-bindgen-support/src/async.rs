@@ -1,4 +1,4 @@
-use super::support::{from_fat_ptr, to_fat_ptr, FatPtr};
+use super::{from_fat_ptr, to_fat_ptr, FatPtr};
 use once_cell::unsync::Lazy;
 use std::collections::BTreeMap;
 use std::future::Future;
