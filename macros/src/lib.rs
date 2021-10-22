@@ -260,7 +260,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     // Check the output type and replace complex ones with FatPtr
     let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-        quote! {let ret = fp_bindgen_lib::export_value_to_host(&ret);}
+        quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
     } else {
         Default::default()
     };
@@ -269,15 +269,15 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let len = std::mem::size_of::<fp_bindgen_lib::AsyncValue>() as u32;
-            let ptr = fp_bindgen_lib::malloc(len);
-            let fat_ptr = fp_bindgen_lib::to_fat_ptr(ptr, len);
+            let len = std::mem::size_of::<fp_bindgen_support::AsyncValue>() as u32;
+            let ptr = fp_bindgen_support::malloc(len);
+            let fat_ptr = fp_bindgen_support::to_fat_ptr(ptr, len);
 
-            fp_bindgen_lib::Task::spawn(Box::pin(async move {
+            fp_bindgen_support::Task::spawn(Box::pin(async move {
                 let ret = #func_call.await;
                 unsafe {
-                    let result_ptr = fp_bindgen_lib::export_value_to_host(&ret);
-                    fp_bindgen_lib::host_resolve_async_value(fat_ptr, result_ptr);
+                    let result_ptr = fp_bindgen_support::export_value_to_host(&ret);
+                    fp_bindgen_support::host_resolve_async_value(fat_ptr, result_ptr);
                 }
             }));
 
@@ -295,7 +295,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_lib::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #(let #complex_names = unsafe { fp_bindgen_support::import_value_from_host::<#complex_types>(#complex_names) };)*
             #func_wrapper
             ret
         }
