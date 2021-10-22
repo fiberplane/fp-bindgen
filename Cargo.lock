@@ -137,6 +137,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fp-bindgen-support"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "once_cell",
+ "rmp-serde",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
 name = "hermit-abi"
 version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
