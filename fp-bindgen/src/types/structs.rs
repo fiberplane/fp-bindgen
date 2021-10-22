@@ -47,7 +47,7 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
     Type::Struct(name, generic_args, doc_lines, fields, opts)
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct StructOptions {
     pub field_casing: Casing,
 
@@ -158,7 +158,7 @@ impl Parse for StructOptions {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Field {
     pub name: String,
     pub ty: Type,

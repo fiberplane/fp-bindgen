@@ -100,7 +100,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
     Type::Enum(name, generic_args, doc_lines, variants, opts)
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct EnumOptions {
     pub variant_casing: Casing,
     pub content_prop_name: Option<String>,
@@ -260,7 +260,7 @@ impl Parse for EnumOptions {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Variant {
     pub name: String,
     pub ty: Type,

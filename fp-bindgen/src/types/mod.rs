@@ -2,7 +2,11 @@ use crate::primitives::Primitive;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use quote::ToTokens;
-use std::{collections::BTreeSet, str::FromStr};
+use std::{
+    collections::{hash_map::DefaultHasher, BTreeSet},
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 use syn::{Item, PathArguments};
 
 mod enums;
@@ -13,13 +17,13 @@ pub use structs::{Field, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GenericArgument {
     pub name: String,
     pub ty: Option<Type>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {
     Alias(String, Box<Type>),
     Container(String, Box<Type>),
@@ -109,15 +113,20 @@ impl Type {
         }))
     }
 
+    fn ord_key(&self) -> String {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        format!("{}@{}", self.name(), hasher.finish())
+    }
+
     pub fn with_specialized_args(self, specialized_args: &[GenericArgument]) -> Self {
         let specialize_arg = |arg: GenericArgument| {
             let name = arg.name;
-            let ty = arg.ty.or_else(|| {
-                specialized_args
-                    .iter()
-                    .find(|specialized| specialized.name == name)
-                    .and_then(|specialized| specialized.ty.clone())
-            });
+            let ty = specialized_args
+                .iter()
+                .find(|specialized| specialized.name == name)
+                .and_then(|specialized| specialized.ty.clone())
+                .or(arg.ty);
             GenericArgument { name, ty }
         };
         let specialize_args =
@@ -132,16 +141,38 @@ impl Type {
                 key,
                 Box::new(value.with_specialized_args(specialized_args)),
             ),
-            Self::Enum(name, args, doc_lines, variants, opts) => {
-                Self::Enum(name, specialize_args(args), doc_lines, variants, opts)
-            }
+            Self::Enum(name, args, doc_lines, variants, opts) => Self::Enum(
+                name,
+                specialize_args(args),
+                doc_lines,
+                variants
+                    .into_iter()
+                    .map(|variant| Variant {
+                        doc_lines: variant.doc_lines,
+                        name: variant.name,
+                        ty: variant.ty.with_specialized_args(specialized_args),
+                    })
+                    .collect(),
+                opts,
+            ),
             Self::GenericArgument(arg) => Self::GenericArgument(Box::new(specialize_arg(*arg))),
             Self::List(name, item) => {
                 Self::List(name, Box::new(item.with_specialized_args(specialized_args)))
             }
-            Self::Struct(name, args, doc_lines, fields, opts) => {
-                Self::Struct(name, specialize_args(args), doc_lines, fields, opts)
-            }
+            Self::Struct(name, args, doc_lines, fields, opts) => Self::Struct(
+                name,
+                specialize_args(args),
+                doc_lines,
+                fields
+                    .into_iter()
+                    .map(|field| Field {
+                        doc_lines: field.doc_lines,
+                        name: field.name,
+                        ty: field.ty.with_specialized_args(specialized_args),
+                    })
+                    .collect(),
+                opts,
+            ),
             other => other,
         }
     }
@@ -149,17 +180,17 @@ impl Type {
 
 impl Ord for Type {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name().cmp(&other.name())
+        self.ord_key().cmp(&other.ord_key())
     }
 }
 
 impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.name().partial_cmp(&other.name())
+        self.ord_key().partial_cmp(&other.ord_key())
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CustomType {
     pub name: String,
     pub type_args: Vec<Type>,
@@ -230,6 +261,7 @@ pub fn resolve_type(ty: &syn::Type, types: &BTreeSet<Type>) -> Option<Type> {
                     _ => None,
                 })
                 .unwrap_or_else(Vec::new);
+
             match Primitive::from_str(&path_without_args) {
                 Ok(primitive) => Some(Type::Primitive(primitive)),
                 Err(_) => types
