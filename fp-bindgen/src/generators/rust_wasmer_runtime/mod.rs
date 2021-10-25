@@ -11,6 +11,9 @@ pub fn generate_bindings(
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
     path: &str,
+    _name: &str,
+    _authors: &str,
+    _version: &str,
 ) {
     let spec_path = format!("{}/spec", path);
     fs::create_dir_all(&spec_path).expect("Could not create spec/ directory");

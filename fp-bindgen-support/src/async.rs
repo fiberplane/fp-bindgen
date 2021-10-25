@@ -25,7 +25,7 @@ impl AsyncValue {
 }
 
 /// Represents a future value that will be resolved by the host runtime.
-pub(crate) struct HostFuture {
+pub struct HostFuture {
     ptr: FatPtr,
 }
 
@@ -81,4 +81,13 @@ pub fn __fp_guest_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPt
             waker.wake();
         }
     }
+}
+
+#[link(wasm_import_module = "fp")]
+extern "C" {
+    fn __fp_host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr);
+}
+
+pub fn host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr) {
+    unsafe { __fp_host_resolve_async_value(async_value_ptr, result_ptr) }
 }

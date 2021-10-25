@@ -216,7 +216,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
-        typing::morph_signature(&mut sig);
+        typing::morph_signature(&mut sig, "fp_bindgen_support");
         sig.inputs = sig
             .inputs
             .into_iter()
@@ -238,7 +238,8 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             let output = typing::get_output_type(&func.sig.output);
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
-                    (quote! {FUT: std::future::Future<Output=#output>}).into(),
+                    //the 'static life time is ok since we give it a box::pin
+                    (quote! {FUT: std::future::Future<Output=#output> + 'static}).into(),
                 )
                 .unwrap_or_abort(),
             )
@@ -339,7 +340,10 @@ pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStrea
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
-        typing::morph_signature(&mut sig);
+        typing::morph_signature(
+            &mut sig,
+            protocol_path.to_token_stream().to_string().as_str(),
+        );
         sig.ident = format_ident!("__fp_gen_{}", sig.ident);
     }
 

@@ -12,71 +12,67 @@ pub fn generate_bindings(
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
     path: &str,
+    name: &str,
+    authors: &str,
+    version: &str,
 ) {
+    let src_path = format!("{}/src", path);
+    fs::create_dir_all(&src_path).expect("Could not create output directory");
+
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
     generate_type_bindings(
         serializable_types,
         deserializable_types,
-        path,
+        &src_path,
         "rust_plugin",
     );
-    generate_function_bindings(import_functions, export_functions, path, requires_async);
+    generate_imported_function_bindings(import_functions, &src_path);
+    generate_exported_function_bindings(export_functions, &src_path);
 
+    //TODO: fix fp_bindgen_support path to be a crate or git path
     write_bindings_file(
-        format!("{}/support.rs", path),
-        include_bytes!("assets/support.rs"),
+        format!("{}/Cargo.toml", path),
+        format!(
+            "[package]
+name = \"{}\"
+version = \"{}\"
+authors = {}
+edition = \"2018\"
+
+[dependencies]
+fp-bindgen-support = {{ path = \"../../fp-bindgen-support\"{} }}
+fp-bindgen-macros = {{ path = \"../../macros\" }}
+chrono = {{ version = \"0.4.19\", features = [\"serde\"] }}
+once_cell = \"1\"
+rmp-serde = \"=1.0.0-beta.1\"
+serde = {{ version = \"1.0\", features = [\"derive\"] }}
+serde_bytes = \"0.11\"
+",
+            name,
+            version,
+            authors,
+            if requires_async {
+                ", features = [\"async\"]"
+            } else {
+                ""
+            }
+        ),
     );
 
-    if requires_async {
-        write_bindings_file(
-            format!("{}/async.rs", path),
-            include_bytes!("assets/async.rs"),
-        );
-        write_bindings_file(
-            format!("{}/queue.rs", path),
-            include_bytes!("assets/queue.rs"),
-        );
-        write_bindings_file(
-            format!("{}/task.rs", path),
-            include_bytes!("assets/task.rs"),
-        );
-    }
-
     write_bindings_file(
-        format!("{}/mod.rs", path),
-        format!(
-            "{}pub mod functions;
-{}mod support;
-{}pub mod types;
+        format!("{}/lib.rs", src_path),
+        "mod import;
+mod export;
+mod types;
 
-pub mod __fp_macro {{
-{}    pub use super::support::{{
-        FatPtr, __fp_free, __fp_malloc, export_value_to_host, from_fat_ptr, import_value_from_host,
-        malloc, to_fat_ptr,
-    }};
-{}}}
+pub use types::*;
+pub use import::*;
+pub use export::*;
 
-pub mod prelude {{
-    pub use super::__fp_macro;
-    pub use super::functions::*;
-    pub use super::types::*;
-}}
+pub use fp_bindgen_macros::fp_export_impl;
+pub use fp_bindgen_support::*;
 ",
-            if requires_async { "mod r#async;\n" } else { "" },
-            if requires_async { "mod queue;\n" } else { "" },
-            if requires_async { "mod task;\n" } else { "" },
-            if requires_async {
-                "    pub use super::r#async::{AsyncValue, __fp_guest_resolve_async_value};\n"
-            } else {
-                ""
-            },
-            if requires_async {
-                "    pub use super::task::Task;\n"
-            } else {
-                ""
-            },
-        ),
     );
 }
 
@@ -172,12 +168,7 @@ pub fn generate_type_bindings(
     );
 }
 
-pub fn generate_function_bindings(
-    import_functions: FunctionList,
-    export_functions: FunctionList,
-    path: &str,
-    requires_async: bool,
-) {
+fn generate_imported_function_bindings(import_functions: FunctionList, path: &str) {
     let extern_decls = import_functions
         .iter()
         .map(|function| {
@@ -190,7 +181,7 @@ pub fn generate_function_bindings(
                         arg.name,
                         match arg.ty {
                             Type::Primitive(primitive) => format_primitive(primitive),
-                            _ => "FatPtr".to_owned(),
+                            _ => "fp_bindgen_support::FatPtr".to_owned(),
                         }
                     )
                 })
@@ -202,7 +193,7 @@ pub fn generate_function_bindings(
                     " -> {}",
                     match ty {
                         Type::Primitive(primitive) => format_primitive(*primitive),
-                        _ => "FatPtr".to_owned(),
+                        _ => "fp_bindgen_support::FatPtr".to_owned(),
                     }
                 ),
             };
@@ -241,7 +232,7 @@ pub fn generate_function_bindings(
                 .map(|arg| match &arg.ty {
                     Type::Primitive(_) => "".to_owned(),
                     _ => format!(
-                        "    let {} = export_value_to_host(&{});\n",
+                        "    let {} = fp_bindgen_support::export_value_to_host(&{});\n",
                         arg.name, arg.name
                     ),
                 })
@@ -262,9 +253,9 @@ pub fn generate_function_bindings(
                 Type::Unit | Type::Primitive(_) => "",
                 _ => {
                     if function.is_async {
-                        "        let result_ptr = HostFuture::new(ret).await;\n        import_value_from_host(result_ptr)\n"
+                        "        let result_ptr = fp_bindgen_support::HostFuture::new(ret).await;\n        fp_bindgen_support::import_value_from_host(result_ptr)\n"
                     } else {
-                        "        import_value_from_host(ret)\n"
+                        "        fp_bindgen_support::import_value_from_host(ret)\n"
                     }
                 }
             };
@@ -287,179 +278,54 @@ pub fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
-    let macro_rules = export_functions
-        .into_iter()
-        .map(|function| {
-            let name = function.name;
-            let modifiers = if function.is_async { "async " } else { "" };
-            let has_return_value = function.return_type != Type::Unit;
-            let args_with_ptr_types = function
-                .args
-                .iter()
-                .map(|arg| {
-                    let ty = match &arg.ty {
-                        Type::Primitive(primitive) => format_primitive(*primitive),
-                        _ => "__fp_macro::FatPtr".to_owned(),
-                    };
-                    format!("{}: {}", arg.name, ty)
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let import_args = function
-                .args
-                .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    ty => Some(format!(
-                        "let {} = unsafe {{ import_value_from_host::<{}>({}) }};",
-                        arg.name,
-                        format_type(ty),
-                        arg.name
-                    )),
-                })
-                .collect::<Vec<_>>();
-            let args = function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            let body = if function.is_async {
-                // Set up the `AsyncValue` to be synchronously returned and spawn a task
-                // to execute the async function:
-                let mut async_body = vec![
-                    "let len = std::mem::size_of::<AsyncValue>() as u32;".to_owned(),
-                    "let ptr = malloc(len);".to_owned(),
-                    "let fat_ptr = to_fat_ptr(ptr, len);".to_owned(),
-                    "let ptr = ptr as *mut AsyncValue;".to_owned(),
-                    "".to_owned(),
-                    "Task::spawn(Box::pin(async move {".to_owned(),
-                ];
-
-                async_body.append(
-                    &mut import_args
-                        .iter()
-                        .map(|import_arg| format!("    {}", import_arg))
-                        .collect(),
-                );
-
-                // Call the actual async function:
-                async_body.push(match &function.return_type {
-                    Type::Unit => format!("    {}({}).await;", name, args),
-                    _ => format!("    let ret = {}({}).await;", name, args),
-                });
-
-                let result_ptr = if has_return_value {
-                    format!(
-                        "export_value_to_host::<{}>(&ret)",
-                        format_type(&function.return_type)
-                    )
-                } else {
-                    "0".to_owned()
-                };
-
-                // If there is a return type, put the result in the `AsyncValue`
-                // referenced by `ptr`:
-                async_body.append(&mut vec![
-                    // We're done, notify the host:
-                    "    unsafe {".to_owned(),
-                    format!("        let result_ptr = {};", result_ptr),
-                    "        __fp_host_resolve_async_value(fat_ptr, result_ptr);".to_owned(),
-                    "    }".to_owned(),
-                    "}));".to_owned(),
-                    "".to_owned(),
-                    // The `fat_ptr` is returned synchronously:
-                    "fat_ptr".to_owned(),
-                ]);
-
-                async_body
-            } else {
-                let mut body = import_args;
-                body.push(match &function.return_type {
-                    Type::Unit => format!("{}({});", name, args),
-                    Type::Primitive(_) => format!("{}({})", name, args),
-                    _ => format!("let ret = {}({});", name, args),
-                });
-                match &function.return_type {
-                    Type::Unit | Type::Primitive(_) => {}
-                    ty => body.push(format!("export_value_to_host::<{}>(&ret)", format_type(ty))),
-                }
-                body
-            };
-
-            format!(
-                "    ({}fn {}$args:tt{} $body:block) => {{
-        #[no_mangle]
-        pub fn __fp_gen_{}({}){} {{
-            use __fp_macro::*;
-{}
-        }}
-
-        {}fn {}$args{} $body
-    }};",
-                modifiers,
-                name,
-                if has_return_value { " -> $ret:ty" } else { "" },
-                name,
-                args_with_ptr_types,
-                if function.is_async {
-                    " -> __fp_macro::FatPtr"
-                } else {
-                    match &function.return_type {
-                        Type::Unit => "",
-                        Type::Primitive(_) => " -> $ret",
-                        _ => " -> __fp_macro::FatPtr",
-                    }
-                },
-                body.iter()
-                    .map(|line| if line.is_empty() {
-                        "".to_owned()
-                    } else {
-                        format!("            {}", line)
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n"),
-                modifiers,
-                name,
-                if has_return_value { " -> $ret" } else { "" }
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
-    let export_macro = format!(
-        "#[macro_export]\nmacro_rules! fp_export {{\n{}\n}}",
-        macro_rules
-    );
-
     write_bindings_file(
-        format!("{}/functions.rs", path),
+        format!("{}/import.rs", path),
         format!(
-            "{}use super::support::*;\n\
-            use super::types::*;\n\
+            "use crate::types::*;\n 
             \n\
             #[link(wasm_import_module = \"fp\")]\n\
             extern \"C\" {{\n\
                 {}\n\
-            {}}}\n\
-            \n\
-            {}\n\
+            }}\n\
             \n\
             {}\n",
-            if requires_async {
-                "use super::r#async::*;\n"
-            } else {
-                ""
-            },
-            extern_decls,
-            if requires_async {
-                "\n    pub fn __fp_host_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr);\n"
-            } else {
-                ""
-            },
-            fn_defs,
-            export_macro
+            extern_decls, fn_defs,
         ),
+    );
+}
+
+fn generate_exported_function_bindings(export_functions: FunctionList, path: &str) {
+    let fn_defs = export_functions
+        .iter()
+        .map(|func| {
+            let name = &func.name;
+            let doc = func
+                .doc_lines
+                .iter()
+                .map(|line| format!("///{}\n", line))
+                .collect::<Vec<_>>()
+                .join("");
+            let modifiers = if func.is_async { "async " } else { "" };
+            let args_with_types = func
+                .args
+                .iter()
+                .map(|arg| format!("{}: {}", arg.name, format_type(&arg.ty)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let return_type = match &func.return_type {
+                Type::Unit => "".to_owned(),
+                ty => format!(" -> {}", format_type(ty)),
+            };
+            format!(
+                "#[fp_bindgen_support::fp_export_signature]\n{}pub {}fn {}({}){};",
+                doc, modifiers, name, args_with_types, return_type,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n");
+    write_bindings_file(
+        format!("{}/export.rs", path),
+        format!("use crate::types::*;\n\n{}", fn_defs),
     );
 }
 

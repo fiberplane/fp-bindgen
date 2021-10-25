@@ -45,6 +45,9 @@ pub fn generate_bindings(
     deserializable_types: BTreeSet<Type>,
     bindings_type: &str,
     path: &str,
+    name: &str,
+    authors: &str,
+    version: &str,
 ) {
     let bindings_type = BindingsType::from_str(bindings_type).expect("Unknown bindings type");
 
@@ -62,5 +65,8 @@ pub fn generate_bindings(
         serializable_types,
         deserializable_types,
         path,
+        name,
+        authors,
+        version,
     );
 }

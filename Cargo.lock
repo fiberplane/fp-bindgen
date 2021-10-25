@@ -89,17 +89,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
 
 [[package]]
-name = "example-plugin"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "once_cell",
- "rmp-serde",
- "serde",
- "serde_bytes",
-]
-
-[[package]]
 name = "example-protocol"
 version = "0.1.0"
 dependencies = [
@@ -141,6 +130,7 @@ name = "fp-bindgen-support"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "fp-bindgen-macros",
  "once_cell",
  "rmp-serde",
  "serde",
