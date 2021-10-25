@@ -1,1 +1,0 @@
-../../../fp-bindgen/src/generators/rust_plugin/assets/queue.rs

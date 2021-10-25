@@ -150,17 +150,27 @@ fp_export! {
     async fn fetch_data(url: String) -> String;
 }
 
+const VERSION: &str = "1.0.0";
+const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
+const NAME: &str = "example-bindings"; //notice we're generating the plugin
+
 fn main() {
     for bindings_type in ["rust-plugin", "rust-wasmer-runtime", "ts-runtime"] {
         let output_path = format!("bindings/{}", bindings_type);
-        fp_bindgen!(bindings_type, &output_path);
+        fp_bindgen!(bindings_type, &output_path, NAME, AUTHORS, VERSION);
         println!("Generated bindings written to `{}/`.", output_path);
     }
 }
 
 #[test]
 fn test_generate_rust_plugin() {
-    fp_bindgen!("rust-plugin", "bindings/rust-plugin");
+    fp_bindgen!(
+        "rust-plugin",
+        "bindings/rust-plugin",
+        NAME,
+        AUTHORS,
+        VERSION
+    );
 
     let generated_functions = std::fs::read_to_string("bindings/rust-plugin/functions.rs")
         .expect("Cannot read generated functions");
@@ -184,7 +194,13 @@ fn test_generate_rust_plugin() {
 
 #[test]
 fn test_generate_rust_wasmer_runtime() {
-    fp_bindgen!("rust-wasmer-runtime", "bindings/rust-wasmer-runtime");
+    fp_bindgen!(
+        "rust-wasmer-runtime",
+        "bindings/rust-wasmer-runtime",
+        NAME,
+        AUTHORS,
+        VERSION
+    );
 
     let generated_functions =
         std::fs::read_to_string("bindings/rust-wasmer-runtime/spec/bindings.rs")
@@ -204,7 +220,7 @@ fn test_generate_rust_wasmer_runtime() {
 
 #[test]
 fn test_generate_ts_runtime() {
-    fp_bindgen!("ts-runtime", "bindings/ts-runtime");
+    fp_bindgen!("ts-runtime", "bindings/ts-runtime", NAME, AUTHORS, VERSION);
 
     let generated_types = std::fs::read_to_string("bindings/ts-runtime/types.ts")
         .expect("Cannot read generated types");
