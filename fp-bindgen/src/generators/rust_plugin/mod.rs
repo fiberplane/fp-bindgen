@@ -104,7 +104,7 @@ pub fn generate_type_bindings(
         )
     };
 
-    let type_imports = all_types
+    let mut type_imports = all_types
         .iter()
         .filter_map(|ty| {
             let (name, native_modules) = match ty {
@@ -116,12 +116,12 @@ pub fn generate_type_bindings(
                 .get(module_key)
                 .map(|module| format!("pub use {}::{};", module, name))
         })
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<Vec<_>>();
     let type_imports = if type_imports.is_empty() {
-        type_imports
+        "".to_owned()
     } else {
-        format!("{}\n\n", type_imports)
+        type_imports.dedup();
+        format!("{}\n\n", type_imports.join("\n"))
     };
 
     let mut type_defs = all_types

@@ -108,7 +108,6 @@ export async function createRuntime(
 
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
-            __fp_host_resolve_async_value: resolvePromise,
             __fp_gen_count_words: (string_ptr: FatPtr): FatPtr => {
                 const string = parseObject<string>(string_ptr);
                 return serializeObject(importFunctions.countWords(string));
@@ -153,6 +152,7 @@ export async function createRuntime(
             __fp_gen_my_plain_imported_function: (a: number, b: number): number => {
                 return importFunctions.myPlainImportedFunction(a, b);
             },
+            __fp_host_resolve_async_value: resolvePromise,
         },
     });
 
