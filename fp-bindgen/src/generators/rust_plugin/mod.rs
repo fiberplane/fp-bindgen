@@ -46,9 +46,11 @@ pub fn generate_bindings(
     write_bindings_file(
         format!("{}/mod.rs", path),
         format!(
-            "{}pub mod functions;
-{}mod support;
-{}pub mod types;
+            "{}#[rustfmt::skip]
+pub mod functions;
+{}pub mod support;
+{}#[rustfmt::skip]
+pub mod types;
 
 pub mod __fp_macro {{
 {}    pub use super::support::{{
