@@ -1,3 +1,6 @@
+use dashmap::{mapref::one::Ref, DashMap};
+use once_cell::sync::Lazy;
+
 #[cfg(feature = "chrono-compat")]
 use crate::CustomType;
 use crate::{
@@ -6,11 +9,12 @@ use crate::{
     Type,
 };
 use std::{
+    any::TypeId,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
 };
 
-pub trait Serializable {
+pub trait Serializable: 'static {
     /// The name of the type as defined in the protocol.
     fn name() -> String;
 
@@ -22,8 +26,23 @@ pub trait Serializable {
         false
     }
 
+    /// Builder function for the `dependencies()` function. Trait
+    /// implementations can implement this function, while using the default
+    /// implementation for `dependencies()` to make sure the dependencies are
+    /// only built and resolved once.
+    fn build_dependencies() -> BTreeSet<Type>;
+
     /// Other (non-primitive) data structures this data structure depends on.
-    fn dependencies() -> BTreeSet<Type>;
+    fn dependencies() -> Ref<'static, TypeId, BTreeSet<Type>> {
+        let type_id = TypeId::of::<Self>();
+        static CACHED_DEPENDENCIES: Lazy<DashMap<TypeId, BTreeSet<Type>>> = Lazy::new(DashMap::new);
+
+        if !CACHED_DEPENDENCIES.contains_key(&type_id) {
+            CACHED_DEPENDENCIES.insert(type_id, Self::build_dependencies());
+        }
+
+        CACHED_DEPENDENCIES.get(&type_id).unwrap()
+    }
 
     /// Returns a set with the type of `Self` and all of its dependencies.
     fn type_with_dependencies() -> BTreeSet<Type> {
@@ -101,7 +120,7 @@ where
         Type::Container("Box".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -119,7 +138,7 @@ where
         Type::Map("BTreeMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         let mut dependencies = BTreeSet::new();
         dependencies.append(&mut K::type_with_dependencies());
         dependencies.append(&mut V::type_with_dependencies());
@@ -139,7 +158,7 @@ where
         Type::List("BTreeSet".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -157,7 +176,7 @@ where
         Type::Map("HashMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         let mut dependencies = BTreeSet::new();
         dependencies.append(&mut K::type_with_dependencies());
         dependencies.append(&mut V::type_with_dependencies());
@@ -177,7 +196,7 @@ where
         Type::List("HashSet".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -194,7 +213,7 @@ where
         Type::Container("Option".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -211,7 +230,7 @@ where
         Type::Container("Rc".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -258,7 +277,7 @@ where
         )
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         let mut dependencies = BTreeSet::new();
         dependencies.append(&mut T::type_with_dependencies());
         dependencies.append(&mut E::type_with_dependencies());
@@ -275,7 +294,7 @@ impl Serializable for String {
         Type::String
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         BTreeSet::new()
     }
 }
@@ -292,7 +311,7 @@ where
         Type::List("Vec".to_owned(), Box::new(T::ty()))
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -312,7 +331,7 @@ impl Serializable for chrono::Utc {
         })
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         BTreeSet::new()
     }
 }
@@ -335,7 +354,7 @@ where
         })
     }
 
-    fn dependencies() -> BTreeSet<Type> {
+    fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
     }
 }
@@ -373,7 +392,7 @@ mod tests {
                 &Self::dependencies(),
             )
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "< T >";
             T::named_type_with_dependencies_and_generics("T", generics)
         }
@@ -387,7 +406,7 @@ mod tests {
             ty: None,
         })));
 
-        assert_eq!(Point::<f64>::dependencies(), expected_dependencies);
+        assert_eq!(Point::<f64>::build_dependencies(), expected_dependencies);
     }
 
     pub struct Complex {
@@ -404,7 +423,7 @@ mod tests {
                 &Self::dependencies(),
             )
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "";
             Vec::<Point<f64>>::named_type_with_dependencies_and_generics(
                 "Vec<Point<f64>>",
@@ -440,7 +459,7 @@ mod tests {
         expected_dependencies.insert(point.clone());
         expected_dependencies.insert(Type::List("Vec".to_owned(), Box::new(point)));
 
-        assert_eq!(Complex::dependencies(), expected_dependencies);
+        assert_eq!(Complex::build_dependencies(), expected_dependencies);
     }
 
     pub struct ComplexNested {
@@ -455,7 +474,7 @@ mod tests {
         fn ty() -> Type {
             Type::from_item("pub struct ComplexNested {pub complex_nested : BTreeMap < String , Vec < Point < f64 >>>,}", &Self::dependencies())
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "";
             BTreeMap::<String, Vec<Point<f64>>>::named_type_with_dependencies_and_generics(
                 "BTreeMap<String, Vec<Point<f64>>>",
@@ -518,7 +537,7 @@ mod tests {
             ty: None,
         })));
 
-        assert_eq!(ComplexNested::dependencies(), expected_dependencies);
+        assert_eq!(ComplexNested::build_dependencies(), expected_dependencies);
     }
 
     pub struct Recursive {
@@ -536,7 +555,7 @@ mod tests {
                 &Self::dependencies(),
             )
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "";
             Point::<Point<f64>>::named_type_with_dependencies_and_generics(
                 "Point<Point<f64>>",
@@ -581,7 +600,7 @@ mod tests {
         expected_dependencies.insert(specialized_point);
         expected_dependencies.insert(point_point);
 
-        assert_eq!(Recursive::dependencies(), expected_dependencies);
+        assert_eq!(Recursive::build_dependencies(), expected_dependencies);
     }
 
     pub struct NestedRecursive {
@@ -599,7 +618,7 @@ mod tests {
                 &Self::dependencies(),
             )
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "";
             Vec::<Point<Point<f64>>>::named_type_with_dependencies_and_generics(
                 "Vec<Point<Point<f64>>>",
@@ -646,7 +665,7 @@ mod tests {
         expected_dependencies.insert(point_point);
         expected_dependencies.insert(vec);
 
-        assert_eq!(NestedRecursive::dependencies(), expected_dependencies);
+        assert_eq!(NestedRecursive::build_dependencies(), expected_dependencies);
     }
 
     pub struct CombinedFields {
@@ -666,7 +685,7 @@ mod tests {
                 &Self::dependencies(),
             )
         }
-        fn dependencies() -> BTreeSet<Type> {
+        fn build_dependencies() -> BTreeSet<Type> {
             let generics = "";
             let mut dependencies = BTreeSet::new();
             dependencies.append(&mut Vec::<f64>::named_type_with_dependencies_and_generics(
@@ -730,6 +749,6 @@ mod tests {
         expected_dependencies.insert(vec_point);
         expected_dependencies.insert(vec_point_point);
 
-        assert_eq!(CombinedFields::dependencies(), expected_dependencies);
+        assert_eq!(CombinedFields::build_dependencies(), expected_dependencies);
     }
 }
