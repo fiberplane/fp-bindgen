@@ -23,6 +23,9 @@ pub fn generate_bindings(
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
 
+    let has_async_import_functions = import_functions.iter().any(|function| function.is_async);
+    let has_async_export_functions = export_functions.iter().any(|function| function.is_async);
+
     let mut type_names = all_types
         .into_iter()
         .filter_map(|ty| match ty {
@@ -34,7 +37,11 @@ pub fn generate_bindings(
         .collect::<Vec<_>>();
     type_names.dedup();
 
-    let import_wrappers = format_import_wrappers(&import_functions);
+    let mut import_wrappers = format_import_wrappers(&import_functions);
+    if has_async_export_functions {
+        import_wrappers.push("__fp_host_resolve_async_value: resolvePromise,".to_owned());
+    }
+
     let export_wrappers = format_export_wrappers(&export_functions);
 
     let contents = format!(
@@ -124,7 +131,6 @@ export async function createRuntime(
 
     const {{ instance }} = await WebAssembly.instantiate(plugin, {{
         fp: {{
-            __fp_host_resolve_async_value: resolvePromise,
 {}        }},
     }});
 
@@ -139,8 +145,7 @@ export async function createRuntime(
     const memory = getExport<WebAssembly.Memory>(\"memory\");
     const malloc = getExport<(len: number) => FatPtr>(\"__fp_malloc\");
     const free = getExport<(ptr: FatPtr) => void>(\"__fp_free\");
-    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
-
+{}
     return {{
 {}    }};
 }}
@@ -160,6 +165,11 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         join_lines(&import_decls, |line| format!("    {};", line)),
         join_lines(&export_decls, |line| format!("    {};", line)),
         join_lines(&import_wrappers, |line| format!("            {}", line)),
+        if has_async_import_functions {
+            "    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");\n"
+        } else {
+            ""
+        },
         join_lines(&export_wrappers, |line| format!("        {}", line)),
     );
     write_bindings_file(format!("{}/index.ts", path), &contents);
