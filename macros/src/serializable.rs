@@ -92,7 +92,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                 fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
             }
 
-            fn dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
+            fn build_dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
                 let generics = #generics_str;
                 #collect_dependencies
             }

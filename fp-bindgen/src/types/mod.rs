@@ -1,6 +1,4 @@
 use crate::primitives::Primitive;
-use dashmap::DashMap;
-use once_cell::sync::Lazy;
 use quote::ToTokens;
 use std::{
     collections::{hash_map::DefaultHasher, BTreeSet},
@@ -53,25 +51,15 @@ pub enum Type {
 
 impl Type {
     pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
-        static CACHE: Lazy<DashMap<String, Type>> = Lazy::new(DashMap::new);
-
-        if let Some(ty) = CACHE.get(item_str) {
-            return ty.clone();
-        }
-
         let item = syn::parse_str::<Item>(item_str).unwrap();
-        let ty = match item {
+        match item {
             Item::Enum(item) => enums::parse_enum_item(item, dependencies),
             Item::Struct(item) => structs::parse_struct_item(item, dependencies),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item
             ),
-        };
-
-        CACHE.insert(item_str.to_owned(), ty.clone());
-
-        ty
+        }
     }
 
     pub fn generic_args(&self) -> Vec<GenericArgument> {

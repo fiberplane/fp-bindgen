@@ -38,7 +38,7 @@ impl Primitive {
                     true
                 }
 
-                fn dependencies() -> BTreeSet<Type> {
+                fn build_dependencies() -> BTreeSet<Type> {
                     BTreeSet::new()
                 }
             }
