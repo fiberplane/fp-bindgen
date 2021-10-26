@@ -1,5 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
+use crate::serializable::Serializable;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
@@ -25,6 +26,9 @@ pub fn generate_bindings(
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
 
+    let has_async_import_functions = import_functions.iter().any(|function| function.is_async);
+    let has_async_export_functions = export_functions.iter().any(|function| function.is_async);
+
     let mut type_names = all_types
         .into_iter()
         .filter_map(|ty| match ty {
@@ -36,7 +40,11 @@ pub fn generate_bindings(
         .collect::<Vec<_>>();
     type_names.dedup();
 
-    let import_wrappers = format_import_wrappers(&import_functions);
+    let mut import_wrappers = format_import_wrappers(&import_functions);
+    if has_async_export_functions {
+        import_wrappers.push("__fp_host_resolve_async_value: resolvePromise,".to_owned());
+    }
+
     let export_wrappers = format_export_wrappers(&export_functions);
 
     let contents = format!(
@@ -126,7 +134,6 @@ export async function createRuntime(
 
     const {{ instance }} = await WebAssembly.instantiate(plugin, {{
         fp: {{
-            __fp_host_resolve_async_value: resolvePromise,
 {}        }},
     }});
 
@@ -141,8 +148,7 @@ export async function createRuntime(
     const memory = getExport<WebAssembly.Memory>(\"memory\");
     const malloc = getExport<(len: number) => FatPtr>(\"__fp_malloc\");
     const free = getExport<(ptr: FatPtr) => void>(\"__fp_free\");
-    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");
-
+{}
     return {{
 {}    }};
 }}
@@ -162,6 +168,11 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         join_lines(&import_decls, |line| format!("    {};", line)),
         join_lines(&export_decls, |line| format!("    {};", line)),
         join_lines(&import_wrappers, |line| format!("            {}", line)),
+        if has_async_import_functions {
+            "    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");\n"
+        } else {
+            ""
+        },
         join_lines(&export_wrappers, |line| format!("        {}", line)),
     );
     write_bindings_file(format!("{}/index.ts", path), &contents);
@@ -409,7 +420,31 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
 }
 
 fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let mut type_defs = types
+    let types = types
+        .iter()
+        .filter_map(|ty| match ty {
+            Type::Enum(name, generic_args, _, _, _) => {
+                if name == "Result" {
+                    // Just make sure we get an unspecialized version of the type...
+                    Some(Result::<u8, u8>::ty())
+                } else if generic_args.iter().all(|arg| arg.ty.is_none()) {
+                    Some(ty.clone())
+                } else {
+                    None // We don't generate definitions for specialized types.
+                }
+            }
+            Type::Struct(_, generic_args, _, _, _) => {
+                if generic_args.iter().all(|arg| arg.ty.is_none()) {
+                    Some(ty.clone())
+                } else {
+                    None // We don't generate definitions for specialized types.
+                }
+            }
+            other => Some(other.clone()),
+        })
+        .collect::<BTreeSet<_>>();
+
+    let type_defs = types
         .iter()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => Some(format!(
@@ -426,7 +461,6 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
             _ => None,
         })
         .collect::<Vec<_>>();
-    type_defs.dedup();
 
     write_bindings_file(
         format!("{}/types.ts", path),
@@ -464,7 +498,7 @@ fn create_enum_definition(
                 }
                 Type::Struct(_, _, _, fields, _) => {
                     if opts.untagged {
-                        format!("| {{ {} }}", format_struct_fields(fields).join("; "))
+                        format!("| {{ {} }}", format_struct_fields(fields).join(" "))
                     } else {
                         let field_lines = format_struct_fields(fields);
                         let formatted_fields = if field_lines.len() > fields.len() {

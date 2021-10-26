@@ -1,8 +1,10 @@
 mod r#async;
+#[rustfmt::skip]
 pub mod functions;
 mod queue;
-mod support;
+pub mod support;
 mod task;
+#[rustfmt::skip]
 pub mod types;
 
 pub mod __fp_macro {

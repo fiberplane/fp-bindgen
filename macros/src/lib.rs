@@ -1,10 +1,3 @@
-mod primitives;
-mod serializable;
-mod typing;
-mod utils;
-
-use std::iter::once;
-
 use crate::{
     primitives::Primitive,
     utils::{extract_path_from_type, get_name_from_path},
@@ -12,11 +5,17 @@ use crate::{
 use proc_macro::{TokenStream, TokenTree};
 use proc_macro_error::{abort, proc_macro_error, ResultExt};
 use quote::{format_ident, quote, ToTokens};
+use std::{collections::HashSet, iter::once};
 use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemUse, Pat, PatPath, Path,
     PathArguments, PathSegment, ReturnType,
 };
 use utils::flatten_using_statement;
+
+mod primitives;
+mod serializable;
+mod typing;
+mod utils;
 
 /// Used to annotate types (`enum`s and `struct`s) that can be passed across the Wasm bridge.
 #[proc_macro_derive(Serializable, attributes(fp))]
@@ -35,10 +34,10 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_import_types, #serializable_names); )*
+            #( serializable_import_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_import_types, #deserializable_named); )*
+            #( deserializable_import_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_named)); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
@@ -60,10 +59,10 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( #serializable_types::add_named_type_with_dependencies(&mut serializable_export_types, #serializable_names); )*
+            #( serializable_export_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( #deserializable_types::add_named_type_with_dependencies(&mut deserializable_export_types, #deserializable_names); )*
+            #( deserializable_export_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_names)); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
@@ -79,10 +78,10 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
 /// Finally, it returns two sets: one with all the paths for types that may need serialization
 /// to call the functions, and one with all the paths for types that may need deserialization to
 /// call the functions.
-fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<Path>) {
+fn parse_statements(token_stream: TokenStream) -> (Vec<String>, HashSet<Path>, HashSet<Path>) {
     let mut functions = Vec::new();
-    let mut serializable_type_names = Vec::new();
-    let mut deserializable_type_names = Vec::new();
+    let mut serializable_type_names = HashSet::new();
+    let mut deserializable_type_names = HashSet::new();
     let mut current_item_tokens = Vec::<TokenTree>::new();
     for token in token_stream.into_iter() {
         match token {
@@ -99,7 +98,7 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<P
                                 function.sig
                             ),
                             FnArg::Typed(arg) => {
-                                serializable_type_names.push(
+                                serializable_type_names.insert(
                                     extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
                                         panic!(
                                             "Only value types are supported. \
@@ -115,7 +114,7 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<P
                     match &function.sig.output {
                         ReturnType::Default => { /* No return value. */ }
                         ReturnType::Type(_, ty) => {
-                            deserializable_type_names.push(
+                            deserializable_type_names.insert(
                                 extract_path_from_type(ty.as_ref()).unwrap_or_else(|| {
                                     panic!(
                                         "Only value types are supported. \
@@ -130,8 +129,8 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<P
                     functions.push(function.into_token_stream().to_string());
                 } else if let Ok(using) = syn::parse::<ItemUse>(stream) {
                     for path in flatten_using_statement(using) {
-                        deserializable_type_names.push(path.clone());
-                        serializable_type_names.push(path);
+                        deserializable_type_names.insert(path.clone());
+                        serializable_type_names.insert(path);
                     }
                 }
 
@@ -140,9 +139,6 @@ fn parse_statements(token_stream: TokenStream) -> (Vec<String>, Vec<Path>, Vec<P
             other => current_item_tokens.push(other),
         }
     }
-
-    serializable_type_names.dedup();
-    deserializable_type_names.dedup();
 
     (
         functions,
