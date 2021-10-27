@@ -62,13 +62,14 @@ serde_bytes = \"0.11\"
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
-        "mod import;
-mod export;
+        "mod export;
+mod import;
+#[rustfmt::skip]
 mod types;
 
-pub use types::*;
 pub use import::*;
 pub use export::*;
+pub use types::*;
 
 pub use fp_bindgen_macros::fp_export_impl;
 pub use fp_bindgen_support::*;
