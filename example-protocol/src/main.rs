@@ -152,7 +152,7 @@ fp_export! {
 
 const VERSION: &str = "1.0.0";
 const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
-const NAME: &str = "example-bindings"; //notice we're generating the plugin
+const NAME: &str = "example-bindings";
 
 fn main() {
     for bindings_type in [

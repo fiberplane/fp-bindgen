@@ -280,7 +280,7 @@ fn generate_imported_function_bindings(import_functions: FunctionList, path: &st
     write_bindings_file(
         format!("{}/import.rs", path),
         format!(
-            "use crate::types::*;\n 
+            "use crate::types::*;\n\
             \n\
             #[link(wasm_import_module = \"fp\")]\n\
             extern \"C\" {{\n\
