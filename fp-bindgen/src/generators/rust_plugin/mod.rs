@@ -3,6 +3,7 @@ use crate::prelude::Primitive;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
+use crate::BindingConfig;
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -11,12 +12,9 @@ pub fn generate_bindings(
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
-    path: &str,
-    name: &str,
-    authors: &str,
-    version: &str,
+    config: BindingConfig,
 ) {
-    let src_path = format!("{}/src", path);
+    let src_path = format!("{}/src", config.path);
     fs::create_dir_all(&src_path).expect("Could not create output directory");
 
     let requires_async = import_functions.iter().any(|function| function.is_async);
@@ -32,7 +30,7 @@ pub fn generate_bindings(
 
     //TODO: fix fp_bindgen_support path to be a crate or git path
     write_bindings_file(
-        format!("{}/Cargo.toml", path),
+        format!("{}/Cargo.toml", config.path),
         format!(
             "[package]
 name = \"{}\"
@@ -45,13 +43,13 @@ fp-bindgen-support = {{ path = \"../../fp-bindgen-support\"{} }}
 fp-bindgen-macros = {{ path = \"../../macros\" }}
 chrono = {{ version = \"0.4.19\", features = [\"serde\"] }}
 once_cell = \"1\"
-rmp-serde = \"=1.0.0-beta.1\"
+rmp-serde = \"=1.0.0-beta.2\"
 serde = {{ version = \"1.0\", features = [\"derive\"] }}
 serde_bytes = \"0.11\"
 ",
-            name,
-            version,
-            authors,
+            config.name,
+            config.version,
+            config.authors,
             if requires_async {
                 ", features = [\"async\"]"
             } else {

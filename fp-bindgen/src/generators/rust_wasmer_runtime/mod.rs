@@ -2,6 +2,7 @@ use crate::functions::FunctionList;
 use crate::generators::rust_plugin::{format_primitive, format_type, generate_type_bindings};
 use crate::primitives::Primitive;
 use crate::types::Type;
+use crate::BindingConfig;
 use std::collections::BTreeSet;
 use std::fs;
 
@@ -10,12 +11,9 @@ pub fn generate_bindings(
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
-    path: &str,
-    _name: &str,
-    _authors: &str,
-    _version: &str,
+    config: BindingConfig,
 ) {
-    let spec_path = format!("{}/spec", path);
+    let spec_path = format!("{}/spec", config.path);
     fs::create_dir_all(&spec_path).expect("Could not create spec/ directory");
 
     // We use the same type generation as for the Rust plugin, only with the
@@ -30,12 +28,15 @@ pub fn generate_bindings(
     generate_function_bindings(import_functions, export_functions, &spec_path);
 
     write_bindings_file(
-        format!("{}/errors.rs", path),
+        format!("{}/errors.rs", config.path),
         include_bytes!("assets/errors.rs"),
     );
-    write_bindings_file(format!("{}/lib.rs", path), include_bytes!("assets/lib.rs"));
     write_bindings_file(
-        format!("{}/support.rs", path),
+        format!("{}/lib.rs", config.path),
+        include_bytes!("assets/lib.rs"),
+    );
+    write_bindings_file(
+        format!("{}/support.rs", config.path),
         include_bytes!("assets/support.rs"),
     );
 }

@@ -155,9 +155,20 @@ const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
 const NAME: &str = "example-bindings"; //notice we're generating the plugin
 
 fn main() {
-    for bindings_type in ["rust-plugin", "rust-wasmer-runtime", "ts-runtime"] {
+    for bindings_type in [
+        BindingsType::RustPlugin,
+        BindingsType::RustWasmerRuntime,
+        BindingsType::TsRuntime,
+    ] {
         let output_path = format!("bindings/{}", bindings_type);
-        fp_bindgen!(bindings_type, &output_path, NAME, AUTHORS, VERSION);
+
+        fp_bindgen!(BindingConfig {
+            bindings_type,
+            path: &output_path,
+            name: NAME,
+            authors: AUTHORS,
+            version: VERSION
+        });
         println!("Generated bindings written to `{}/`.", output_path);
     }
 }
@@ -187,13 +198,13 @@ fn test_generate_rust_plugin() {
         ),
     ];
 
-    fp_bindgen!(
-        "rust-plugin",
-        "bindings/rust-plugin",
-        NAME,
-        AUTHORS,
-        VERSION
-    );
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustPlugin,
+        path: "bindings/rust-plugin",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
 
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
@@ -212,13 +223,13 @@ fn test_generate_rust_wasmer_runtime() {
             include_bytes!("assets/rust_wasmer_runtime_test/expected_types.rs"),
         ),
     ];
-    fp_bindgen!(
-        "rust-wasmer-runtime",
-        "bindings/rust-wasmer-runtime",
-        NAME,
-        AUTHORS,
-        VERSION
-    );
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustWasmerRuntime,
+        path: "bindings/rust-wasmer-runtime",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
     }
@@ -237,7 +248,13 @@ fn test_generate_ts_runtime() {
         ),
     ];
 
-    fp_bindgen!("ts-runtime", "bindings/ts-runtime", NAME, AUTHORS, VERSION);
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::TsRuntime,
+        path: "bindings/ts-runtime",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
 
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
