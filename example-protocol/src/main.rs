@@ -150,80 +150,127 @@ fp_export! {
     async fn fetch_data(url: String) -> String;
 }
 
+const VERSION: &str = "1.0.0";
+const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
+const NAME: &str = "example-bindings";
+
 fn main() {
-    for bindings_type in ["rust-plugin", "rust-wasmer-runtime", "ts-runtime"] {
+    for bindings_type in [
+        BindingsType::RustPlugin,
+        BindingsType::RustWasmerRuntime,
+        BindingsType::TsRuntime,
+    ] {
         let output_path = format!("bindings/{}", bindings_type);
-        fp_bindgen!(bindings_type, &output_path);
+
+        fp_bindgen!(BindingConfig {
+            bindings_type,
+            path: &output_path,
+            name: NAME,
+            authors: AUTHORS,
+            version: VERSION
+        });
         println!("Generated bindings written to `{}/`.", output_path);
     }
 }
 
 #[test]
 fn test_generate_rust_plugin() {
-    fp_bindgen!("rust-plugin", "bindings/rust-plugin");
+    static FILES: &[(&str, &[u8])] = &[
+        (
+            "bindings/rust-plugin/src/types.rs",
+            include_bytes!("assets/rust_plugin_test/expected_types.rs"),
+        ),
+        (
+            "bindings/rust-plugin/src/lib.rs",
+            include_bytes!("assets/rust_plugin_test/expected_lib.rs"),
+        ),
+        (
+            "bindings/rust-plugin/src/export.rs",
+            include_bytes!("assets/rust_plugin_test/expected_export.rs"),
+        ),
+        (
+            "bindings/rust-plugin/src/import.rs",
+            include_bytes!("assets/rust_plugin_test/expected_import.rs"),
+        ),
+        (
+            "bindings/rust-plugin/Cargo.toml",
+            include_bytes!("assets/rust_plugin_test/expected_Cargo.toml"),
+        ),
+    ];
 
-    let generated_functions = std::fs::read_to_string("bindings/rust-plugin/functions.rs")
-        .expect("Cannot read generated functions");
-    let expected_functions = String::from_utf8_lossy(include_bytes!(
-        "assets/rust_plugin_test/expected_functions.rs"
-    ));
-    tests::assert_lines_eq(&generated_functions, &expected_functions);
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustPlugin,
+        path: "bindings/rust-plugin",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
 
-    let generated_types = std::fs::read_to_string("bindings/rust-plugin/types.rs")
-        .expect("Cannot read generated types");
-    let expected_types =
-        String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_types.rs"));
-    tests::assert_lines_eq(&generated_types, &expected_types);
-
-    let generated_mod = std::fs::read_to_string("bindings/rust-plugin/mod.rs")
-        .expect("Cannot read generated mod.rs");
-    let expected_mod =
-        String::from_utf8_lossy(include_bytes!("assets/rust_plugin_test/expected_mod.rs"));
-    tests::assert_lines_eq(&generated_mod, &expected_mod);
+    for (path, expected) in FILES {
+        tests::assert_file_eq(path, expected)
+    }
 }
 
 #[test]
 fn test_generate_rust_wasmer_runtime() {
-    fp_bindgen!("rust-wasmer-runtime", "bindings/rust-wasmer-runtime");
-
-    let generated_functions =
-        std::fs::read_to_string("bindings/rust-wasmer-runtime/spec/bindings.rs")
-            .expect("Cannot read generated bindings");
-    let expected_functions = String::from_utf8_lossy(include_bytes!(
-        "assets/rust_wasmer_runtime_test/expected_bindings.rs"
-    ));
-    tests::assert_lines_eq(&generated_functions, &expected_functions);
-
-    let generated_types = std::fs::read_to_string("bindings/rust-wasmer-runtime/spec/types.rs")
-        .expect("Cannot read generated types");
-    let expected_types = String::from_utf8_lossy(include_bytes!(
-        "assets/rust_wasmer_runtime_test/expected_types.rs"
-    ));
-    tests::assert_lines_eq(&generated_types, &expected_types);
+    static FILES: &[(&str, &[u8])] = &[
+        (
+            "bindings/rust-wasmer-runtime/spec/bindings.rs",
+            include_bytes!("assets/rust_wasmer_runtime_test/expected_bindings.rs"),
+        ),
+        (
+            "bindings/rust-wasmer-runtime/spec/types.rs",
+            include_bytes!("assets/rust_wasmer_runtime_test/expected_types.rs"),
+        ),
+    ];
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustWasmerRuntime,
+        path: "bindings/rust-wasmer-runtime",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
+    for (path, expected) in FILES {
+        tests::assert_file_eq(path, expected)
+    }
 }
 
 #[test]
 fn test_generate_ts_runtime() {
-    fp_bindgen!("ts-runtime", "bindings/ts-runtime");
+    static FILES: &[(&str, &[u8])] = &[
+        (
+            "bindings/ts-runtime/types.ts",
+            include_bytes!("assets/ts_runtime_test/expected_types.ts"),
+        ),
+        (
+            "bindings/ts-runtime/index.ts",
+            include_bytes!("assets/ts_runtime_test/expected_index.ts"),
+        ),
+    ];
 
-    let generated_types = std::fs::read_to_string("bindings/ts-runtime/types.ts")
-        .expect("Cannot read generated types");
-    let expected_types =
-        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_types.ts"));
-    tests::assert_lines_eq(&generated_types, &expected_types);
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::TsRuntime,
+        path: "bindings/ts-runtime",
+        name: NAME,
+        authors: AUTHORS,
+        version: VERSION
+    });
 
-    let generated_index = std::fs::read_to_string("bindings/ts-runtime/index.ts")
-        .expect("Cannot read generated index.ts");
-    let expected_index =
-        String::from_utf8_lossy(include_bytes!("assets/ts_runtime_test/expected_index.ts"));
-    tests::assert_lines_eq(&generated_index, &expected_index);
+    for (path, expected) in FILES {
+        tests::assert_file_eq(path, expected)
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    pub fn assert_lines_eq(generated_code: &str, expected_code: &str) {
-        let generated_lines = generated_code.split('\n').collect::<Vec<_>>();
+    use std::path::Path;
+
+    pub fn assert_file_eq(path_of_actual: impl AsRef<Path>, expected_bytes: &[u8]) {
+        let actual = std::fs::read_to_string(path_of_actual).expect("Cannot read `actual` file");
+        let expected_code = String::from_utf8_lossy(expected_bytes);
+
+        let actual_lines = actual.split('\n').collect::<Vec<_>>();
         let expected_lines = expected_code.split('\n').collect::<Vec<_>>();
-        pretty_assertions::assert_eq!(generated_lines, expected_lines);
+        pretty_assertions::assert_eq!(actual_lines, expected_lines);
     }
 }

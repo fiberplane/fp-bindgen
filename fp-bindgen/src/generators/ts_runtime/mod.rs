@@ -4,6 +4,7 @@ use crate::serializable::Serializable;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
+use crate::BindingConfig;
 use inflector::Inflector;
 use std::collections::BTreeSet;
 use std::fs;
@@ -13,12 +14,12 @@ pub fn generate_bindings(
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     mut deserializable_types: BTreeSet<Type>,
-    path: &str,
+    config: BindingConfig,
 ) {
     let mut all_types = serializable_types;
     all_types.append(&mut deserializable_types);
 
-    generate_type_bindings(&all_types, path);
+    generate_type_bindings(&all_types, config.path);
 
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
@@ -172,7 +173,7 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         },
         join_lines(&export_wrappers, |line| format!("        {}", line)),
     );
-    write_bindings_file(format!("{}/index.ts", path), &contents);
+    write_bindings_file(format!("{}/index.ts", config.path), &contents);
 }
 
 enum FunctionType {

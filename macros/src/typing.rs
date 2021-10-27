@@ -54,14 +54,14 @@ pub(crate) fn get_output_type(output: &ReturnType) -> &Type {
     }
 }
 
-pub(crate) fn replace_complex_type(ty: &mut Type) {
+pub(crate) fn replace_complex_type(ty: &mut Type, crate_path: &str) {
     if is_type_complex(ty) {
-        *ty = syn::parse_str::<Type>("fp_bindgen_lib::FatPtr").unwrap_or_abort();
+        *ty = syn::parse_str::<Type>(format!("{}::FatPtr", crate_path).as_str()).unwrap_or_abort();
     }
 }
 
 /// Replaces complex types in the input and output of a function signature and makes it non-async
-pub(crate) fn morph_signature(sig: &mut Signature) {
+pub(crate) fn morph_signature(sig: &mut Signature, crate_path: &str) {
     sig.asyncness = None;
     sig.inputs = sig
         .inputs
@@ -69,13 +69,13 @@ pub(crate) fn morph_signature(sig: &mut Signature) {
         .cloned()
         .map(|mut arg| {
             let pt = get_pat_type_mut(&mut arg);
-            replace_complex_type(&mut pt.ty);
+            replace_complex_type(&mut pt.ty, crate_path);
             arg
         })
         .collect();
 
     if let ReturnType::Type(_, ref mut ty) = sig.output {
-        replace_complex_type(ty.as_mut());
+        replace_complex_type(ty.as_mut(), crate_path);
     }
 }
 

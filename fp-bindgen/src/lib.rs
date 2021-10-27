@@ -11,14 +11,25 @@ pub mod types;
 
 use fp_bindgen_macros::primitive_impls;
 use prelude::*;
-use std::{collections::BTreeSet, fs, str::FromStr};
+use std::{collections::BTreeSet, fmt::Display, fs, str::FromStr};
 
 primitive_impls!();
 
-enum BindingsType {
+#[derive(Debug)]
+pub enum BindingsType {
     RustPlugin,
     RustWasmerRuntime,
     TsRuntime,
+}
+
+impl Display for BindingsType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            BindingsType::RustPlugin => "rust-plugin",
+            BindingsType::RustWasmerRuntime => "rust-wasmer-runtime",
+            BindingsType::TsRuntime => "ts-runtime",
+        })
+    }
 }
 
 impl FromStr for BindingsType {
@@ -38,19 +49,25 @@ impl FromStr for BindingsType {
     }
 }
 
+#[derive(Debug)]
+pub struct BindingConfig<'a> {
+    pub bindings_type: BindingsType,
+    pub path: &'a str,
+    pub name: &'a str,
+    pub authors: &'a str,
+    pub version: &'a str,
+}
+
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
-    bindings_type: &str,
-    path: &str,
+    config: BindingConfig,
 ) {
-    let bindings_type = BindingsType::from_str(bindings_type).expect("Unknown bindings type");
+    fs::create_dir_all(config.path).expect("Could not create output directory");
 
-    fs::create_dir_all(path).expect("Could not create output directory");
-
-    let generate_bindings = match bindings_type {
+    let generate_bindings = match config.bindings_type {
         BindingsType::RustPlugin => generators::rust_plugin::generate_bindings,
         BindingsType::RustWasmerRuntime => generators::rust_wasmer_runtime::generate_bindings,
         BindingsType::TsRuntime => generators::ts_runtime::generate_bindings,
@@ -61,6 +78,6 @@ pub fn generate_bindings(
         export_functions,
         serializable_types,
         deserializable_types,
-        path,
+        config,
     );
 }

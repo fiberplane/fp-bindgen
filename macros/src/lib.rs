@@ -212,7 +212,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
-        typing::morph_signature(&mut sig);
+        typing::morph_signature(&mut sig, "fp_bindgen_support");
         sig.inputs = sig
             .inputs
             .into_iter()
@@ -234,7 +234,8 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             let output = typing::get_output_type(&func.sig.output);
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
-                    (quote! {FUT: std::future::Future<Output=#output>}).into(),
+                    //the 'static life time is ok since we give it a box::pin
+                    (quote! {FUT: std::future::Future<Output=#output> + 'static}).into(),
                 )
                 .unwrap_or_abort(),
             )
@@ -256,7 +257,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     // Check the output type and replace complex ones with FatPtr
     let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-        quote! {let ret = fp_bindgen_lib::export_value_to_host(&ret);}
+        quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
     } else {
         Default::default()
     };
@@ -265,15 +266,15 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let len = std::mem::size_of::<fp_bindgen_lib::AsyncValue>() as u32;
-            let ptr = fp_bindgen_lib::malloc(len);
-            let fat_ptr = fp_bindgen_lib::to_fat_ptr(ptr, len);
+            let len = std::mem::size_of::<fp_bindgen_support::AsyncValue>() as u32;
+            let ptr = fp_bindgen_support::malloc(len);
+            let fat_ptr = fp_bindgen_support::to_fat_ptr(ptr, len);
 
-            fp_bindgen_lib::Task::spawn(Box::pin(async move {
+            fp_bindgen_support::Task::spawn(Box::pin(async move {
                 let ret = #func_call.await;
                 unsafe {
-                    let result_ptr = fp_bindgen_lib::export_value_to_host(&ret);
-                    fp_bindgen_lib::host_resolve_async_value(fat_ptr, result_ptr);
+                    let result_ptr = fp_bindgen_support::export_value_to_host(&ret);
+                    fp_bindgen_support::host_resolve_async_value(fat_ptr, result_ptr);
                 }
             }));
 
@@ -291,7 +292,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_lib::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #(let #complex_names = unsafe { fp_bindgen_support::import_value_from_host::<#complex_types>(#complex_names) };)*
             #func_wrapper
             ret
         }
@@ -335,7 +336,10 @@ pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStrea
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
-        typing::morph_signature(&mut sig);
+        typing::morph_signature(
+            &mut sig,
+            protocol_path.to_token_stream().to_string().as_str(),
+        );
         sig.ident = format_ident!("__fp_gen_{}", sig.ident);
     }
 

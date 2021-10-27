@@ -1,7 +1,5 @@
-mod example_protocol;
-
 use chrono::Utc;
-use example_protocol::prelude::*;
+use example_bindings::*;
 use std::collections::{BTreeMap, HashMap};
 use std::panic;
 
@@ -13,71 +11,63 @@ fn init_panic_hook() {
     });
 }
 
-// I would have preferred to use an `#[fp_export]` annotation here, rather than this rules macro.
-// It would look more pleasing IMO, and would give us the ability to provide better error messages
-// in case signatures don't match. Unfortunately, procedural macros must be in their own crate,
-// and generating an entire crate just for this would introduce a lot of complexity.
-fp_export!(
-    fn my_plain_exported_function(a: u32, b: u32) -> u32 {
-        init_panic_hook();
+#[fp_export_impl(example_bindings)]
+fn my_plain_exported_function(a: u32, b: u32) -> u32 {
+    init_panic_hook();
 
-        a + my_plain_imported_function(a, b)
+    a + my_plain_imported_function(a, b)
+}
+
+#[fp_export_impl(example_bindings)]
+fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost {
+    init_panic_hook();
+
+    let simple = Simple {
+        bar: a.simple.bar,
+        foo: 2 * a.simple.foo,
+    };
+
+    my_complex_imported_function(ComplexGuestToHost {
+        map: BTreeMap::new(),
+        simple: simple.clone(),
+        timestamp: Utc::now(),
+    });
+
+    ComplexGuestToHost {
+        map: BTreeMap::new(),
+        simple,
+        timestamp: Utc::now(),
     }
-);
+}
 
-fp_export!(
-    fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost {
-        init_panic_hook();
+#[fp_export_impl(example_bindings)]
+async fn my_async_exported_function() -> ComplexGuestToHost {
+    init_panic_hook();
 
-        let simple = Simple {
-            bar: a.simple.bar,
-            foo: 2 * a.simple.foo,
-        };
+    let result = my_async_imported_function().await;
+    ComplexGuestToHost {
+        map: BTreeMap::new(),
+        simple: result.simple,
+        timestamp: Utc::now(),
+    }
+}
 
-        my_complex_imported_function(ComplexGuestToHost {
-            map: BTreeMap::new(),
-            simple: simple.clone(),
-            timestamp: Utc::now(),
-        });
+#[fp_export_impl(example_bindings)]
+async fn fetch_data(url: String) -> String {
+    init_panic_hook();
 
-        ComplexGuestToHost {
-            map: BTreeMap::new(),
-            simple,
-            timestamp: Utc::now(),
+    let result = make_request(RequestOptions {
+        url,
+        method: RequestMethod::Get,
+        headers: HashMap::new(),
+        body: None,
+    })
+    .await;
+
+    match result {
+        Ok(response) => {
+            String::from_utf8(response.body).unwrap_or_else(|_| "Invalid utf8".to_owned())
         }
+        Err(err) => format!("Error: {:?}", err),
     }
-);
-
-fp_export!(
-    async fn my_async_exported_function() -> ComplexGuestToHost {
-        init_panic_hook();
-
-        let result = my_async_imported_function().await;
-        ComplexGuestToHost {
-            map: BTreeMap::new(),
-            simple: result.simple,
-            timestamp: Utc::now(),
-        }
-    }
-);
-
-fp_export!(
-    async fn fetch_data(url: String) -> String {
-        init_panic_hook();
-
-        let result = make_request(RequestOptions {
-            url,
-            method: RequestMethod::Get,
-            headers: HashMap::new(),
-            body: None,
-        })
-        .await;
-
-        match result {
-            Ok(response) => {
-                String::from_utf8(response.body).unwrap_or_else(|_| "Invalid utf8".to_owned())
-            }
-            Err(err) => format!("Error: {:?}", err),
-        }
-    }
-);
+}
