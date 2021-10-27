@@ -3,8 +3,6 @@ name = "fp-bindgen-support"
 version = "0.1.0"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 fp-bindgen-macros = { path = "../macros" }
 chrono = { version = "0.4.19", features = ["serde"] }
