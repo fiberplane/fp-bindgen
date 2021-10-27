@@ -1,6 +1,5 @@
 use crate::types::*;
- 
-            
+
 #[link(wasm_import_module = "fp")]
 extern "C" {
     fn __fp_gen_count_words(string: fp_bindgen_support::FatPtr) -> fp_bindgen_support::FatPtr;
