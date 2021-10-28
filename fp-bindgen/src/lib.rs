@@ -15,7 +15,7 @@ use std::{collections::BTreeSet, fmt::Display, fs, str::FromStr};
 
 primitive_impls!();
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum BindingsType {
     RustPlugin,
     RustWasmerRuntime,
