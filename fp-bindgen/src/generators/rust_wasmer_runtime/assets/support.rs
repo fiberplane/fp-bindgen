@@ -56,7 +56,7 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
@@ -93,7 +93,7 @@ pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T
 }
 
 /// Copy the buffer into linear memory.
-fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
+pub(crate) fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
     let len = buffer.len() as u32;
@@ -143,7 +143,51 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 }
 
 // The ModuleFuture implements the Future Trait to handle async Futures as
-// returned from the module.
+// returned from the module. This will not attempt any de-serialization.
+pub(crate) struct ModuleFutureRaw {
+    pub ptr: FatPtr,
+    pub env: RuntimeInstanceData,
+}
+
+impl ModuleFutureRaw {
+    pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
+        Self { ptr, env }
+    }
+}
+
+impl Future for ModuleFutureRaw {
+    type Output = Vec<u8>;
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Self::Output> {
+        let memory = unsafe { self.env.memory.get_unchecked() };
+
+        let ptr = self.ptr;
+
+        let (async_ptr, async_len) = to_wasm_ptr(ptr);
+        let values = async_ptr.deref(memory, 0, async_len).unwrap();
+
+        match values[0].get() {
+            FUTURE_STATUS_PENDING => {
+                let mut wakers = self.env.wakers.lock().unwrap();
+                wakers.insert(ptr, cx.waker().clone());
+                Poll::Pending
+            }
+            FUTURE_STATUS_READY => {
+                let result_ptr = values[1].get();
+                let result_len = values[2].get();
+                let result = import_from_guest_raw(&self.env, to_fat_ptr(result_ptr, result_len));
+                Poll::Ready(result)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+// The ModuleFuture implements the Future Trait to handle async Futures as
+// returned from the module. This will de-serialize the content as T.
 pub(crate) struct ModuleFuture<T> {
     pub ptr: FatPtr,
     pub env: RuntimeInstanceData,
