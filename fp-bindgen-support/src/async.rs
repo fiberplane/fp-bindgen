@@ -63,23 +63,21 @@ impl Future for HostFuture {
 
 #[doc(hidden)]
 #[no_mangle]
-pub fn __fp_guest_resolve_async_value(async_value_ptr: FatPtr, result_ptr: FatPtr) {
-    unsafe {
-        if let Some(waker) = WAKERS.remove(&async_value_ptr) {
-            // First assign the result ptr and mark the async value as ready:
-            let (ptr, len) = from_fat_ptr(result_ptr);
-            let (async_value_ptr, _) = from_fat_ptr(async_value_ptr);
-            write_volatile(
-                async_value_ptr as *mut AsyncValue,
-                AsyncValue {
-                    status: STATUS_READY,
-                    ptr: ptr as u32,
-                    len,
-                },
-            );
+pub unsafe fn __fp_guest_resolve_async_value(async_value_fat_ptr: FatPtr, result_ptr: FatPtr) {
+    // First assign the result ptr and mark the async value as ready:
+    let (ptr, len) = from_fat_ptr(result_ptr);
+    let (async_value_ptr, _) = from_fat_ptr(async_value_fat_ptr);
+    write_volatile(
+        async_value_ptr as *mut AsyncValue,
+        AsyncValue {
+            status: STATUS_READY,
+            ptr: ptr as u32,
+            len,
+        },
+    );
 
-            waker.wake();
-        }
+    if let Some(waker) = WAKERS.remove(&async_value_fat_ptr) {
+        waker.wake();
     }
 }
 
