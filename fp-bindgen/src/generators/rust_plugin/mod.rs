@@ -3,9 +3,10 @@ use crate::prelude::Primitive;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
-use crate::BindingConfig;
-use std::collections::BTreeSet;
-use std::fs;
+use crate::{BindingConfig, RustPluginConfig};
+use std::collections::{BTreeMap, BTreeSet};
+use std::ffi::OsStr;
+use std::{fs, path::Path};
 
 pub fn generate_bindings(
     import_functions: FunctionList,
@@ -17,7 +18,12 @@ pub fn generate_bindings(
     let src_path = format!("{}/src", config.path);
     fs::create_dir_all(&src_path).expect("Could not create output directory");
 
-    let requires_async = import_functions.iter().any(|function| function.is_async);
+    generate_cargo_file(
+        config,
+        &import_functions,
+        &serializable_types,
+        &deserializable_types,
+    );
 
     generate_type_bindings(
         serializable_types,
@@ -27,36 +33,6 @@ pub fn generate_bindings(
     );
     generate_imported_function_bindings(import_functions, &src_path);
     generate_exported_function_bindings(export_functions, &src_path);
-
-    //TODO: fix fp_bindgen_support path to be a crate or git path
-    write_bindings_file(
-        format!("{}/Cargo.toml", config.path),
-        format!(
-            "[package]
-name = \"{}\"
-version = \"{}\"
-authors = {}
-edition = \"2018\"
-
-[dependencies]
-fp-bindgen-support = {{ path = \"../../fp-bindgen-support\"{} }}
-fp-bindgen-macros = {{ path = \"../../macros\" }}
-chrono = {{ version = \"0.4.19\", features = [\"serde\"] }}
-once_cell = \"1\"
-rmp-serde = \"=1.0.0-beta.2\"
-serde = {{ version = \"1.0\", features = [\"derive\"] }}
-serde_bytes = \"0.11\"
-",
-            config.name,
-            config.version,
-            config.authors,
-            if requires_async {
-                ", features = [\"async\"]"
-            } else {
-                ""
-            }
-        ),
-    );
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
@@ -69,9 +45,87 @@ pub use export::*;
 pub use import::*;
 pub use types::*;
 
-pub use fp_bindgen_macros::fp_export_impl;
 pub use fp_bindgen_support::*;
 ",
+    );
+}
+
+fn generate_cargo_file(
+    config: BindingConfig,
+    import_functions: &FunctionList,
+    serializable_types: &BTreeSet<Type>,
+    deserializable_types: &BTreeSet<Type>,
+) {
+    let path = config.path;
+    let plugin_config = config
+        .rust_plugin_config
+        .unwrap_or_else(|| RustPluginConfig {
+            authors: "Fiberplane",
+            name: Path::new(path)
+                .file_name()
+                .and_then(OsStr::to_str)
+                .unwrap_or("plugin-bindings"),
+            version: "0.1.0",
+            dependencies: BTreeMap::new(),
+        });
+
+    let requires_async = import_functions.iter().any(|function| function.is_async);
+
+    let mut dependencies = BTreeMap::new();
+    dependencies.insert(
+        "fp-bindgen-support".to_owned(),
+        format!(
+            "{{ git = \"ssh://git@github.com/fiberplane/fp-bindgen.git\", branch = \"main\"{} }}",
+            if requires_async {
+                ", features = [\"async\"]"
+            } else {
+                ""
+            }
+        ),
+    );
+    dependencies.insert("once_cell".to_owned(), r#""1""#.to_owned());
+    dependencies.insert("rmp-serde".to_owned(), r#""=1.0.0-beta.2""#.to_owned());
+    dependencies.insert(
+        "serde".to_owned(),
+        r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
+    );
+    dependencies.insert("serde_bytes".to_owned(), r#""0.11""#.to_owned());
+
+    // Inject dependencies from custom types:
+    for ty in serializable_types.iter().chain(deserializable_types.iter()) {
+        if let Type::Custom(custom_type) = ty {
+            for (name, value) in custom_type.rs_dependencies.iter() {
+                dependencies.insert(name.clone(), value.clone());
+            }
+        }
+    }
+
+    // Inject dependencies passed through the config:
+    for (name, value) in plugin_config.dependencies {
+        dependencies.insert(name, value);
+    }
+
+    write_bindings_file(
+        format!("{}/Cargo.toml", path),
+        format!(
+            "[package]
+name = \"{}\"
+version = \"{}\"
+authors = {}
+edition = \"2018\"
+
+[dependencies]
+{}
+",
+            plugin_config.name,
+            plugin_config.version,
+            plugin_config.authors,
+            dependencies
+                .iter()
+                .map(|(name, value)| format!("{} = {}", name, value))
+                .collect::<Vec<_>>()
+                .join("\n")
+        ),
     );
 }
 
