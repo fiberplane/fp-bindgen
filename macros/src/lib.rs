@@ -266,8 +266,9 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let len = std::mem::size_of::<fp_bindgen_support::AsyncValue>() as u32;
-            let ptr = fp_bindgen_support::malloc(len);
+            let layout = std::alloc::Layout::new::<fp_bindgen_support::AsyncValue>();
+            let len = layout.size() as u32;
+            let ptr = std::alloc::alloc(layout);
             let fat_ptr = fp_bindgen_support::to_fat_ptr(ptr, len);
 
             fp_bindgen_support::Task::spawn(Box::pin(async move {
