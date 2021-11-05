@@ -1,6 +1,9 @@
+#[cfg(feature = "async")]
 mod r#async;
 mod io;
+#[cfg(feature = "async")]
 mod queue;
+#[cfg(feature = "async")]
 mod task;
 
 pub use io::*;
