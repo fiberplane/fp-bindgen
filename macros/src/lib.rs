@@ -254,34 +254,19 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         .unzip();
 
     let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
-
-    // Check the output type and replace complex ones with FatPtr
-    let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-        quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
-    } else {
-        Default::default()
-    };
-
     let func_call = quote! {(fptr)(#(#names),*)};
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let layout = std::alloc::Layout::new::<fp_bindgen_support::AsyncValue>();
-            let len = layout.size() as u32;
-            let ptr = std::alloc::alloc(layout);
-            let fat_ptr = fp_bindgen_support::to_fat_ptr(ptr, len);
-
-            fp_bindgen_support::Task::spawn(Box::pin(async move {
-                let ret = #func_call.await;
-                unsafe {
-                    let result_ptr = fp_bindgen_support::export_value_to_host(&ret);
-                    fp_bindgen_support::host_resolve_async_value(fat_ptr, result_ptr);
-                }
-            }));
-
-            let ret = fat_ptr;
+            let ret = fp_bindgen_support::Task::alloc_and_spawn(#func_call);
         }
     } else {
+        // Check the output type and replace complex ones with FatPtr
+        let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
+            quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
+        } else {
+            Default::default()
+        };
         quote! {
             let ret = #func_call;
             #return_wrapper
