@@ -170,24 +170,20 @@ pub fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
 
+    let exports = export_functions
+        .iter()
+        .map(export_function)
+        .collect::<Vec<_>>()
+        .join("\n\n");
     let raw_exports = if generate_raw_export_wrappers {
-        let function_declarations = export_functions
-            .clone()
-            .into_iter()
-            .map(export_raw_function);
         // add a newline between the raw exports and the exports
         iter::once("".to_string())
-            .chain(function_declarations)
+            .chain(export_functions.iter().map(export_raw_function))
             .collect::<Vec<_>>()
             .join("\n\n")
     } else {
         String::new()
     };
-    let exports = export_functions
-        .into_iter()
-        .map(export_function)
-        .collect::<Vec<_>>()
-        .join("\n\n");
 
     write_bindings_file(
         format!("{}/bindings.rs", path),
@@ -223,8 +219,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
     );
 }
 
-fn export_function(function: Function) -> String {
-    let name = function.name;
+fn export_function(function: &Function) -> String {
     let doc = function
         .doc_lines
         .iter()
@@ -330,18 +325,17 @@ fn export_function(function: Function) -> String {
     }}",
         doc,
         modifiers,
-        name,
+        function.name,
         args_with_types,
         return_type,
         export_args,
         if export_args.is_empty() { "" } else { "\n" },
-        name,
+        function.name,
         call_and_return
     )
 }
 
-fn export_raw_function(function: Function) -> String {
-    let name = function.name;
+fn export_raw_function(function: &Function) -> String {
     let doc = function
         .doc_lines
         .iter()
@@ -446,12 +440,12 @@ fn export_raw_function(function: Function) -> String {
     }}",
         doc,
         modifiers,
-        name,
+        function.name,
         args_with_types,
         return_type,
         export_args,
         if export_args.is_empty() { "" } else { "\n" },
-        name,
+        function.name,
         call_and_return
     )
 }
