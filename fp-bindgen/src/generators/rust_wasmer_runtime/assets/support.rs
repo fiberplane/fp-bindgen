@@ -3,7 +3,6 @@ use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::mem::size_of;
 use std::task::Poll;
 use wasmer::{Array, WasmPtr};
@@ -56,7 +55,7 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
@@ -93,7 +92,7 @@ pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T
 }
 
 /// Copy the buffer into linear memory.
-fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
+pub(crate) fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
     let len = buffer.len() as u32;
@@ -144,28 +143,21 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 
 // The ModuleFuture implements the Future Trait to handle async Futures as
 // returned from the module.
-pub(crate) struct ModuleFuture<T> {
-    pub ptr: FatPtr,
-    pub env: RuntimeInstanceData,
-
-    _p: PhantomData<T>,
+// Note that the result is returned as a serialized Vec<u8> so the caller must
+// deserialize the actual type.
+pub struct ModuleRawFuture {
+    ptr: FatPtr,
+    env: RuntimeInstanceData,
 }
 
-impl<T> ModuleFuture<T> {
+impl ModuleRawFuture {
     pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
-        Self {
-            ptr,
-            env,
-            _p: PhantomData,
-        }
+        Self { ptr, env }
     }
 }
 
-impl<'de, T> Future for ModuleFuture<T>
-where
-    T: Deserialize<'de>,
-{
-    type Output = T;
+impl<'de> Future for ModuleRawFuture {
+    type Output = Vec<u8>;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -187,7 +179,7 @@ where
             FUTURE_STATUS_READY => {
                 let result_ptr = values[1].get();
                 let result_len = values[2].get();
-                let result = import_from_guest(&self.env, to_fat_ptr(result_ptr, result_len));
+                let result = import_from_guest_raw(&self.env, to_fat_ptr(result_ptr, result_len));
                 Poll::Ready(result)
             }
             _ => unreachable!(),

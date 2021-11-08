@@ -666,6 +666,15 @@ pub fn format_type(ty: &Type) -> String {
     }
 }
 
+/// Formats types so that all complex types are replaced with the raw serialized version
+pub fn format_raw_type(ty: &Type) -> String {
+    match ty {
+        Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::Unit => "()".to_owned(),
+        _ => "Vec<u8>".to_string(),
+    }
+}
+
 pub fn format_primitive(primitive: Primitive) -> String {
     let string = match primitive {
         Primitive::Bool => "bool",
