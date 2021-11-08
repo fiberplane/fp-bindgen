@@ -15,58 +15,44 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
     fs,
-    str::FromStr,
 };
 
 primitive_impls!();
 
-#[derive(Debug, Clone, Copy)]
-pub enum BindingsType {
-    RustPlugin,
+#[derive(Debug, Clone)]
+pub enum BindingsType<'a> {
+    RustPlugin(RustPluginConfig<'a>),
     RustWasmerRuntime,
-    TsRuntime,
+    TsRuntime(TsRuntimeConfig),
 }
 
-impl Display for BindingsType {
+impl<'a> Display for BindingsType<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
-            BindingsType::RustPlugin => "rust-plugin",
+            BindingsType::RustPlugin { .. } => "rust-plugin",
             BindingsType::RustWasmerRuntime => "rust-wasmer-runtime",
-            BindingsType::TsRuntime => "ts-runtime",
+            BindingsType::TsRuntime { .. } => "ts-runtime",
         })
-    }
-}
-
-impl FromStr for BindingsType {
-    type Err = String;
-
-    fn from_str(bindings_type: &str) -> Result<Self, Self::Err> {
-        match bindings_type {
-            "rust-plugin" => Ok(Self::RustPlugin),
-            "rust-wasmer-runtime" => Ok(Self::RustWasmerRuntime),
-            "ts-runtime" => Ok(Self::TsRuntime),
-            other => Err(format!(
-                "Bindings type must be one of `rust-plugin`, `rust-wasmer-runtime`, `ts-runtime`.
-                Received: `{}`",
-                other
-            )),
-        }
     }
 }
 
 #[derive(Debug)]
 pub struct BindingConfig<'a> {
-    pub bindings_type: BindingsType,
+    pub bindings_type: BindingsType<'a>,
     pub path: &'a str,
-    pub rust_plugin_config: Option<RustPluginConfig<'a>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RustPluginConfig<'a> {
     pub name: &'a str,
     pub authors: &'a str,
     pub version: &'a str,
     pub dependencies: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TsRuntimeConfig {
+    pub generate_raw_export_wrappers: bool,
 }
 
 pub fn generate_bindings(
@@ -78,17 +64,29 @@ pub fn generate_bindings(
 ) {
     fs::create_dir_all(config.path).expect("Could not create output directory");
 
-    let generate_bindings = match config.bindings_type {
-        BindingsType::RustPlugin => generators::rust_plugin::generate_bindings,
-        BindingsType::RustWasmerRuntime => generators::rust_wasmer_runtime::generate_bindings,
-        BindingsType::TsRuntime => generators::ts_runtime::generate_bindings,
+    match config.bindings_type {
+        BindingsType::RustPlugin(plugin_config) => generators::rust_plugin::generate_bindings(
+            import_functions,
+            export_functions,
+            serializable_types,
+            deserializable_types,
+            plugin_config,
+            config.path,
+        ),
+        BindingsType::RustWasmerRuntime => generators::rust_wasmer_runtime::generate_bindings(
+            import_functions,
+            export_functions,
+            serializable_types,
+            deserializable_types,
+            config.path,
+        ),
+        BindingsType::TsRuntime(runtime_config) => generators::ts_runtime::generate_bindings(
+            import_functions,
+            export_functions,
+            serializable_types,
+            deserializable_types,
+            runtime_config,
+            config.path,
+        ),
     };
-
-    generate_bindings(
-        import_functions,
-        export_functions,
-        serializable_types,
-        deserializable_types,
-        config,
-    );
 }
