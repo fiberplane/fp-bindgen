@@ -70,12 +70,14 @@ pub fn from_fat_ptr(ptr: FatPtr) -> (*const u8, u32) {
     ((ptr >> 32) as *const u8, (ptr & 0xffffffff) as u32)
 }
 
+const MALLOC_ALIGNMENT: usize = 16;
+
 #[doc(hidden)]
 #[no_mangle]
 pub fn __fp_malloc(len: u32) -> FatPtr {
     let ptr = unsafe {
         std::alloc::alloc(
-            Layout::from_size_align(len as usize, 16)
+            Layout::from_size_align(len as usize, MALLOC_ALIGNMENT)
                 .expect("Allocation failed unexpectedly, check requested allocation size"),
         )
     };
@@ -104,7 +106,7 @@ pub unsafe fn __fp_free(ptr: FatPtr) {
 
     std::alloc::dealloc(
         ptr as *mut u8,
-        Layout::from_size_align(len as usize, 16)
-            .expect("Deallocation failed unexpectedly, check requested deallocation size"),
+        Layout::from_size_align(len as usize, MALLOC_ALIGNMENT)
+            .expect("Deallocation failed unexpectedly, check the pointer is valid"),
     );
 }
