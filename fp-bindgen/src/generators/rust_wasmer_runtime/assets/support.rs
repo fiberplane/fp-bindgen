@@ -3,7 +3,6 @@ use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::mem::size_of;
 use std::task::Poll;
 use wasmer::{Array, WasmPtr};
