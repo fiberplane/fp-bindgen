@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 use syn::{FnArg, ForeignItemFn, ReturnType};
 
 /// Maps from function name to the stringified function declaration.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct FunctionList(BTreeSet<Function>);
 
 impl FunctionList {
@@ -51,7 +51,7 @@ impl<'a> IntoIterator for &'a FunctionList {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Function {
     pub name: String,
     pub doc_lines: Vec<String>,
@@ -122,7 +122,7 @@ impl PartialOrd for Function {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct FunctionArg {
     pub name: String,
     pub ty: Type,

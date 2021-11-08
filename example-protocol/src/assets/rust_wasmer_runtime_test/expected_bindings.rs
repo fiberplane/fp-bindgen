@@ -2,8 +2,8 @@ use super::types::*;
 use crate::errors::InvocationError;
 use crate::{
     support::{
-        create_future_value, export_to_guest, import_from_guest, resolve_async_value,
-        FatPtr, ModuleRawFuture,
+        create_future_value, export_to_guest, export_to_guest_raw, import_from_guest,
+        resolve_async_value, FatPtr, ModuleRawFuture,
     },
     Runtime, RuntimeInstanceData,
 };
@@ -77,6 +77,88 @@ impl Runtime {
     }
 
     pub fn my_plain_exported_function(&self, a: u32, b: u32) -> Result<u32, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+
+        let function = instance
+            .exports
+            .get_function("__fp_gen_my_plain_exported_function")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(&[a.into(), b.into()])?;
+
+        match result[0] {
+            Value::I32(v) => unsafe { std::mem::transmute(v) },
+            _ => return Err(InvocationError::UnexpectedReturnType),
+        }
+    }
+
+    pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+
+        let url = export_to_guest_raw(&env, &url);
+
+        let function = instance
+            .exports
+            .get_function("__fp_gen_fetch_data")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(&[url.into()])?;
+
+        let async_ptr: FatPtr = match result[0] {
+            Value::I64(v) => unsafe { std::mem::transmute(v) },
+            _ => return Err(InvocationError::UnexpectedReturnType),
+        };
+
+        Ok(ModuleRawFuture::new(env.clone(), async_ptr).await)
+    }
+
+    pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+
+        let function = instance
+            .exports
+            .get_function("__fp_gen_my_async_exported_function")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(&[])?;
+
+        let async_ptr: FatPtr = match result[0] {
+            Value::I64(v) => unsafe { std::mem::transmute(v) },
+            _ => return Err(InvocationError::UnexpectedReturnType),
+        };
+
+        Ok(ModuleRawFuture::new(env.clone(), async_ptr).await)
+    }
+
+    pub fn my_complex_exported_function_raw(&self, a: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+
+        let a = export_to_guest_raw(&env, &a);
+
+        let function = instance
+            .exports
+            .get_function("__fp_gen_my_complex_exported_function")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(&[a.into()])?;
+
+        let ptr: FatPtr = match result[0] {
+            Value::I64(v) => unsafe { std::mem::transmute(v) },
+            _ => return Err(InvocationError::UnexpectedReturnType),
+        };
+
+        Ok(import_from_guest_raw(&env, ptr))
+    }
+
+    pub fn my_plain_exported_function_raw(&self, a: u32, b: u32) -> Result<u32, InvocationError> {
         let mut env = RuntimeInstanceData::default();
         let import_object = create_import_object(self.module.store(), &env);
         let instance = Instance::new(&self.module, &import_object).unwrap();

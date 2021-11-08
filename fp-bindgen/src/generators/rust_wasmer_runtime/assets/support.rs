@@ -56,7 +56,7 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
