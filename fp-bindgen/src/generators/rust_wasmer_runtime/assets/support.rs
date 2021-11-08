@@ -93,7 +93,7 @@ pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T
 }
 
 /// Copy the buffer into linear memory.
-fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
+pub(crate) fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
     let len = buffer.len() as u32;
@@ -146,6 +146,11 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 // returned from the module.
 // Note that the result is returned as a serialized Vec<u8> so the caller must
 // deserialize the actual type.
+pub struct ModuleRawFuture {
+    ptr: FatPtr,
+    env: RuntimeInstanceData,
+}
+
 impl ModuleRawFuture {
     pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
         Self { ptr, env }
