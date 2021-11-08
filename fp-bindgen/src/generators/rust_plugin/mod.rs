@@ -36,7 +36,9 @@ pub fn generate_bindings(
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
-        "mod export;
+        "#[rustfmt::skip]
+mod export;
+#[rustfmt::skip]
 mod import;
 #[rustfmt::skip]
 mod types;
