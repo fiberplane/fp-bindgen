@@ -40,7 +40,6 @@ edition = \"2018\"
 
 [dependencies]
 fp-bindgen-support = {{ path = \"../../fp-bindgen-support\"{} }}
-fp-bindgen-macros = {{ path = \"../../macros\" }}
 chrono = {{ version = \"0.4.19\", features = [\"serde\"] }}
 once_cell = \"1\"
 rmp-serde = \"=1.0.0-beta.2\"
@@ -60,7 +59,9 @@ serde_bytes = \"0.11\"
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
-        "mod export;
+        "#[rustfmt::skip]
+mod export;
+#[rustfmt::skip]
 mod import;
 #[rustfmt::skip]
 mod types;
@@ -69,7 +70,6 @@ pub use export::*;
 pub use import::*;
 pub use types::*;
 
-pub use fp_bindgen_macros::fp_export_impl;
 pub use fp_bindgen_support::*;
 ",
     );
