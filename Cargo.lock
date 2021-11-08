@@ -111,6 +111,7 @@ dependencies = [
  "pretty_assertions 1.0.0",
  "proc-macro2",
  "quote",
+ "serde_bytes",
  "syn",
 ]
 

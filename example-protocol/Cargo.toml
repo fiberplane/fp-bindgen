@@ -6,7 +6,10 @@ edition = "2018"
 
 [dependencies]
 chrono = "0.4.19"
-fp-bindgen = { path = "../fp-bindgen", features = ["chrono-compat"] }
+fp-bindgen = { path = "../fp-bindgen", features = [
+    "chrono-compat",
+    "serde-bytes-compat",
+] }
 pretty_assertions = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"

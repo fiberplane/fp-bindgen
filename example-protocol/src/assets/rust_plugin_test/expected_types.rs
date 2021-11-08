@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap};
 
-pub type Body = Vec<u8>;
+pub type Body = serde_bytes::ByteBuf;
 
 pub type ComplexAlias = ComplexGuestToHost;
 

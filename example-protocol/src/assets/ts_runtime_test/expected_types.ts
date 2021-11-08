@@ -4,7 +4,7 @@
 // This file is generated. PLEASE DO NOT MODIFY. //
 // ============================================= //
 
-export type Body = Array<number>;
+export type Body = ArrayBuffer;
 
 export type ComplexAlias = ComplexGuestToHost;
 
