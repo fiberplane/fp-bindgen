@@ -61,8 +61,8 @@ pub struct RequestOptions {
     pub url: String,
     pub method: RequestMethod,
     pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none", with = "serde_bytes")]
-    pub body: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<ByteBuf>,
 }
 
 /// A response to a request.

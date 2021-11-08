@@ -91,7 +91,6 @@ fn generate_cargo_file(
         "serde".to_owned(),
         r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
     );
-    dependencies.insert("serde_bytes".to_owned(), r#""0.11""#.to_owned());
 
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
@@ -615,10 +614,6 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                 serde_attrs.push("skip_serializing_if = \"Option::is_none\"");
             }
 
-            if is_binary_type(&field.ty) {
-                serde_attrs.push("with = \"serde_bytes\"");
-            }
-
             let docs = if field.doc_lines.is_empty() {
                 "".to_owned()
             } else {
@@ -690,19 +685,6 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::U64 => "u64",
     };
     string.to_owned()
-}
-
-/// Detects types that can be encoded as a binary blob.
-fn is_binary_type(ty: &Type) -> bool {
-    match ty {
-        Type::List(name, ty) if name == "Vec" && ty.as_ref() == &Type::Primitive(Primitive::U8) => {
-            true
-        }
-        Type::Container(name, ty) if (name == "Box" || name == "Option") => {
-            is_binary_type(ty.as_ref())
-        }
-        _ => false,
-    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)
