@@ -100,7 +100,7 @@ impl Runtime {
         let instance = Instance::new(&self.module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
 
-        let url = export_to_guest_raw(&env, &url);
+        let url = export_to_guest_raw(&env, url);
 
         let function = instance
             .exports
@@ -142,7 +142,7 @@ impl Runtime {
         let instance = Instance::new(&self.module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
 
-        let a = export_to_guest_raw(&env, &a);
+        let a = export_to_guest_raw(&env, a);
 
         let function = instance
             .exports
