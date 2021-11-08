@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use fp_bindgen::prelude::*;
+use fp_bindgen::{prelude::*, RustPluginConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
@@ -165,9 +165,15 @@ fn main() {
         fp_bindgen!(BindingConfig {
             bindings_type,
             path: &output_path,
-            name: NAME,
-            authors: AUTHORS,
-            version: VERSION
+            rust_plugin_config: Some(RustPluginConfig {
+                name: NAME,
+                authors: AUTHORS,
+                version: VERSION,
+                dependencies: BTreeMap::from([(
+                    "fp-bindgen-support".to_owned(),
+                    r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned()
+                )])
+            })
         });
         println!("Generated bindings written to `{}/`.", output_path);
     }
@@ -201,9 +207,15 @@ fn test_generate_rust_plugin() {
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::RustPlugin,
         path: "bindings/rust-plugin",
-        name: NAME,
-        authors: AUTHORS,
-        version: VERSION
+        rust_plugin_config: Some(RustPluginConfig {
+            name: NAME,
+            authors: AUTHORS,
+            version: VERSION,
+            dependencies: BTreeMap::from([(
+                "fp-bindgen-support".to_owned(),
+                r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned()
+            )])
+        })
     });
 
     for (path, expected) in FILES {
@@ -226,9 +238,7 @@ fn test_generate_rust_wasmer_runtime() {
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::RustWasmerRuntime,
         path: "bindings/rust-wasmer-runtime",
-        name: NAME,
-        authors: AUTHORS,
-        version: VERSION
+        rust_plugin_config: None
     });
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
@@ -251,9 +261,7 @@ fn test_generate_ts_runtime() {
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::TsRuntime,
         path: "bindings/ts-runtime",
-        name: NAME,
-        authors: AUTHORS,
-        version: VERSION
+        rust_plugin_config: None
     });
 
     for (path, expected) in FILES {

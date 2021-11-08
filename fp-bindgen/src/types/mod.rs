@@ -1,7 +1,7 @@
 use crate::primitives::Primitive;
 use quote::ToTokens;
 use std::{
-    collections::{hash_map::DefaultHasher, BTreeSet},
+    collections::{hash_map::DefaultHasher, BTreeMap, BTreeSet},
     hash::{Hash, Hasher},
     str::FromStr,
 };
@@ -178,11 +178,25 @@ impl PartialOrd for Type {
     }
 }
 
+/// Used for defining type information for types that are defined externally,
+/// or that otherwise require custom treatment.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CustomType {
     pub name: String,
     pub type_args: Vec<Type>,
+
+    /// Qualified path to refer to the type in the Rust generators.
     pub rs_ty: String,
+
+    /// Dependencies to add to the Rust plugin's `Cargo.toml` to be able to
+    /// use the type.
+    ///
+    /// Keys in the map are dependency names as they appear on the left-hand
+    /// side of the `=` in the `Cargo.toml` `[dependencies]` section, while the
+    /// value is the literal part that comes on the right-hand side.
+    pub rs_dependencies: BTreeMap<String, String>,
+
+    /// Name to refer to the type in the TypeScript generator.
     pub ts_ty: String,
 }
 

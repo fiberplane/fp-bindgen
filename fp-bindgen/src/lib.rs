@@ -11,7 +11,12 @@ pub mod types;
 
 use fp_bindgen_macros::primitive_impls;
 use prelude::*;
-use std::{collections::BTreeSet, fmt::Display, fs, str::FromStr};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+    fs,
+    str::FromStr,
+};
 
 primitive_impls!();
 
@@ -53,9 +58,15 @@ impl FromStr for BindingsType {
 pub struct BindingConfig<'a> {
     pub bindings_type: BindingsType,
     pub path: &'a str,
+    pub rust_plugin_config: Option<RustPluginConfig<'a>>,
+}
+
+#[derive(Debug)]
+pub struct RustPluginConfig<'a> {
     pub name: &'a str,
     pub authors: &'a str,
     pub version: &'a str,
+    pub dependencies: BTreeMap<String, String>,
 }
 
 pub fn generate_bindings(

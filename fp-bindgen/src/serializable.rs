@@ -327,6 +327,10 @@ impl Serializable for chrono::Utc {
             name: "Utc".to_owned(),
             type_args: vec![],
             rs_ty: "chrono::Utc".to_owned(),
+            rs_dependencies: BTreeMap::from([(
+                "chrono".to_owned(),
+                r#"{ version = "0.4", features = ["serde"] }"#.to_owned(),
+            )]),
             ts_ty: "UNIMPLEMENTED".to_owned(), // *should* never appear in the generated output
         })
     }
@@ -350,6 +354,10 @@ where
             name: "DateTime".to_owned(),
             type_args: vec![],
             rs_ty: format!("chrono::DateTime<{}>", T::name()),
+            rs_dependencies: BTreeMap::from([(
+                "chrono".to_owned(),
+                r#"{ version = "0.4", features = ["serde"] }"#.to_owned(),
+            )]),
             ts_ty: "string".to_owned(),
         })
     }
