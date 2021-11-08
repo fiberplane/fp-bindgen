@@ -144,28 +144,16 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 
 // The ModuleFuture implements the Future Trait to handle async Futures as
 // returned from the module.
-pub(crate) struct ModuleFuture<T> {
-    pub ptr: FatPtr,
-    pub env: RuntimeInstanceData,
-
-    _p: PhantomData<T>,
-}
-
-impl<T> ModuleFuture<T> {
+// Note that the result is returned as a serialized Vec<u8> so the caller must
+// deserialize the actual type.
+impl ModuleRawFuture {
     pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
-        Self {
-            ptr,
-            env,
-            _p: PhantomData,
-        }
+        Self { ptr, env }
     }
 }
 
-impl<'de, T> Future for ModuleFuture<T>
-where
-    T: Deserialize<'de>,
-{
-    type Output = T;
+impl<'de> Future for ModuleRawFuture {
+    type Output = Vec<u8>;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
@@ -187,7 +175,7 @@ where
             FUTURE_STATUS_READY => {
                 let result_ptr = values[1].get();
                 let result_len = values[2].get();
-                let result = import_from_guest(&self.env, to_fat_ptr(result_ptr, result_len));
+                let result = import_from_guest_raw(&self.env, to_fat_ptr(result_ptr, result_len));
                 Poll::Ready(result)
             }
             _ => unreachable!(),

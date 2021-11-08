@@ -207,7 +207,8 @@ pub fn generate_function_bindings(
             _ => return Err(InvocationError::UnexpectedReturnType),
         }};
 
-        Ok(ModuleFuture::new(env.clone(), async_ptr).await)",
+        let raw_result = ModuleRawFuture::new(env.clone(), async_ptr).await;
+        Ok(rmp_serde::from_slice(&raw_result).unwrap())",
                     args
                 )
             } else {
@@ -287,7 +288,7 @@ use crate::errors::InvocationError;
 use crate::{{
     support::{{
         create_future_value, export_to_guest, import_from_guest, resolve_async_value,
-        FatPtr, ModuleFuture,
+        FatPtr, ModuleRawFuture,
     }},
     Runtime, RuntimeInstanceData,
 }};

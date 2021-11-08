@@ -3,7 +3,7 @@ use crate::errors::InvocationError;
 use crate::{
     support::{
         create_future_value, export_to_guest, import_from_guest, resolve_async_value,
-        FatPtr, ModuleFuture,
+        FatPtr, ModuleRawFuture,
     },
     Runtime, RuntimeInstanceData,
 };
@@ -29,7 +29,8 @@ impl Runtime {
             _ => return Err(InvocationError::UnexpectedReturnType),
         };
 
-        Ok(ModuleFuture::new(env.clone(), async_ptr).await)
+        let raw_result = ModuleRawFuture::new(env.clone(), async_ptr).await;
+        Ok(rmp_serde::from_slice(&raw_result).unwrap())
     }
 
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
@@ -49,7 +50,8 @@ impl Runtime {
             _ => return Err(InvocationError::UnexpectedReturnType),
         };
 
-        Ok(ModuleFuture::new(env.clone(), async_ptr).await)
+        let raw_result = ModuleRawFuture::new(env.clone(), async_ptr).await;
+        Ok(rmp_serde::from_slice(&raw_result).unwrap())
     }
 
     pub fn my_complex_exported_function(&self, a: ComplexHostToGuest) -> Result<ComplexAlias, InvocationError> {
