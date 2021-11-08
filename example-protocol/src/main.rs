@@ -1,9 +1,10 @@
 use chrono::{DateTime, Utc};
 use fp_bindgen::{prelude::*, RustPluginConfig};
 use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
 
-pub type Body = Vec<u8>;
+pub type Body = ByteBuf;
 
 #[derive(Serializable)]
 pub struct DeadCode {

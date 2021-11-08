@@ -5,7 +5,7 @@ pub use my_crate::other::RequestMethod;
 pub use my_crate::prelude::RequestOptions;
 pub use my_crate::prelude::Response;
 
-pub type Body = Vec<u8>;
+pub type Body = serde_bytes::ByteBuf;
 
 pub type ComplexAlias = ComplexGuestToHost;
 
