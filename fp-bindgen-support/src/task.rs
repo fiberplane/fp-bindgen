@@ -2,6 +2,8 @@
 // See: https://github.com/rustwasm/wasm-bindgen/blob/master/crates/futures/src/task/singlethread.rs
 // Licensed under Apache/MIT
 
+use crate::{export_value_to_host, host_resolve_async_value, to_fat_ptr, AsyncValue, FatPtr};
+use serde::Serialize;
 use std::cell::{Cell, RefCell};
 use std::future::Future;
 use std::mem::ManuallyDrop;
@@ -37,6 +39,25 @@ impl Task {
         *this.inner.borrow_mut() = Some(Inner { future, waker });
 
         Task::wake_by_ref(&this);
+    }
+
+    pub fn alloc_and_spawn<FUT, RET>(future: FUT) -> FatPtr
+    where
+        FUT: Future<Output = RET> + 'static,
+        RET: Serialize,
+    {
+        let layout = std::alloc::Layout::new::<AsyncValue>();
+        let len = layout.size() as u32;
+        let ptr = unsafe { std::alloc::alloc_zeroed(layout) };
+        let fat_ptr = to_fat_ptr(ptr, len);
+
+        Task::spawn(Box::pin(async move {
+            let ret = future.await;
+            let result_ptr = export_value_to_host(&ret);
+            host_resolve_async_value(fat_ptr, result_ptr);
+        }));
+
+        fat_ptr
     }
 
     fn wake_by_ref(this: &Rc<Self>) {

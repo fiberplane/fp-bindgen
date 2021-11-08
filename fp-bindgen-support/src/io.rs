@@ -1,3 +1,5 @@
+use std::alloc::Layout;
+
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 
@@ -68,18 +70,18 @@ pub fn from_fat_ptr(ptr: FatPtr) -> (*const u8, u32) {
     ((ptr >> 32) as *const u8, (ptr & 0xffffffff) as u32)
 }
 
-#[doc(hidden)]
-pub fn malloc(len: u32) -> *const u8 {
-    let vec = Vec::with_capacity(len as usize);
-    let ptr = vec.as_ptr();
-    std::mem::forget(vec);
-    ptr
-}
+const MALLOC_ALIGNMENT: usize = 16;
 
 #[doc(hidden)]
 #[no_mangle]
 pub fn __fp_malloc(len: u32) -> FatPtr {
-    to_fat_ptr(malloc(len), len)
+    let ptr = unsafe {
+        std::alloc::alloc(
+            Layout::from_size_align(len as usize, MALLOC_ALIGNMENT)
+                .expect("Allocation failed unexpectedly, check requested allocation size"),
+        )
+    };
+    to_fat_ptr(ptr, len)
 }
 
 /// # Safety
@@ -96,10 +98,15 @@ pub fn __fp_malloc(len: u32) -> FatPtr {
 pub unsafe fn __fp_free(ptr: FatPtr) {
     let (ptr, len) = from_fat_ptr(ptr);
 
-    if len & 0xff000000 != 0 {
-        panic!("__fp_free() failed: unknown extension bits");
-    }
+    assert_eq!(
+        len & 0xff000000,
+        0,
+        "__fp_free() failed: unknown extension bits"
+    );
 
-    let vec = Vec::from_raw_parts(ptr as *mut u8, len as usize, len as usize);
-    std::mem::drop(vec);
+    std::alloc::dealloc(
+        ptr as *mut u8,
+        Layout::from_size_align(len as usize, MALLOC_ALIGNMENT)
+            .expect("Deallocation failed unexpectedly, check the pointer is valid"),
+    );
 }
