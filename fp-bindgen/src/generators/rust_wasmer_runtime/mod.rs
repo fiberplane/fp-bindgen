@@ -365,7 +365,7 @@ fn export_raw_function(function: Function) -> String {
         .map(|arg| match &arg.ty {
             Type::Primitive(_) => "".to_owned(),
             _ => format!(
-                "        let {} = export_to_guest_raw(&env, &{});\n",
+                "        let {} = export_to_guest_raw(&env, {});\n",
                 arg.name, arg.name
             ),
         })
