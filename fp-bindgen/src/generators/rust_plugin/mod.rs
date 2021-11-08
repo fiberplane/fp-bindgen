@@ -3,19 +3,21 @@ use crate::prelude::Primitive;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
-use crate::{BindingConfig, RustPluginConfig};
-use std::collections::{BTreeMap, BTreeSet};
-use std::ffi::OsStr;
-use std::{fs, path::Path};
+use crate::RustPluginConfig;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+};
 
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
-    config: BindingConfig,
+    config: RustPluginConfig,
+    path: &str,
 ) {
-    let src_path = format!("{}/src", config.path);
+    let src_path = format!("{}/src", path);
     fs::create_dir_all(&src_path).expect("Could not create output directory");
 
     generate_cargo_file(
@@ -23,6 +25,7 @@ pub fn generate_bindings(
         &import_functions,
         &serializable_types,
         &deserializable_types,
+        path,
     );
 
     generate_type_bindings(
@@ -53,24 +56,12 @@ pub use fp_bindgen_support::*;
 }
 
 fn generate_cargo_file(
-    config: BindingConfig,
+    config: RustPluginConfig,
     import_functions: &FunctionList,
     serializable_types: &BTreeSet<Type>,
     deserializable_types: &BTreeSet<Type>,
+    path: &str,
 ) {
-    let path = config.path;
-    let plugin_config = config
-        .rust_plugin_config
-        .unwrap_or_else(|| RustPluginConfig {
-            authors: "Fiberplane",
-            name: Path::new(path)
-                .file_name()
-                .and_then(OsStr::to_str)
-                .unwrap_or("plugin-bindings"),
-            version: "0.1.0",
-            dependencies: BTreeMap::new(),
-        });
-
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
     let mut dependencies = BTreeMap::new();
@@ -103,7 +94,7 @@ fn generate_cargo_file(
     }
 
     // Inject dependencies passed through the config:
-    for (name, value) in plugin_config.dependencies {
+    for (name, value) in config.dependencies {
         dependencies.insert(name, value);
     }
 
@@ -119,9 +110,9 @@ edition = \"2018\"
 [dependencies]
 {}
 ",
-            plugin_config.name,
-            plugin_config.version,
-            plugin_config.authors,
+            config.name,
+            config.version,
+            config.authors,
             dependencies
                 .iter()
                 .map(|(name, value)| format!("{} = {}", name, value))
