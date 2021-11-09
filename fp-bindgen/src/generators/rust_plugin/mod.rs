@@ -214,134 +214,8 @@ pub fn generate_type_bindings(
     );
 }
 
-fn generate_imported_function_bindings(import_functions: FunctionList, path: &str) {
-    let extern_decls = import_functions
-        .iter()
-        .map(|function| {
-            let args = function
-                .args
-                .iter()
-                .map(|arg| {
-                    format!(
-                        "{}: {}",
-                        arg.name,
-                        match arg.ty {
-                            Type::Primitive(primitive) => format_primitive(primitive),
-                            _ => "fp_bindgen_support::FatPtr".to_owned(),
-                        }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let return_type = match &function.return_type {
-                Type::Unit => "".to_owned(),
-                ty => format!(
-                    " -> {}",
-                    match ty {
-                        Type::Primitive(primitive) => format_primitive(*primitive),
-                        _ => "fp_bindgen_support::FatPtr".to_owned(),
-                    }
-                ),
-            };
-            format!(
-                "    fn __fp_gen_{}({}){};",
-                function.name, args, return_type
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    let fn_defs = import_functions
-        .into_iter()
-        .map(|function| {
-            let name = function.name;
-            let doc = function
-                .doc_lines
-                .iter()
-                .map(|line| format!("///{}\n", line))
-                .collect::<Vec<_>>()
-                .join("");
-            let modifiers = if function.is_async { "async " } else { "" };
-            let args_with_types = function
-                .args
-                .iter()
-                .map(|arg| format!("{}: {}", arg.name, format_type(&arg.ty)))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let return_type = match &function.return_type {
-                Type::Unit => "".to_owned(),
-                ty => format!(" -> {}", format_type(ty)),
-            };
-            let export_args = function
-                .args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(_) => "".to_owned(),
-                    _ => format!(
-                        "    let {} = fp_bindgen_support::export_value_to_host(&{});\n",
-                        arg.name, arg.name
-                    ),
-                })
-                .collect::<Vec<_>>()
-                .join("");
-            let args = function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-            let call_fn = match &function.return_type {
-                Type::Unit => format!("__fp_gen_{}({});", name, args),
-                Type::Primitive(_) => format!("__fp_gen_{}({})", name, args),
-                _ => format!("let ret = __fp_gen_{}({});", name, args),
-            };
-            let import_return_value = match &function.return_type {
-                Type::Unit | Type::Primitive(_) => "",
-                _ => {
-                    if function.is_async {
-                        "        let result_ptr = fp_bindgen_support::HostFuture::new(ret).await;\n        fp_bindgen_support::import_value_from_host(result_ptr)\n"
-                    } else {
-                        "        fp_bindgen_support::import_value_from_host(ret)\n"
-                    }
-                }
-            };
-            let call_and_return = if import_return_value.is_empty() {
-                format!("unsafe {{ {} }}", call_fn)
-            } else {
-                format!("unsafe {{\n        {}\n{}    }}", call_fn, import_return_value)
-            };
-            format!(
-                "{}pub {}fn {}({}){} {{\n{}    {}\n}}",
-                doc,
-                modifiers,
-                name,
-                args_with_types,
-                return_type,
-                export_args,
-                call_and_return
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
-
-    write_bindings_file(
-        format!("{}/import.rs", path),
-        format!(
-            "use crate::types::*;\n\
-            \n\
-            #[link(wasm_import_module = \"fp\")]\n\
-            extern \"C\" {{\n\
-                {}\n\
-            }}\n\
-            \n\
-            {}\n",
-            extern_decls, fn_defs,
-        ),
-    );
-}
-
-fn generate_exported_function_bindings(export_functions: FunctionList, path: &str) {
-    let fn_defs = export_functions
+fn format_functions(export_functions: FunctionList, macro_path: &str) -> String {
+    export_functions
         .iter()
         .map(|func| {
             let name = &func.name;
@@ -363,15 +237,31 @@ fn generate_exported_function_bindings(export_functions: FunctionList, path: &st
                 ty => format!(" -> {}", format_type(ty)),
             };
             format!(
-                "#[fp_bindgen_support::fp_export_signature]\n{}pub {}fn {}({}){};",
-                doc, modifiers, name, args_with_types, return_type,
+                "#[{}]\n{}pub {}fn {}({}){};",
+                macro_path, doc, modifiers, name, args_with_types, return_type,
             )
         })
         .collect::<Vec<_>>()
-        .join("\n\n");
+        .join("\n\n")
+}
+
+fn generate_imported_function_bindings(import_functions: FunctionList, path: &str) {
+    write_bindings_file(
+        format!("{}/import.rs", path),
+        format!(
+            "use crate::types::*;\n\n{}\n",
+            format_functions(import_functions, "fp_bindgen_support::fp_import_signature")
+        ),
+    );
+}
+
+fn generate_exported_function_bindings(export_functions: FunctionList, path: &str) {
     write_bindings_file(
         format!("{}/export.rs", path),
-        format!("use crate::types::*;\n\n{}", fn_defs),
+        format!(
+            "use crate::types::*;\n\n{}\n",
+            format_functions(export_functions, "fp_bindgen_support::fp_export_signature")
+        ),
     );
 }
 
