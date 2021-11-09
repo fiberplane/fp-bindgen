@@ -30,6 +30,7 @@ use syn::{AngleBracketedGenericArguments, Path, PathArguments};
 ///             ty: None
 ///         })),
 ///         doc_lines: vec![],
+///         attrs: FieldAttrs::default(),
 ///     }],
 ///     StructOptions::default(),
 /// );

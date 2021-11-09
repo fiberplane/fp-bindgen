@@ -394,7 +394,7 @@ mod tests {
     use crate::{
         casing::Casing,
         primitives::Primitive,
-        types::{Field, GenericArgument, StructOptions},
+        types::{Field, FieldAttrs, GenericArgument, StructOptions},
         Type,
     };
     use pretty_assertions::assert_eq;
@@ -477,6 +477,7 @@ mod tests {
                     name: "T".to_owned(),
                     ty: Some(Type::Primitive(Primitive::F64)),
                 })),
+                attrs: FieldAttrs::default(),
             }],
             StructOptions {
                 field_casing: Casing::CamelCase,
@@ -533,6 +534,7 @@ mod tests {
                     name: "T".to_owned(),
                     ty: None,
                 })),
+                attrs: FieldAttrs::default(),
             }],
             StructOptions {
                 field_casing: Casing::CamelCase,
@@ -613,6 +615,7 @@ mod tests {
                     name: "T".to_owned(),
                     ty: None,
                 })),
+                attrs: FieldAttrs::default(),
             }],
             StructOptions {
                 field_casing: Casing::CamelCase,
@@ -676,6 +679,7 @@ mod tests {
                     name: "T".to_owned(),
                     ty: None,
                 })),
+                attrs: FieldAttrs::default(),
             }],
             StructOptions {
                 field_casing: Casing::CamelCase,
@@ -756,6 +760,7 @@ mod tests {
                     name: "T".to_owned(),
                     ty: None,
                 })),
+                attrs: FieldAttrs::default(),
             }],
             StructOptions {
                 field_casing: Casing::CamelCase,

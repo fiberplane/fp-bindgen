@@ -32,6 +32,10 @@ pub struct ComplexHostToGuest {
     pub recursive: Vec<Point<Point<f64>>>,
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: DateTime<Utc>,
+    #[fp(rename = "optional_timestamp")]
+    pub renamed: Option<DateTime<Utc>>,
+    /// Raw identifiers are supported too.
+    pub r#type: String,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;
