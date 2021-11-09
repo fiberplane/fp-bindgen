@@ -1,7 +1,7 @@
 use dashmap::{mapref::one::Ref, DashMap};
 use once_cell::sync::Lazy;
 
-#[cfg(feature = "chrono-compat")]
+#[cfg(any(feature = "chrono-compat", feature = "serde-bytes-compat"))]
 use crate::CustomType;
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},
