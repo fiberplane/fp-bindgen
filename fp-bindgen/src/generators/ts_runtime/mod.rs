@@ -809,14 +809,14 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                     let optional = if name == "Option" { "?" } else { "" };
                     format!(
                         "{}{}: {};",
-                        field.name.to_camel_case(),
+                        get_field_name(field),
                         optional,
                         format_type_with_options(ty, format_opts)
                     )
                 }
                 ty => format!(
                     "{}: {};",
-                    field.name.to_camel_case(),
+                    get_field_name(field),
                     format_type_with_options(ty, format_opts)
                 ),
             };
@@ -842,6 +842,16 @@ fn format_raw_type(ty: &Type) -> String {
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::Unit => "void".to_owned(),
         _ => "Uint8Array".to_owned(),
+    }
+}
+
+fn get_field_name(field: &Field) -> String {
+    if let Some(rename) = field.attrs.rename.as_ref() {
+        rename.to_owned()
+    } else if field.name.starts_with("r#") {
+        field.name[2..].to_camel_case()
+    } else {
+        field.name.to_camel_case()
     }
 }
 

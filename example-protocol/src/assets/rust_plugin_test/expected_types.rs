@@ -25,6 +25,11 @@ pub struct ComplexHostToGuest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: chrono::DateTime<chrono::Utc>,
+    #[serde(rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
+    pub renamed: Option<chrono::DateTime<chrono::Utc>>,
+
+    /// Raw identifiers are supported too.
+    pub r#type: String,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
