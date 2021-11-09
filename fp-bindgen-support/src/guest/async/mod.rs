@@ -1,4 +1,9 @@
-use super::{from_fat_ptr, to_fat_ptr, FatPtr};
+mod queue;
+mod task;
+use crate::common::{
+    mem::{from_fat_ptr, FatPtr},
+    r#async::{AsyncValue, FUTURE_STATUS_READY},
+};
 use once_cell::unsync::Lazy;
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -6,23 +11,6 @@ use std::ptr::{read_volatile, write_volatile};
 use std::task::{Context, Poll, Waker};
 
 static mut WAKERS: Lazy<BTreeMap<FatPtr, Waker>> = Lazy::new(BTreeMap::new);
-
-const STATUS_PENDING: u32 = 0;
-const STATUS_READY: u32 = 1;
-
-#[doc(hidden)]
-#[repr(C)]
-pub struct AsyncValue {
-    pub status: u32,
-    pub ptr: u32,
-    pub len: u32,
-}
-
-impl AsyncValue {
-    fn buffer_ptr(&self) -> FatPtr {
-        to_fat_ptr(self.ptr as *const u8, self.len)
-    }
-}
 
 /// Represents a future value that will be resolved by the host runtime.
 pub struct HostFuture {
@@ -70,7 +58,7 @@ pub unsafe fn __fp_guest_resolve_async_value(async_value_fat_ptr: FatPtr, result
     write_volatile(
         async_value_ptr as *mut AsyncValue,
         AsyncValue {
-            status: STATUS_READY,
+            status: FUTURE_STATUS_READY,
             ptr: ptr as u32,
             len,
         },
