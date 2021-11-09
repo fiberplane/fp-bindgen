@@ -4,7 +4,7 @@ use crate::{
 };
 use proc_macro::{TokenStream, TokenTree};
 use proc_macro_error::{abort, proc_macro_error, ResultExt};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, __private::ext, format_ident, quote};
 use std::{collections::HashSet, iter::once};
 use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemUse, Pat, PatPath, Path,
@@ -200,7 +200,6 @@ pub fn primitive_impls(_: TokenStream) -> TokenStream {
 
 /// Exports a signature in a provider crate.
 /// This is not meant to be used directly.
-// (not currently in use by the generator)
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> TokenStream {
@@ -296,7 +295,6 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 ///     format!("{} + {} => {0}{1}", msg, foo)
 /// }
 /// ```
-// (not currently in use anywhere)
 #[proc_macro_attribute]
 #[proc_macro_error]
 pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
@@ -354,6 +352,75 @@ pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStrea
             #protocol_path::#fn_name(#(#call_args),*)
         }
         #ts
+    })
+    .into()
+}
+
+/// Imports a signature in a provider crate.
+/// This is not meant to be used directly.
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> TokenStream {
+    proc_macro_error::set_dummy(input.clone().into());
+
+    let func = syn::parse_macro_input::parse::<ForeignItemFn>(input.clone()).unwrap_or_abort();
+    let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
+
+    let wrapper_sig = func.sig.clone();
+    let mut extern_sig = wrapper_sig.clone();
+    //Massage the signature into what we wish to export
+    {
+        extern_sig.ident = format_ident!("__fp_gen_{}", extern_sig.ident);
+        typing::morph_signature(&mut extern_sig, "fp_bindgen_support");
+    }
+
+    let complex_names: Vec<_> = args
+        .iter()
+        .filter_map(|&(_, pt, is_complex)| {
+            if is_complex {
+                Some(pt.pat.as_ref())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
+    let extern_ident = &extern_sig.ident;
+    let func_call = quote! {#extern_ident(#(#names),*)};
+
+    let ret_wrapper = if func.sig.asyncness.is_some() {
+        quote! {
+            let ret = unsafe {
+                fp_bindgen_support::import_value_from_host(fp_bindgen_support::HostFuture::new(ret).await)
+            };
+        }
+    } else {
+        // Check the output type and replace complex ones with FatPtr
+        if typing::is_ret_type_complex(&func.sig.output) {
+            quote! {
+                let ret = unsafe { fp_bindgen_support::import_value_from_host(ret) };
+            }
+        } else {
+            Default::default()
+        }
+    };
+
+    let attrs = &func.attrs;
+
+    //build the actual imported wrapper function
+    (quote! {
+        #[link(wasm_import_module = "fp")]
+        extern "C" { #extern_sig; }
+
+        #[inline(always)]
+        #(#attrs)*
+        pub #wrapper_sig {
+            #(let #complex_names = fp_bindgen_support::export_value_to_host(&#complex_names);)*
+            let ret = unsafe { #func_call };
+            #ret_wrapper
+            ret
+        }
     })
     .into()
 }

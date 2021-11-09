@@ -12,4 +12,4 @@ pub use r#async::*;
 #[cfg(feature = "async")]
 pub use task::Task;
 
-pub use fp_bindgen_macros::{fp_export_impl, fp_export_signature};
+pub use fp_bindgen_macros::{fp_export_impl, fp_export_signature, fp_import_signature};
