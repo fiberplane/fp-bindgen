@@ -1,49 +1,47 @@
+use super::errors::RuntimeError;
 use crate::common::mem::FatPtr;
-use std::convert::TryFrom;
-use wasmer::{ExportError, Instance, NativeFunc};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::task::Waker;
+use wasmer::{LazyInit, Memory, Module, NativeFunc, WasmerEnv};
 
-struct RequiredGuestFunctions {
-    malloc: NativeFunc<u32, FatPtr>,
-    free: NativeFunc<FatPtr, ()>,
-    async_resolve: NativeFunc<(FatPtr, FatPtr), ()>,
+pub struct Runtime {
+    module: Module,
 }
 
-impl TryFrom<&Instance> for RequiredGuestFunctions {
-    type Error = ExportError;
+impl Runtime {
+    pub fn new(store: wasmer::Store, wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
+        let module = Module::new(&store, wasm_module)?;
 
-    fn try_from(ins: &Instance) -> Result<Self, Self::Error> {
-        Ok(Self {
-            malloc: ins.exports.get_native_function("__fp_gen_malloc")?,
-            free: ins.exports.get_native_function("__fp_gen_free")?,
-            async_resolve: ins
-                .exports
-                .get_native_function("__fp_guest_resolve_async_value")?,
-        })
+        Ok(Self { module })
     }
 }
 
-pub struct FPRuntime {
-    funcs: RequiredGuestFunctions,
+#[derive(WasmerEnv, Clone)]
+pub struct RuntimeInstanceData {
+    #[wasmer(export)]
+    memory: LazyInit<Memory>,
+
+    pub(crate) wakers: Arc<Mutex<HashMap<FatPtr, Waker>>>,
+
+    #[wasmer(export)]
+    pub(crate) __fp_free: LazyInit<NativeFunc<FatPtr>>,
+
+    #[wasmer(export)]
+    pub(crate) __fp_guest_resolve_async_value: LazyInit<NativeFunc<(FatPtr, FatPtr)>>,
+
+    #[wasmer(export)]
+    pub(crate) __fp_malloc: LazyInit<NativeFunc<u32, FatPtr>>,
 }
 
-//TODO: investigate adding error handling for runtime failures
-impl FPRuntime {
-    pub fn new(instance: &Instance) -> Result<Self, ExportError> {
-        Ok(Self {
-            funcs: RequiredGuestFunctions::try_from(instance)?,
-        })
-    }
-
-    pub fn malloc(&self, size: u32) -> FatPtr {
-        self.funcs.malloc.call(size).unwrap()
-    }
-    pub fn free(&self, ptr: FatPtr) {
-        self.funcs.free.call(ptr).unwrap()
-    }
-    pub fn async_resolve(&self, async_value_fat_ptr: FatPtr, result_ptr: FatPtr) {
-        self.funcs
-            .async_resolve
-            .call(async_value_fat_ptr, result_ptr)
-            .unwrap()
+impl Default for RuntimeInstanceData {
+    fn default() -> Self {
+        Self {
+            memory: Default::default(),
+            wakers: Default::default(),
+            __fp_free: Default::default(),
+            __fp_guest_resolve_async_value: Default::default(),
+            __fp_malloc: Default::default(),
+        }
     }
 }
