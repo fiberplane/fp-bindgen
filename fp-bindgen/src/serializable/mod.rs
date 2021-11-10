@@ -1,13 +1,17 @@
-use dashmap::{mapref::one::Ref, DashMap};
-use once_cell::sync::Lazy;
+#[cfg(feature = "chrono-compat")]
+mod chrono;
+#[cfg(feature = "http-compat")]
+mod http;
+#[cfg(feature = "serde-bytes-compat")]
+mod serde_bytes;
 
-#[cfg(any(feature = "chrono-compat", feature = "serde-bytes-compat"))]
-use crate::CustomType;
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},
     types::{EnumOptions, GenericArgument, Variant},
     Type,
 };
+use dashmap::{mapref::one::Ref, DashMap};
+use once_cell::sync::Lazy;
 use std::{
     any::TypeId,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -309,78 +313,6 @@ where
 
     fn ty() -> Type {
         Type::List("Vec".to_owned(), Box::new(T::ty()))
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
-    }
-}
-
-#[cfg(feature = "serde-bytes-compat")]
-impl Serializable for serde_bytes::ByteBuf {
-    fn name() -> String {
-        "serde_bytes::ByteBuf".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "ByteBuf".to_owned(),
-            type_args: vec![],
-            rs_ty: "serde_bytes::ByteBuf".to_owned(),
-            rs_dependencies: BTreeMap::from([("serde_bytes".to_owned(), r#""0.11""#.to_owned())]),
-            ts_ty: "ArrayBuffer".to_owned(),
-        })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
-}
-
-#[cfg(feature = "chrono-compat")]
-impl Serializable for chrono::Utc {
-    fn name() -> String {
-        "chrono::Utc".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "Utc".to_owned(),
-            type_args: vec![],
-            rs_ty: "chrono::Utc".to_owned(),
-            rs_dependencies: BTreeMap::from([(
-                "chrono".to_owned(),
-                r#"{ version = "0.4", features = ["serde"] }"#.to_owned(),
-            )]),
-            ts_ty: "UNIMPLEMENTED".to_owned(), // *should* never appear in the generated output
-        })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
-}
-
-#[cfg(feature = "chrono-compat")]
-impl<T> Serializable for chrono::DateTime<T>
-where
-    T: chrono::TimeZone + Serializable,
-{
-    fn name() -> String {
-        "chrono::DateTime<T>".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "DateTime".to_owned(),
-            type_args: vec![],
-            rs_ty: format!("chrono::DateTime<{}>", T::name()),
-            rs_dependencies: BTreeMap::from([(
-                "chrono".to_owned(),
-                r#"{ version = "0.4", features = ["serde"] }"#.to_owned(),
-            )]),
-            ts_ty: "string".to_owned(),
-        })
     }
 
     fn build_dependencies() -> BTreeSet<Type> {

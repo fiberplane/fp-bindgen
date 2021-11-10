@@ -8,6 +8,7 @@ edition = "2018"
 chrono = "0.4.19"
 fp-bindgen = { path = "../fp-bindgen", features = [
     "chrono-compat",
+    "http-compat",
     "serde-bytes-compat",
 ] }
 pretty_assertions = "0.7"

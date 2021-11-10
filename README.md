@@ -111,6 +111,17 @@ protocol itself is specified using Rust syntax as well. If desired, we could ext
 TypeScript generator as well, though that would imply an even bigger responsibility for the user to
 keep their TypeScript types in sync with the protocol.
 
+### Cargo features
+
+The `fp-bindgen` crate supports optional Cargo features for compatibility with some common types
+from the crate ecosystem:
+
+- `chrono-compat`: Enables compatibility with Chrono's `DateTime<Utc>` type (other timezones are
+  currently not supported).
+- `http-compat`: Enables compatibility with types from the `http` crate.
+- `serde-bytes-compat`: Enables compatibility with `serde_bytes`' `ByteBuf` type (the `Bytes` type
+  is a reference type, which `fp-bindgen` doesn't support in general).
+
 ## Generating bindings
 
 To generate bindings based on your protocol, you first need to create a function that will generate
