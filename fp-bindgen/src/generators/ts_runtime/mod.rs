@@ -699,11 +699,7 @@ fn format_type(ty: &Type) -> String {
         Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
-            items
-                .iter()
-                .map(|item| item.name())
-                .collect::<Vec<_>>()
-                .join(", ")
+            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
         ),
         Type::Unit => "void".to_owned(),
     }
