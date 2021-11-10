@@ -166,18 +166,38 @@ pub struct Field {
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct FieldAttrs {
+    /// Optional path to a function that will produce the default value in case
+    /// the field is omitted from the serialized representation.
+    ///
+    /// See also: https://serde.rs/field-attrs.html#default--path
+    ///
+    /// An empty string may be used as value, in which case `Default::default`
+    /// is assumed. See also: https://serde.rs/field-attrs.html#default
+    pub default: Option<String>,
+
     /// Optional Serde dependency used for deserialization.
+    ///
+    /// See: https://serde.rs/field-attrs.html#deserialize_with
     pub deserialize_with: Option<String>,
 
     /// Optional name to use in the serialized format
     /// (only used if different than the field name itself).
+    ///
+    /// See also: https://serde.rs/field-attrs.html#rename
     pub rename: Option<String>,
 
     /// Optional Serde dependency used for serialization.
+    ///
+    /// See also: https://serde.rs/field-attrs.html#serialize_with
     pub serialize_with: Option<String>,
 
-    /// Optional condition for skipping serialization of the field.
-    /// Mainly used for omitting `Option`s.
+    /// Optional path to a function to determine whether serialized should be
+    /// skipped for a particular value.
+    ///
+    /// E.g.: can be used to omit `Option`s by specifying
+    /// `skip_serializing_if = "Option::is_none"`.
+    ///
+    /// See also: https://serde.rs/field-attrs.html#skip_serializing_if
     pub skip_serializing_if: Option<String>,
 }
 
@@ -196,6 +216,9 @@ impl FieldAttrs {
     }
 
     fn merge_with(&mut self, other: &Self) {
+        if other.default.is_some() {
+            self.default = other.default.clone();
+        }
         if other.deserialize_with.is_some() {
             self.deserialize_with = other.deserialize_with.clone();
         }
@@ -212,6 +235,13 @@ impl FieldAttrs {
 
     pub fn to_serde_attrs(&self) -> Vec<String> {
         let mut serde_attrs = vec![];
+        if let Some(default) = self.default.as_ref() {
+            if default.is_empty() {
+                serde_attrs.push("default".to_owned());
+            } else {
+                serde_attrs.push(format!("default = \"{}\"", default));
+            }
+        }
         match (self.deserialize_with.as_ref(), self.serialize_with.as_ref()) {
             (Some(deserialize_with), Some(serialize_with))
                 if deserialize_with == serialize_with =>
@@ -236,7 +266,6 @@ impl FieldAttrs {
         if let Some(skip_serializing_if) = self.skip_serializing_if.as_ref() {
             serde_attrs.push(format!("skip_serializing_if = \"{}\"", skip_serializing_if));
         }
-        serde_attrs.sort();
         serde_attrs
     }
 }
@@ -256,10 +285,19 @@ impl Parse for FieldAttrs {
                 .to_owned())
         };
 
+        let parse_optional_value = || -> Result<String> {
+            if content.peek(Token![=]) {
+                parse_value()
+            } else {
+                Ok(String::new())
+            }
+        };
+
         let mut result = Self::default();
         loop {
             let key: Ident = content.call(IdentExt::parse_any)?;
             match key.to_string().as_ref() {
+                "default" => result.default = Some(parse_optional_value()?),
                 "deserialize_with" => result.deserialize_with = Some(parse_value()?),
                 "rename" => result.rename = Some(parse_value()?),
                 "serialize_with" => result.serialize_with = Some(parse_value()?),
