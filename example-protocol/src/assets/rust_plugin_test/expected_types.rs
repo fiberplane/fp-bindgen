@@ -22,10 +22,10 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: chrono::DateTime<chrono::Utc>,
-    #[serde(rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
     pub renamed: Option<chrono::DateTime<chrono::Utc>>,
 
     /// Raw identifiers are supported too.
@@ -94,7 +94,7 @@ pub struct RequestOptions {
     pub url: String,
     pub method: RequestMethod,
     pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none", with = "serde_bytes")]
+    #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
     pub body: Option<Vec<u8>>,
 }
 

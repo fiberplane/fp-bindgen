@@ -492,12 +492,19 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
-            if matches!(&field.ty, Type::Container(name, _) if name == "Option")
-                && !serde_attrs
+            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
+                if !serde_attrs
+                    .iter()
+                    .any(|attr| attr == "default" || attr.starts_with("default = "))
+                {
+                    serde_attrs.push("default".to_owned());
+                }
+                if !serde_attrs
                     .iter()
                     .any(|attr| attr.starts_with("skip_serializing_if ="))
-            {
-                serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                {
+                    serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                }
             }
 
             if is_binary_type(&field.ty)
@@ -527,6 +534,7 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
             let annotations = if serde_attrs.is_empty() {
                 "".to_owned()
             } else {
+                serde_attrs.sort();
                 format!("#[serde({})]\n", serde_attrs.join(", "))
             };
 
