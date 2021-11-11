@@ -1,8 +1,8 @@
-use chrono::{DateTime, Utc};
 use fp_bindgen::{prelude::*, WasmerRuntimeConfig};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
+use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
 
@@ -31,9 +31,9 @@ pub struct ComplexHostToGuest {
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
     #[fp(rename = "optional_timestamp")]
-    pub renamed: Option<DateTime<Utc>>,
+    pub renamed: Option<OffsetDateTime>,
     /// Raw identifiers are supported too.
     pub r#type: String,
 }
@@ -44,7 +44,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]

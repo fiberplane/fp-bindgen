@@ -10,7 +10,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: time::OffsetDateTime,
 }
 
 /// Multi-line doc comment with complex characters
@@ -24,9 +24,9 @@ pub struct ComplexHostToGuest {
     pub recursive: Vec<Point<Point<f64>>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
-    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub timestamp: time::OffsetDateTime,
     #[serde(default, rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
-    pub renamed: Option<chrono::DateTime<chrono::Utc>>,
+    pub renamed: Option<time::OffsetDateTime>,
 
     /// Raw identifiers are supported too.
     pub r#type: String,

@@ -5,11 +5,11 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [features]
-chrono-compat = ["chrono"]
+default = ["time-compat", "serde-bytes-compat"]
 serde-bytes-compat = ["serde_bytes"]
+time-compat = ["time"]
 
 [dependencies]
-chrono = { version = "0.4", optional = true }
 dashmap = "4"
 fp-bindgen-macros = { path = "../macros" }
 Inflector = "0.11"
@@ -19,3 +19,4 @@ proc-macro2 = "1"
 quote = "1"
 serde_bytes = { version = "0.11", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
+time = { version = "0.3", optional = true }
