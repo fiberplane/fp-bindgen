@@ -14,6 +14,7 @@ impl Serializable for serde_bytes::ByteBuf {
             rs_ty: "serde_bytes::ByteBuf".to_owned(),
             rs_dependencies: BTreeMap::from([("serde_bytes".to_owned(), r#""0.11""#.to_owned())]),
             ts_ty: "ArrayBuffer".to_owned(),
+            ts_declaration: None,
         })
     }
 

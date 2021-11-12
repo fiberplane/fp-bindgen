@@ -130,6 +130,7 @@ name = "fp-bindgen-support"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen-macros",
+ "http",
  "once_cell",
  "rmp-serde",
  "serde",

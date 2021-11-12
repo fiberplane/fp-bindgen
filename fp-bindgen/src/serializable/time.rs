@@ -17,6 +17,7 @@ impl Serializable for time::OffsetDateTime {
                 r#"{ version = "0.3", features = ["serde"] }"#.to_owned(),
             )]),
             ts_ty: "string".to_owned(),
+            ts_declaration: None,
         })
     }
 
@@ -40,6 +41,7 @@ impl Serializable for time::PrimitiveDateTime {
                 r#"{ version = "0.3", features = ["serde"] }"#.to_owned(),
             )]),
             ts_ty: "string".to_owned(),
+            ts_declaration: None,
         })
     }
 

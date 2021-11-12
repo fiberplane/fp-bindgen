@@ -199,6 +199,10 @@ pub struct CustomType {
 
     /// Name to refer to the type in the TypeScript generator.
     pub ts_ty: String,
+
+    /// Optional declaration, for when `ts_ty` does not refer to a built-in
+    /// type.
+    pub ts_declaration: Option<String>,
 }
 
 pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -> String {
