@@ -120,7 +120,6 @@ dependencies = [
  "once_cell",
  "rmp-serde",
  "serde",
- "serde_bytes",
 ]
 
 [[package]]

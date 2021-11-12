@@ -82,7 +82,6 @@ fn generate_cargo_file(
         "serde".to_owned(),
         r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
     );
-    dependencies.insert("serde_bytes".to_owned(), r#""0.11""#.to_owned());
 
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
@@ -507,16 +506,6 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                 }
             }
 
-            if is_binary_type(&field.ty)
-                && !serde_attrs.iter().any(|attr| {
-                    attr.starts_with("deserialize_with =")
-                        || attr.starts_with("serialize_with =")
-                        || attr.starts_with("with =")
-                })
-            {
-                serde_attrs.push("with = \"serde_bytes\"".to_owned());
-            }
-
             let docs = if field.doc_lines.is_empty() {
                 "".to_owned()
             } else {
@@ -564,11 +553,7 @@ pub fn format_type(ty: &Type) -> String {
         Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "({})",
-            items
-                .iter()
-                .map(|item| item.name())
-                .collect::<Vec<_>>()
-                .join(", ")
+            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
         ),
         Type::Unit => "()".to_owned(),
     }
@@ -598,19 +583,6 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::U64 => "u64",
     };
     string.to_owned()
-}
-
-/// Detects types that can be encoded as a binary blob.
-fn is_binary_type(ty: &Type) -> bool {
-    match ty {
-        Type::List(name, ty) if name == "Vec" && ty.as_ref() == &Type::Primitive(Primitive::U8) => {
-            true
-        }
-        Type::Container(name, ty) if (name == "Box" || name == "Option") => {
-            is_binary_type(ty.as_ref())
-        }
-        _ => false,
-    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

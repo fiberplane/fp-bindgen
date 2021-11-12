@@ -74,7 +74,7 @@ impl Type {
         match self {
             Self::Alias(name, _) => name.clone(),
             Self::Container(name, ty) => format!("{}<{}>", name, ty.name()),
-            Self::Custom(custom) => custom.rs_ty.clone(),
+            Self::Custom(custom) => custom.name.clone(),
             Self::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
             Self::GenericArgument(arg) => arg.name.clone(),
             Self::List(name, ty) => format!("{}<{}>", name, ty.name()),

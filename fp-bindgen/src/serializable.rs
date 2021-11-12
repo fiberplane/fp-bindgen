@@ -319,7 +319,7 @@ where
 #[cfg(feature = "serde-bytes-compat")]
 impl Serializable for serde_bytes::ByteBuf {
     fn name() -> String {
-        "serde_bytes::ByteBuf".to_owned()
+        "ByteBuf".to_owned()
     }
 
     fn ty() -> Type {
