@@ -172,6 +172,7 @@ fn main() {
         }),
         BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
             generate_raw_export_wrappers: true,
+            plugin_crate_name: "fp_provider",
         }),
         BindingsType::TsRuntime(TsRuntimeConfig {
             generate_raw_export_wrappers: true,
@@ -244,7 +245,8 @@ fn test_generate_rust_wasmer_runtime() {
     ];
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
-            generate_raw_export_wrappers: true
+            generate_raw_export_wrappers: true,
+            plugin_crate_name: "fp_provider",
         }),
         path: "bindings/rust-wasmer-runtime",
     });

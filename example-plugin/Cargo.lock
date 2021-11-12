@@ -33,7 +33,6 @@ name = "example-bindings"
 version = "1.0.0"
 dependencies = [
  "chrono",
- "fp-bindgen-macros",
  "fp-bindgen-support",
  "once_cell",
  "rmp-serde",
@@ -157,9 +156,9 @@ dependencies = [
 
 [[package]]
 name = "rmp-serde"
-version = "1.0.0-beta.1"
+version = "1.0.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20ad345f2f82b7ac54d949ce2508f49401d0fe7bb6085b5da20c7c0ad013dfa2"
+checksum = "05d18f64792a930cdb215b849eb75d8d7ffaaf70c3b9bd594b5ccc5ab63b4f70"
 dependencies = [
  "byteorder",
  "rmp",

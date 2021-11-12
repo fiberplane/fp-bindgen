@@ -40,14 +40,12 @@ pub fn generate_bindings(
     write_bindings_file(
         format!("{}/lib.rs", src_path),
         "#[rustfmt::skip]
-mod export;
+pub mod export;
 #[rustfmt::skip]
-mod import;
+pub mod import;
 #[rustfmt::skip]
 mod types;
 
-pub use export::*;
-pub use import::*;
 pub use types::*;
 
 pub use fp_bindgen_support::*;

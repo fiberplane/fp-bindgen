@@ -22,7 +22,7 @@ primitive_impls!();
 #[derive(Debug, Clone)]
 pub enum BindingsType<'a> {
     RustPlugin(RustPluginConfig<'a>),
-    RustWasmerRuntime(WasmerRuntimeConfig),
+    RustWasmerRuntime(WasmerRuntimeConfig<'a>),
     TsRuntime(TsRuntimeConfig),
 }
 
@@ -50,8 +50,9 @@ pub struct RustPluginConfig<'a> {
     pub dependencies: BTreeMap<String, String>,
 }
 #[derive(Debug, Clone)]
-pub struct WasmerRuntimeConfig {
+pub struct WasmerRuntimeConfig<'a> {
     pub generate_raw_export_wrappers: bool,
+    pub plugin_crate_name: &'a str,
 }
 
 #[derive(Debug, Clone)]

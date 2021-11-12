@@ -40,7 +40,7 @@ pub(crate) struct AsyncValue {
 }
 
 /// Serialize an object from the linear memory and after that free up the memory
-pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
+pub(crate) fn import_value_from_guest<'de, T: Deserialize<'de>>(
     env: &RuntimeInstanceData,
     fat_ptr: FatPtr,
 ) -> T {
@@ -84,7 +84,7 @@ pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) 
 }
 
 /// Serialize a value and put it in linear memory.
-pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
+pub(crate) fn export_value_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
     let mut buffer = Vec::new();
     value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
 

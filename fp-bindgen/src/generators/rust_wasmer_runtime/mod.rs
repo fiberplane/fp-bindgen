@@ -1,7 +1,5 @@
 use crate::functions::{Function, FunctionList};
-use crate::generators::rust_plugin::{
-    format_primitive, format_raw_type, format_type, generate_type_bindings,
-};
+use crate::generators::rust_plugin::{format_raw_type, format_type, generate_type_bindings};
 use crate::primitives::Primitive;
 use crate::types::Type;
 use crate::WasmerRuntimeConfig;
@@ -33,6 +31,7 @@ pub fn generate_bindings(
         import_functions,
         export_functions,
         runtime_config.generate_raw_export_wrappers,
+        runtime_config.plugin_crate_name,
         &spec_path,
     );
 
@@ -51,6 +50,7 @@ pub fn generate_function_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     generate_raw_export_wrappers: bool,
+    plugin_crate_name: &str,
     path: &str,
 ) {
     let imports_map = import_functions
@@ -58,117 +58,12 @@ pub fn generate_function_bindings(
         .map(|function| {
             let name = &function.name;
             format!(
-                "            \"__fp_gen_{}\" => Function::new_native_with_env(store, env.clone(), _{}),",
-                name, name
+                "            \"__fp_gen_{0}\" => Function::new_native_with_env(store, env.clone(), super::__fp_gen_{0}),",
+                name
             )
         })
         .collect::<Vec<_>>()
         .join("\n");
-
-    let imports = import_functions
-        .iter()
-        .map(|function| {
-            let name = &function.name;
-            let args_with_types = function
-                .args
-                .iter()
-                .map(|arg| {
-                    format!(
-                        ", {}: {}",
-                        arg.name,
-                        match arg.ty {
-                            Type::Primitive(primitive) => format_primitive(primitive),
-                            _ => "FatPtr".to_owned(),
-                        }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("");
-            let import_args = function
-                .args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(_) => "".to_owned(),
-                    _ => format!(
-                        "    let {} = import_from_guest::<{}>(env, {});\n",
-                        arg.name,
-                        format_type(&arg.ty),
-                        arg.name
-                    ),
-                })
-                .collect::<Vec<_>>()
-                .join("");
-            let return_type = if function.is_async {
-                " -> FatPtr".to_owned()
-            } else {
-                match &function.return_type {
-                    Type::Unit => "".to_owned(),
-                    ty => format!(
-                        " -> {}",
-                        match ty {
-                            Type::Primitive(primitive) => format_primitive(*primitive),
-                            _ => "FatPtr".to_owned(),
-                        }
-                    ),
-                }
-            };
-            let args = function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-            let call_fn = if function.is_async {
-                let call_async_fn = match &function.return_type {
-                    Type::Unit => format!(
-                        "super::{}({}).await;\n        let result_ptr = 0;",
-                        name, args
-                    ),
-                    _ => format!(
-                        "let result_ptr = export_to_guest(&env, &super::{}({}).await);",
-                        name, args
-                    ),
-                };
-
-                format!(
-                    "let env = env.clone();
-    let async_ptr = create_future_value(&env);
-    let handle = tokio::runtime::Handle::current();
-    handle.spawn(async move {{
-        {}
-
-        unsafe {{
-            env.__fp_guest_resolve_async_value
-                .get_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect(\"Runtime error: Cannot resolve async value\");
-        }}
-    }});
-
-    async_ptr",
-                    call_async_fn
-                )
-            } else {
-                match &function.return_type {
-                    Type::Unit => format!("super::{}({});", name, args),
-                    Type::Primitive(_) => format!("super::{}({})", name, args),
-                    _ => format!("export_to_guest(env, &super::{}({}))", name, args),
-                }
-            };
-            format!(
-                "pub fn _{}(env: &RuntimeInstanceData{}){} {{
-{}{}    {}
-}}",
-                name,
-                args_with_types,
-                return_type,
-                import_args,
-                if import_args.is_empty() { "" } else { "\n" },
-                call_fn
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
 
     let exports = export_functions
         .iter()
@@ -188,11 +83,11 @@ pub fn generate_function_bindings(
     write_bindings_file(
         format!("{}/bindings.rs", path),
         format!(
-            "use super::types::*;
+            "use {}::*;
 use crate::errors::InvocationError;
 use crate::{{
     support::{{
-        create_future_value, export_to_guest, export_to_guest_raw, import_from_guest,
+        create_future_value, export_value_to_guest, export_to_guest_raw, import_value_from_guest,
         resolve_async_value, FatPtr, ModuleRawFuture,
     }},
     Runtime, RuntimeInstanceData,
@@ -211,10 +106,8 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
         }}
     }}
 }}
-
-{}
 ",
-            exports, raw_exports, imports_map, imports,
+            plugin_crate_name, exports, raw_exports, imports_map,
         ),
     );
 }
@@ -243,7 +136,7 @@ fn export_function(function: &Function) -> String {
         .map(|arg| match &arg.ty {
             Type::Primitive(_) => "".to_owned(),
             _ => format!(
-                "        let {} = export_to_guest(&env, &{});\n",
+                "        let {} = export_value_to_guest(&env, &{});\n",
                 arg.name, arg.name
             ),
         })
@@ -305,7 +198,7 @@ fn export_function(function: &Function) -> String {
             _ => return Err(InvocationError::UnexpectedReturnType),
         }};
 
-        Ok(import_from_guest(&env, ptr))",
+        Ok(import_value_from_guest(&env, ptr))",
                 args
             ),
         }

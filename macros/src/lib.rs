@@ -211,75 +211,42 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
-        typing::morph_signature(&mut sig, "fp_bindgen_support");
-        sig.inputs = sig
-            .inputs
-            .into_iter()
-            //append a function ptr to the end which signature matches the original exported function
-            .chain(once({
-                let input_types = args.iter().map(|(_, pt, _)| pt.ty.as_ref());
-                let output = if func.sig.asyncness.is_some() {
-                    syn::parse::<ReturnType>((quote! {-> FUT}).into()).unwrap_or_abort()
-                } else {
-                    func.sig.output.clone()
-                };
+        let output = if func.sig.asyncness.is_some() {
+            syn::parse::<ReturnType>((quote! {-> FUT}).into()).unwrap_or_abort()
+        } else {
+            func.sig.output.clone()
+        };
+        sig.asyncness = None;
+        //append a function ptr to the end which signature matches the original exported function
+        sig.inputs.push({
+            let input_types = args.iter().map(|(_, pt, _)| pt.ty.as_ref());
 
-                syn::parse::<FnArg>((quote! {fptr: fn (#(#input_types),*) #output}).into())
-                    .unwrap_or_abort()
-            }))
-            .collect();
+            syn::parse::<FnArg>((quote! {fptr: fn (#(#input_types),*) #output}).into())
+                .unwrap_or_abort()
+        });
+
         sig.generics.params.clear();
+
         if func.sig.asyncness.is_some() {
-            let output = typing::get_output_type(&func.sig.output);
+            let fut_output = typing::get_output_type(&func.sig.output);
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
                     //the 'static life time is ok since we give it a box::pin
-                    (quote! {FUT: std::future::Future<Output=#output> + 'static}).into(),
+                    (quote! {FUT: std::future::Future<Output=#fut_output> + 'static}).into(),
                 )
                 .unwrap_or_abort(),
-            )
+            );
+            sig.output = output;
         }
     }
-
-    let (complex_names, complex_types): (Vec<_>, Vec<_>) = args
-        .iter()
-        .filter_map(|&(_, pt, is_complex)| {
-            if is_complex {
-                Some((pt.pat.as_ref(), pt.ty.as_ref()))
-            } else {
-                None
-            }
-        })
-        .unzip();
-
     let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
-    let func_call = quote! {(fptr)(#(#names),*)};
-
-    let func_wrapper = if func.sig.asyncness.is_some() {
-        quote! {
-            let ret = fp_bindgen_support::Task::alloc_and_spawn(#func_call);
-        }
-    } else {
-        // Check the output type and replace complex ones with FatPtr
-        let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-            quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
-        } else {
-            Default::default()
-        };
-        quote! {
-            let ret = #func_call;
-            #return_wrapper
-        }
-    };
 
     //build the actual exported wrapper function
     (quote! {
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_support::import_value_from_host::<#complex_types>(#complex_names) };)*
-            #func_wrapper
-            ret
+            (fptr)(#(#names),*)
         }
     })
     .into()
@@ -289,15 +256,15 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 ///
 /// Example usage of implementing a `log` function of a `logger` provider:
 /// ```no_compile
-/// use fp_bindgen_macros::fp_export_impl; //this would be `logger::fp_export_impl` inside the plugin crate
-/// #[fp_export_impl(logger)]
+/// use fp_bindgen_macros::fp_export_guest_impl; //this would be `logger::fp_export_guest_impl` inside the plugin crate
+/// #[fp_export_guest_impl(logger)]
 /// pub fn log(msg: String, foo: String) -> String {
 ///     format!("{} + {} => {0}{1}", msg, foo)
 /// }
 /// ```
 #[proc_macro_attribute]
 #[proc_macro_error]
-pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
+pub fn fp_export_guest_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
     proc_macro_error::set_dummy(input.clone().into());
 
     let func = syn::parse_macro_input::parse::<ItemFn>(input.clone()).unwrap_or_abort();
@@ -327,29 +294,192 @@ pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStrea
         sig.ident = format_ident!("__fp_gen_{}", sig.ident);
     }
 
-    let fn_name = &func.sig.ident;
+    //Build the type checking function call into the binding/protocol crate.
+    //The called function takes the actual parameter types and a function pointer
+    //to the function this attribute is marking
+    let func_call = {
+        let fn_name = &func.sig.ident;
 
-    let impl_fn_pat = Pat::Path(PatPath {
-        attrs: vec![],
-        qself: None,
-        path: PathSegment {
-            ident: func.sig.ident.clone(),
-            arguments: PathArguments::None,
-        }
-        .into(),
-    });
-    let call_args = args
+        let impl_fn_pat = Pat::Path(PatPath {
+            attrs: vec![],
+            qself: None,
+            path: PathSegment {
+                ident: func.sig.ident.clone(),
+                arguments: PathArguments::None,
+            }
+            .into(),
+        });
+        let call_args = args
+            .iter()
+            .map(|&(_, pt, _)| pt.pat.as_ref())
+            .chain(once(&impl_fn_pat))
+            .collect::<Vec<_>>();
+
+        quote! {#protocol_path::export::#fn_name(#(#call_args),*)}
+    };
+
+    let (complex_names, complex_types): (Vec<_>, Vec<_>) = args
         .iter()
-        .map(|&(_, pt, _)| pt.pat.as_ref())
-        .chain(once(&impl_fn_pat))
-        .collect::<Vec<_>>();
+        .filter_map(|&(_, pt, is_complex)| {
+            if is_complex {
+                Some((pt.pat.as_ref(), pt.ty.as_ref()))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    let func_wrapper = if func.sig.asyncness.is_some() {
+        quote! {
+            let ret = #protocol_path::Task::alloc_and_spawn(#func_call);
+        }
+    } else {
+        // Check the output type and replace complex ones with FatPtr
+        let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
+            quote! {let ret = #protocol_path::export_value_to_host(&ret);}
+        } else {
+            Default::default()
+        };
+        quote! {
+            let ret = #func_call;
+            #return_wrapper
+        }
+    };
 
     let ts: proc_macro2::TokenStream = input.clone().into();
     //build the actual exported wrapper function
     (quote! {
         #[no_mangle]
         pub #sig {
-            #protocol_path::#fn_name(#(#call_args),*)
+            #(let #complex_names = unsafe { #protocol_path::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #func_wrapper
+            ret
+        }
+        #ts
+    })
+    .into()
+}
+
+/// Exports a host implementation of a specific provider function
+///
+/// Example usage of implementing a `log` function of a `logger` provider:
+/// ```no_compile
+/// use fp_bindgen_macros::fp_export_host_impl; //this would be `logger::fp_export_host_impl` inside the plugin crate
+/// #[fp_export_host_impl(logger)]
+/// pub fn log(msg: String, foo: String) -> String {
+///     format!("{} + {} => {0}{1}", msg, foo)
+/// }
+/// ```
+#[proc_macro_attribute]
+#[proc_macro_error]
+pub fn fp_export_host_impl(attributes: TokenStream, input: TokenStream) -> TokenStream {
+    proc_macro_error::set_dummy(input.clone().into());
+
+    let func = syn::parse_macro_input::parse::<ItemFn>(input.clone()).unwrap_or_abort();
+    let attrs =
+        syn::parse_macro_input::parse::<AttributeArgs>(attributes.clone()).unwrap_or_abort();
+
+    let protocol_path = attrs
+        .get(0)
+        .map(|om| match om {
+            syn::NestedMeta::Meta(meta) => match meta {
+                syn::Meta::Path(path) => path,
+                _ => abort!(meta, "unsupported attribute, must name a path"),
+            },
+            _ => abort!(om, "unsupported attribute, must name a path"),
+        })
+        .unwrap_or_else(|| abort!(func, "missing attribute. Must name which provider is being implemented eg: #[fp_export_impl(foobar)]"));
+
+    let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
+
+    let mut sig = func.sig.clone();
+    //Massage the signature into what we wish to export
+    {
+        typing::morph_signature(
+            &mut sig,
+            protocol_path.to_token_stream().to_string().as_str(),
+        );
+        sig.inputs.insert(
+            0,
+            syn::parse::<FnArg>((quote! {env: &RuntimeInstanceData}).into()).unwrap_or_abort(),
+        );
+        sig.ident = format_ident!("__fp_gen_{}", sig.ident);
+    }
+
+    //Build the type checking function call into the binding/protocol crate.
+    //The called function takes the actual parameter types and a function pointer
+    //to the function this attribute is marking
+    let func_call = {
+        let fn_name = format_ident!("__fp_gen_type_check_{}", func.sig.ident);
+
+        let impl_fn_pat = Pat::Path(PatPath {
+            attrs: vec![],
+            qself: None,
+            path: PathSegment {
+                ident: func.sig.ident.clone(),
+                arguments: PathArguments::None,
+            }
+            .into(),
+        });
+        let call_args = args
+            .iter()
+            .map(|&(_, pt, _)| pt.pat.as_ref())
+            .chain(once(&impl_fn_pat))
+            .collect::<Vec<_>>();
+
+        quote! {#protocol_path::import::#fn_name(#(#call_args),*)}
+    };
+
+    let (complex_names, complex_types): (Vec<_>, Vec<_>) = args
+        .iter()
+        .filter_map(|&(_, pt, is_complex)| {
+            if is_complex {
+                Some((pt.pat.as_ref(), pt.ty.as_ref()))
+            } else {
+                None
+            }
+        })
+        .unzip();
+
+    let func_wrapper = if func.sig.asyncness.is_some() {
+        quote! {
+            let env = env.clone(); //needs to be owned in order to make the future below 'static
+            let async_ptr = crate::support::create_future_value(&env);
+            let handle = tokio::runtime::Handle::current();
+            handle.spawn(async move {
+                let result_ptr = crate::support::export_value_to_guest(&env, &#func_call.await);
+
+                unsafe {
+                    env.__fp_guest_resolve_async_value
+                        .get_unchecked()
+                        .call(async_ptr, result_ptr)
+                        .expect("Runtime error: Cannot resolve async value");
+                }
+            });
+
+            let ret = async_ptr;
+        }
+    } else {
+        // Check the output type and replace complex ones with FatPtr
+        let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
+            quote! {let ret = crate::support::export_value_to_guest(env, &ret);}
+        } else {
+            Default::default()
+        };
+        quote! {
+            let ret = #func_call;
+            #return_wrapper
+        }
+    };
+
+    let ts: proc_macro2::TokenStream = input.clone().into();
+    //build the actual exported wrapper function
+    (quote! {
+        #[no_mangle]
+        pub #sig {
+            #(let #complex_names = unsafe { crate::support::import_value_from_guest::<#complex_types>(env, #complex_names) };)*
+            #func_wrapper
+            ret
         }
         #ts
     })
@@ -385,7 +515,10 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         })
         .collect();
 
-    let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
+    let names = args
+        .iter()
+        .map(|(_, pt, _)| pt.pat.as_ref())
+        .collect::<Vec<_>>();
     let extern_ident = &extern_sig.ident;
     let func_call = quote! {#extern_ident(#(#names),*)};
 
@@ -406,6 +539,39 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         }
     };
 
+    let mut checker_sig = func.sig.clone();
+    //Massage the signature into what we wish to export
+    {
+        checker_sig.ident = format_ident!("__fp_gen_type_check_{}", func.sig.ident);
+        let output = if func.sig.asyncness.is_some() {
+            syn::parse::<ReturnType>((quote! {-> FUT}).into()).unwrap_or_abort()
+        } else {
+            func.sig.output.clone()
+        };
+        checker_sig.asyncness = None;
+        //append a function ptr to the end which signature matches the original exported function
+        checker_sig.inputs.push({
+            let input_types = args.iter().map(|(_, pt, _)| pt.ty.as_ref());
+
+            syn::parse::<FnArg>((quote! {fptr: fn (#(#input_types),*) #output}).into())
+                .unwrap_or_abort()
+        });
+
+        checker_sig.generics.params.clear();
+
+        if func.sig.asyncness.is_some() {
+            let fut_output = typing::get_output_type(&func.sig.output);
+            checker_sig.generics.params.push(
+                syn::parse::<GenericParam>(
+                    //the 'static life time is ok since we give it a box::pin
+                    (quote! {FUT: std::future::Future<Output=#fut_output> + 'static}).into(),
+                )
+                .unwrap_or_abort(),
+            );
+            checker_sig.output = output;
+        }
+    }
+
     let attrs = &func.attrs;
 
     //build the actual imported wrapper function
@@ -420,6 +586,12 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             let ret = unsafe { #func_call };
             #ret_wrapper
             ret
+        }
+
+        /// This is a implementation detail an should not be called directly
+        #[inline(always)]
+        pub #checker_sig {
+            (fptr)(#(#names),*)
         }
     })
     .into()
