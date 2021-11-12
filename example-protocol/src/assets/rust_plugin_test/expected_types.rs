@@ -25,11 +25,7 @@ pub struct ComplexHostToGuest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
     pub timestamp: time::OffsetDateTime,
-    #[serde(
-        default,
-        rename = "optional_timestamp",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
     pub renamed: Option<time::OffsetDateTime>,
 
     /// Raw identifiers are supported too.
@@ -79,9 +75,7 @@ pub enum RequestError {
     },
     /// Misc.
     #[serde(rename_all = "camelCase")]
-    Other {
-        reason: String,
-    },
+    Other { reason: String },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -100,7 +94,7 @@ pub struct RequestOptions {
     pub url: String,
     pub method: RequestMethod,
     pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<serde_bytes::ByteBuf>,
 }
 
