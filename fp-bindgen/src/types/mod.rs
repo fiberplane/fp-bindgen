@@ -11,7 +11,7 @@ mod enums;
 mod structs;
 
 pub use enums::{EnumOptions, Variant};
-pub use structs::{Field, StructOptions};
+pub use structs::{Field, FieldAttrs, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
@@ -157,6 +157,7 @@ impl Type {
                         doc_lines: field.doc_lines,
                         name: field.name,
                         ty: field.ty.with_specialized_args(specialized_args),
+                        attrs: field.attrs,
                     })
                     .collect(),
                 opts,

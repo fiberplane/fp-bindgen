@@ -1,8 +1,8 @@
-use chrono::{DateTime, Utc};
-use fp_bindgen::{prelude::*, RustPluginConfig};
+use fp_bindgen::{prelude::*, WasmerRuntimeConfig};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
+use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
 
@@ -31,7 +31,11 @@ pub struct ComplexHostToGuest {
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
+    #[fp(rename = "optional_timestamp")]
+    pub renamed: Option<OffsetDateTime>,
+    /// Raw identifiers are supported too.
+    pub r#type: String,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -40,7 +44,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
@@ -157,24 +161,27 @@ const NAME: &str = "example-bindings";
 
 fn main() {
     for bindings_type in [
-        BindingsType::RustPlugin,
-        BindingsType::RustWasmerRuntime,
-        BindingsType::TsRuntime,
+        BindingsType::RustPlugin(RustPluginConfig {
+            name: NAME,
+            authors: AUTHORS,
+            version: VERSION,
+            dependencies: BTreeMap::from([(
+                "fp-bindgen-support".to_owned(),
+                r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned(),
+            )]),
+        }),
+        BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
+            generate_raw_export_wrappers: true,
+        }),
+        BindingsType::TsRuntime(TsRuntimeConfig {
+            generate_raw_export_wrappers: true,
+        }),
     ] {
         let output_path = format!("bindings/{}", bindings_type);
 
         fp_bindgen!(BindingConfig {
             bindings_type,
             path: &output_path,
-            rust_plugin_config: Some(RustPluginConfig {
-                name: NAME,
-                authors: AUTHORS,
-                version: VERSION,
-                dependencies: BTreeMap::from([(
-                    "fp-bindgen-support".to_owned(),
-                    r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned()
-                )])
-            })
         });
         println!("Generated bindings written to `{}/`.", output_path);
     }
@@ -206,9 +213,7 @@ fn test_generate_rust_plugin() {
     ];
 
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustPlugin,
-        path: "bindings/rust-plugin",
-        rust_plugin_config: Some(RustPluginConfig {
+        bindings_type: BindingsType::RustPlugin(RustPluginConfig {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
@@ -216,7 +221,8 @@ fn test_generate_rust_plugin() {
                 "fp-bindgen-support".to_owned(),
                 r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned()
             )])
-        })
+        }),
+        path: "bindings/rust-plugin",
     });
 
     for (path, expected) in FILES {
@@ -237,9 +243,10 @@ fn test_generate_rust_wasmer_runtime() {
         ),
     ];
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustWasmerRuntime,
+        bindings_type: BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
+            generate_raw_export_wrappers: true
+        }),
         path: "bindings/rust-wasmer-runtime",
-        rust_plugin_config: None
     });
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
@@ -260,9 +267,10 @@ fn test_generate_ts_runtime() {
     ];
 
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::TsRuntime,
+        bindings_type: BindingsType::TsRuntime(TsRuntimeConfig {
+            generate_raw_export_wrappers: true
+        }),
         path: "bindings/ts-runtime",
-        rust_plugin_config: None
     });
 
     for (path, expected) in FILES {

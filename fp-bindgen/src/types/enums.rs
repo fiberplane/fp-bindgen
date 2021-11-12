@@ -3,7 +3,7 @@ use super::{
     structs::{Field, StructOptions},
     GenericArgument, Type,
 };
-use crate::{casing::Casing, docs::get_doc_lines};
+use crate::{casing::Casing, docs::get_doc_lines, types::structs::FieldAttrs};
 use quote::ToTokens;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -59,10 +59,12 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                             "Unresolvable variant field type",
                         );
                         let doc_lines = get_doc_lines(&field.attrs);
+                        let attrs = FieldAttrs::from_attrs(&field.attrs);
                         Field {
                             name,
                             ty,
                             doc_lines,
+                            attrs,
                         }
                     })
                     .collect();
@@ -189,57 +191,31 @@ impl Parse for EnumOptions {
         let content;
         parenthesized!(content in input);
 
+        let parse_value = || -> Result<String> {
+            content.parse::<Token![=]>()?;
+            Ok(content
+                .parse::<LitStr>()?
+                .to_token_stream()
+                .to_string()
+                .trim_matches('"')
+                .to_owned())
+        };
+
         let mut result = Self::default();
         loop {
             let key: Ident = content.call(IdentExt::parse_any)?;
-            match &*key.to_string() {
-                "content" => {
-                    content.parse::<Token![=]>()?;
-                    result.content_prop_name = Some(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"')
-                            .to_owned(),
-                    );
-                }
-                "tag" => {
-                    content.parse::<Token![=]>()?;
-                    result.tag_prop_name = Some(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"')
-                            .to_owned(),
-                    );
-                }
+            match key.to_string().as_ref() {
+                "content" => result.content_prop_name = Some(parse_value()?),
+                "tag" => result.tag_prop_name = Some(parse_value()?),
                 "rename_all" => {
-                    content.parse::<Token![=]>()?;
-                    result.variant_casing = Casing::try_from(
-                        content
-                            .parse::<LitStr>()?
-                            .to_token_stream()
-                            .to_string()
-                            .trim_matches('"'),
-                    )
-                    .map_err(|err| Error::new(content.span(), err))?;
+                    result.variant_casing = Casing::try_from(parse_value()?.as_ref())
+                        .map_err(|err| Error::new(content.span(), err))?
                 }
-                "untagged" => {
-                    result.untagged = true;
-                }
+                "untagged" => result.untagged = true,
                 module if module.ends_with("_module") => {
-                    content.parse::<Token![=]>()?;
-                    let value = content
-                        .parse::<LitStr>()?
-                        .to_token_stream()
-                        .to_string()
-                        .trim_matches('"')
-                        .to_owned();
                     result
                         .native_modules
-                        .insert(module[0..module.len() - 7].to_owned(), value);
+                        .insert(module[0..module.len() - 7].to_owned(), parse_value()?);
                 }
                 other => {
                     return Err(Error::new(

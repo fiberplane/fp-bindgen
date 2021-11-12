@@ -25,6 +25,12 @@ export type ComplexHostToGuest = {
     recursive: Array<Point<Point<number>>>;
     complexNested?: Record<string, Array<Point<number>>>;
     timestamp: string;
+    optional_timestamp?: string;
+
+    /**
+     * Raw identifiers are supported too.
+     */
+    type: string;
 };
 
 export type ExplicitedlyImportedType = {

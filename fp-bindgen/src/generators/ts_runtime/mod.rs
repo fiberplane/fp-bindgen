@@ -1,28 +1,33 @@
-use crate::functions::FunctionList;
+use crate::functions::{Function, FunctionList};
 use crate::prelude::Primitive;
 use crate::serializable::Serializable;
 use crate::types::{
     format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
 };
-use crate::BindingConfig;
+use crate::TsRuntimeConfig;
 use inflector::Inflector;
-use std::collections::BTreeSet;
-use std::fs;
+use std::{collections::BTreeSet, fs};
 
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     mut deserializable_types: BTreeSet<Type>,
-    config: BindingConfig,
+    config: TsRuntimeConfig,
+    path: &str,
 ) {
     let mut all_types = serializable_types;
     all_types.append(&mut deserializable_types);
 
-    generate_type_bindings(&all_types, config.path);
+    generate_type_bindings(&all_types, path);
 
     let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
     let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
+    let raw_export_decls = if config.generate_raw_export_wrappers {
+        format_raw_function_declarations(&export_functions, FunctionType::Export)
+    } else {
+        Vec::new()
+    };
 
     let has_async_import_functions = import_functions.iter().any(|function| function.is_async);
     let has_async_export_functions = export_functions.iter().any(|function| function.is_async);
@@ -44,6 +49,11 @@ pub fn generate_bindings(
     }
 
     let export_wrappers = format_export_wrappers(&export_functions);
+    let raw_export_wrappers = if config.generate_raw_export_wrappers {
+        format_raw_export_wrappers(&export_functions)
+    } else {
+        Vec::new()
+    };
 
     let contents = format!(
         "// ============================================= //
@@ -63,7 +73,7 @@ export type Imports = {{
 {}}};
 
 export type Exports = {{
-{}}};
+{}{}}};
 
 /**
  * Represents an unrecoverable error in the FP runtime.
@@ -87,7 +97,7 @@ export async function createRuntime(
     plugin: ArrayBuffer,
     importFunctions: Imports
 ): Promise<Exports> {{
-    const promises = new Map<FatPtr, (result: unknown) => void>();
+    const promises = new Map<FatPtr, (result: FatPtr) => void>();
 
     function createAsyncValue(): FatPtr {{
         const len = 12; // std::mem::size_of::<AsyncValue>()
@@ -106,9 +116,9 @@ export async function createRuntime(
         return object;
     }}
 
-    function promiseFromPtr<T>(ptr: FatPtr): Promise<T> {{
-        return new Promise<T>((resolve) => {{
-            promises.set(ptr, resolve as (result: unknown) => void);
+    function promiseFromPtr(ptr: FatPtr): Promise<FatPtr> {{
+        return new Promise((resolve) => {{
+            promises.set(ptr, resolve as (result: FatPtr) => void);
         }});
     }}
 
@@ -118,16 +128,28 @@ export async function createRuntime(
             throw new FPRuntimeError(\"Tried to resolve unknown promise\");
         }}
 
-        resolve(resultPtr ? parseObject(resultPtr) : undefined);
+        resolve(resultPtr);
     }}
 
     function serializeObject<T>(object: T): FatPtr {{
-        const serialized = encode(object);
+        return exportToMemory(encode(object));
+    }}
+
+    function exportToMemory(serialized: Uint8Array): FatPtr {{
         const fatPtr = malloc(serialized.length);
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
         buffer.set(serialized);
         return fatPtr;
+    }}
+
+    function importFromMemory(fatPtr: FatPtr): Uint8Array {{
+        const [ptr, len] = fromFatPtr(fatPtr);
+        const buffer = new Uint8Array(memory.buffer, ptr, len);
+        const copy = new Uint8Array(len);
+        copy.set(buffer);
+        free(fatPtr);
+        return copy;
     }}
 
     const {{ instance }} = await WebAssembly.instantiate(plugin, {{
@@ -148,7 +170,7 @@ export async function createRuntime(
     const free = getExport<(ptr: FatPtr) => void>(\"__fp_free\");
 {}
     return {{
-{}    }};
+{}{}    }};
 }}
 
 function fromFatPtr(fatPtr: FatPtr): [ptr: number, len: number] {{
@@ -165,6 +187,7 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         join_lines(&type_names, |line| format!("    {},", line)),
         join_lines(&import_decls, |line| format!("    {};", line)),
         join_lines(&export_decls, |line| format!("    {};", line)),
+        join_lines(&raw_export_decls, |line| format!("    {};", line)),
         join_lines(&import_wrappers, |line| format!("            {}", line)),
         if has_async_import_functions {
             "    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");\n"
@@ -172,8 +195,9 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
             ""
         },
         join_lines(&export_wrappers, |line| format!("        {}", line)),
+        join_lines(&raw_export_wrappers, |line| format!("        {}", line)),
     );
-    write_bindings_file(format!("{}/index.ts", config.path), &contents);
+    write_bindings_file(format!("{}/index.ts", path), &contents);
 }
 
 enum FunctionType {
@@ -207,6 +231,42 @@ fn format_function_declarations(
             };
             format!(
                 "{}{}: ({}){}",
+                function.name.to_camel_case(),
+                optional_marker,
+                args,
+                return_type
+            )
+        })
+        .collect()
+}
+
+fn format_raw_function_declarations(
+    functions: &FunctionList,
+    function_type: FunctionType,
+) -> Vec<String> {
+    // Plugins can always omit exports, while runtimes are always expected to provide all imports:
+    let optional_marker = match function_type {
+        FunctionType::Import => "",
+        FunctionType::Export => "?",
+    };
+
+    functions
+        .iter()
+        .filter(|function| !is_primitive_function(function))
+        .map(|function| {
+            let args = function
+                .args
+                .iter()
+                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_raw_type(&arg.ty)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let return_type = if function.is_async {
+                format!(" => Promise<{}>", format_raw_type(&function.return_type))
+            } else {
+                format!(" => {}", format_raw_type(&function.return_type))
+            };
+            format!(
+                "{}Raw{}: ({}){}",
                 function.name.to_camel_case(),
                 optional_marker,
                 args,
@@ -328,11 +388,21 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
         .collect()
 }
 
-fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
-    import_functions
+fn format_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
+    export_functions
         .into_iter()
         .flat_map(|function| {
             let name = &function.name;
+
+            // Trivial functions can simply be returned as is:
+            if is_primitive_function(function) {
+                return vec![format!(
+                    "{}: instance.exports.__fp_gen_{} as any,",
+                    name.to_camel_case(),
+                    name
+                )];
+            }
+
             let args = function
                 .args
                 .iter()
@@ -352,15 +422,6 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 })
                 .collect::<Vec<_>>();
 
-            // Trivial functions can simply be returned as is:
-            if export_args.is_empty() && !function.is_async {
-                return vec![format!(
-                    "{}: instance.exports.__fp_gen_{} as any,",
-                    name.to_camel_case(),
-                    name
-                )];
-            }
-
             let call_args = function
                 .args
                 .iter()
@@ -372,9 +433,9 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .join(", ");
             let fn_call = if function.is_async {
                 format!(
-                    "return promiseFromPtr<{}>(export_fn({}));",
+                    "return promiseFromPtr(export_fn({})).then((ptr) => parseObject<{}>(ptr));",
+                    call_args,
                     format_type(&function.return_type),
-                    call_args
                 )
             } else {
                 match &function.return_type {
@@ -401,6 +462,82 @@ fn format_export_wrappers(import_functions: &FunctionList) -> Vec<String> {
             };
             format!(
                 "{}: (() => {{
+    const export_fn = instance.exports.__fp_gen_{} as any;
+    if (!export_fn) return;
+
+    {}
+}})(),",
+                name.to_camel_case(),
+                name,
+                return_fn
+            )
+            .split('\n')
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
+    export_functions
+        .into_iter()
+        .filter(|function| !is_primitive_function(function))
+        .flat_map(|function| {
+            let name = &function.name;
+            let args = function
+                .args
+                .iter()
+                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_raw_type(&arg.ty)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let export_args = function
+                .args
+                .iter()
+                .filter_map(|arg| match &arg.ty {
+                    Type::Primitive(_) => None,
+                    _ => Some(format!(
+                        "const {}_ptr = exportToMemory({});",
+                        arg.name,
+                        arg.name.to_camel_case()
+                    )),
+                })
+                .collect::<Vec<_>>();
+
+            let call_args = function
+                .args
+                .iter()
+                .map(|arg| match &arg.ty {
+                    Type::Primitive(_) => arg.name.to_camel_case(),
+                    _ => format!("{}_ptr", arg.name),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            let fn_call = if function.is_async {
+                format!(
+                    "return promiseFromPtr(export_fn({})).then(importFromMemory);",
+                    call_args
+                )
+            } else {
+                match &function.return_type {
+                    Type::Unit => format!("export_fn({});", call_args),
+                    Type::Primitive(_) => {
+                        format!("return export_fn({});", call_args)
+                    }
+                    _ => format!("return importFromMemory(export_fn({}));", call_args),
+                }
+            };
+            let return_fn = if export_args.is_empty() {
+                format!("return ({}) => {}", args, fn_call.replace("return ", ""))
+            } else {
+                format!(
+                    "return ({}) => {{\n{}        {}\n    }};",
+                    args,
+                    join_lines(&export_args, |line| format!("        {}", line)),
+                    fn_call
+                )
+            };
+            format!(
+                "{}Raw: (() => {{
     const export_fn = instance.exports.__fp_gen_{} as any;
     if (!export_fn) return;
 
@@ -473,6 +610,15 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
             type_defs.join("\n\n")
         ),
     )
+}
+
+fn is_primitive_function(function: &Function) -> bool {
+    function
+        .args
+        .iter()
+        .all(|arg| matches!(arg.ty, Type::Primitive(_)))
+        && !function.is_async
+        && matches!(function.return_type, Type::Unit | Type::Primitive(_))
 }
 
 fn create_enum_definition(
@@ -659,12 +805,12 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                     let optional = if name == "Option" { "?" } else { "" };
                     format!(
                         "{}{}: {};",
-                        field.name.to_camel_case(),
+                        get_field_name(field),
                         optional,
                         format_type(ty)
                     )
                 }
-                ty => format!("{}: {};", field.name.to_camel_case(), format_type(ty)),
+                ty => format!("{}: {};", get_field_name(field), format_type(ty)),
             };
             if field.doc_lines.is_empty() {
                 vec![field_decl]
@@ -676,6 +822,14 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+fn format_raw_type(ty: &Type) -> String {
+    match ty {
+        Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::Unit => "void".to_owned(),
+        _ => "Uint8Array".to_owned(),
+    }
 }
 
 /// Formats a type so it's valid TypeScript.
@@ -720,6 +874,16 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::U64 => "bigint",
     };
     string.to_owned()
+}
+
+fn get_field_name(field: &Field) -> String {
+    if let Some(rename) = field.attrs.rename.as_ref() {
+        rename.to_owned()
+    } else if field.name.starts_with("r#") {
+        field.name[2..].to_camel_case()
+    } else {
+        field.name.to_camel_case()
+    }
 }
 
 fn join_lines<F>(lines: &[String], formatter: F) -> String

@@ -39,6 +39,9 @@ export type Exports = {
     myAsyncExportedFunction?: () => Promise<ComplexGuestToHost>;
     myComplexExportedFunction?: (a: ComplexHostToGuest) => ComplexAlias;
     myPlainExportedFunction?: (a: number, b: number) => number;
+    fetchDataRaw?: (url: Uint8Array) => Promise<Uint8Array>;
+    myAsyncExportedFunctionRaw?: () => Promise<Uint8Array>;
+    myComplexExportedFunctionRaw?: (a: Uint8Array) => Uint8Array;
 };
 
 /**
@@ -63,7 +66,7 @@ export async function createRuntime(
     plugin: ArrayBuffer,
     importFunctions: Imports
 ): Promise<Exports> {
-    const promises = new Map<FatPtr, (result: unknown) => void>();
+    const promises = new Map<FatPtr, (result: FatPtr) => void>();
 
     function createAsyncValue(): FatPtr {
         const len = 12; // std::mem::size_of::<AsyncValue>()
@@ -82,9 +85,9 @@ export async function createRuntime(
         return object;
     }
 
-    function promiseFromPtr<T>(ptr: FatPtr): Promise<T> {
-        return new Promise<T>((resolve) => {
-            promises.set(ptr, resolve as (result: unknown) => void);
+    function promiseFromPtr(ptr: FatPtr): Promise<FatPtr> {
+        return new Promise((resolve) => {
+            promises.set(ptr, resolve as (result: FatPtr) => void);
         });
     }
 
@@ -94,16 +97,28 @@ export async function createRuntime(
             throw new FPRuntimeError("Tried to resolve unknown promise");
         }
 
-        resolve(resultPtr ? parseObject(resultPtr) : undefined);
+        resolve(resultPtr);
     }
 
     function serializeObject<T>(object: T): FatPtr {
-        const serialized = encode(object);
+        return exportToMemory(encode(object));
+    }
+
+    function exportToMemory(serialized: Uint8Array): FatPtr {
         const fatPtr = malloc(serialized.length);
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
         buffer.set(serialized);
         return fatPtr;
+    }
+
+    function importFromMemory(fatPtr: FatPtr): Uint8Array {
+        const [ptr, len] = fromFatPtr(fatPtr);
+        const buffer = new Uint8Array(memory.buffer, ptr, len);
+        const copy = new Uint8Array(len);
+        copy.set(buffer);
+        free(fatPtr);
+        return copy;
     }
 
     const { instance } = await WebAssembly.instantiate(plugin, {
@@ -176,14 +191,14 @@ export async function createRuntime(
 
             return (url: string) => {
                 const url_ptr = serializeObject(url);
-                return promiseFromPtr<string>(export_fn(url_ptr));
+                return promiseFromPtr(export_fn(url_ptr)).then((ptr) => parseObject<string>(ptr));
             };
         })(),
         myAsyncExportedFunction: (() => {
             const export_fn = instance.exports.__fp_gen_my_async_exported_function as any;
             if (!export_fn) return;
 
-            return () => promiseFromPtr<ComplexGuestToHost>(export_fn());
+            return () => promiseFromPtr(export_fn()).then((ptr) => parseObject<ComplexGuestToHost>(ptr));
         })(),
         myComplexExportedFunction: (() => {
             const export_fn = instance.exports.__fp_gen_my_complex_exported_function as any;
@@ -195,6 +210,30 @@ export async function createRuntime(
             };
         })(),
         myPlainExportedFunction: instance.exports.__fp_gen_my_plain_exported_function as any,
+        fetchDataRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_fetch_data as any;
+            if (!export_fn) return;
+
+            return (url: Uint8Array) => {
+                const url_ptr = exportToMemory(url);
+                return promiseFromPtr(export_fn(url_ptr)).then(importFromMemory);
+            };
+        })(),
+        myAsyncExportedFunctionRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_my_async_exported_function as any;
+            if (!export_fn) return;
+
+            return () => promiseFromPtr(export_fn()).then(importFromMemory);
+        })(),
+        myComplexExportedFunctionRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_my_complex_exported_function as any;
+            if (!export_fn) return;
+
+            return (a: Uint8Array) => {
+                const a_ptr = exportToMemory(a);
+                return importFromMemory(export_fn(a_ptr));
+            };
+        })(),
     };
 }
 

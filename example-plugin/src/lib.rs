@@ -1,7 +1,7 @@
-use chrono::Utc;
 use example_bindings::*;
 use std::collections::{BTreeMap, HashMap};
 use std::panic;
+use time::OffsetDateTime;
 
 fn init_panic_hook() {
     use std::sync::Once;
@@ -30,13 +30,13 @@ fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexGuestToHost {
     my_complex_imported_function(ComplexGuestToHost {
         map: BTreeMap::new(),
         simple: simple.clone(),
-        timestamp: Utc::now(),
+        timestamp: OffsetDateTime::now_utc(),
     });
 
     ComplexGuestToHost {
         map: BTreeMap::new(),
         simple,
-        timestamp: Utc::now(),
+        timestamp: OffsetDateTime::now_utc(),
     }
 }
 
@@ -48,7 +48,7 @@ async fn my_async_exported_function() -> ComplexGuestToHost {
     ComplexGuestToHost {
         map: BTreeMap::new(),
         simple: result.simple,
-        timestamp: Utc::now(),
+        timestamp: OffsetDateTime::now_utc(),
     }
 }
 
