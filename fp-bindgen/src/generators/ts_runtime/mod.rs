@@ -797,10 +797,6 @@ fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> Strin
 }
 
 fn format_struct_fields(fields: &[Field]) -> Vec<String> {
-    let format_opts = FormatOptions {
-        optimize_binary_types: true,
-    };
-
     fields
         .iter()
         .flat_map(|field| {
@@ -811,14 +807,10 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                         "{}{}: {};",
                         get_field_name(field),
                         optional,
-                        format_type_with_options(ty, format_opts)
+                        format_type(ty)
                     )
                 }
-                ty => format!(
-                    "{}: {};",
-                    get_field_name(field),
-                    format_type_with_options(ty, format_opts)
-                ),
+                ty => format!("{}: {};", get_field_name(field), format_type(ty)),
             };
             if field.doc_lines.is_empty() {
                 vec![field_decl]
@@ -832,11 +824,6 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .collect()
 }
 
-/// Formats a type so it's valid TypeScript.
-fn format_type(ty: &Type) -> String {
-    format_type_with_options(ty, FormatOptions::default())
-}
-
 fn format_raw_type(ty: &Type) -> String {
     match ty {
         Type::Primitive(primitive) => format_primitive(*primitive),
@@ -845,68 +832,28 @@ fn format_raw_type(ty: &Type) -> String {
     }
 }
 
-fn get_field_name(field: &Field) -> String {
-    if let Some(rename) = field.attrs.rename.as_ref() {
-        rename.to_owned()
-    } else if field.name.starts_with("r#") {
-        field.name[2..].to_camel_case()
-    } else {
-        field.name.to_camel_case()
-    }
-}
-
-#[derive(Clone, Copy)]
-struct FormatOptions {
-    optimize_binary_types: bool,
-}
-
-impl Default for FormatOptions {
-    fn default() -> Self {
-        FormatOptions {
-            // We can only optimize in limited contexts, so default is `false`.
-            optimize_binary_types: false,
-        }
-    }
-}
-
-fn format_type_with_options(ty: &Type, opts: FormatOptions) -> String {
+/// Formats a type so it's valid TypeScript.
+fn format_type(ty: &Type) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
         Type::Container(name, ty) => {
             if name == "Option" {
-                format!("{} | null", format_type_with_options(ty, opts))
+                format!("{} | null", format_type(ty))
             } else {
-                format_type_with_options(ty, opts)
+                format_type(ty)
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
         Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::GenericArgument(arg) => arg.name.clone(),
-        Type::List(name, ty) => {
-            if opts.optimize_binary_types
-                && name == "Vec"
-                && ty.as_ref() == &Type::Primitive(Primitive::U8)
-            {
-                "ArrayBuffer".to_owned()
-            } else {
-                format!("Array<{}>", format_type_with_options(ty, opts))
-            }
-        }
-        Type::Map(_, k, v) => format!(
-            "Record<{}, {}>",
-            format_type_with_options(k, opts),
-            format_type_with_options(v, opts)
-        ),
+        Type::List(_, ty) => format!("Array<{}>", format_type(ty)),
+        Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
         Type::Primitive(primitive) => format_primitive(*primitive),
         Type::String => "string".to_owned(),
         Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
-            items
-                .iter()
-                .map(|item| item.name())
-                .collect::<Vec<_>>()
-                .join(", ")
+            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
         ),
         Type::Unit => "void".to_owned(),
     }
@@ -927,6 +874,16 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::U64 => "bigint",
     };
     string.to_owned()
+}
+
+fn get_field_name(field: &Field) -> String {
+    if let Some(rename) = field.attrs.rename.as_ref() {
+        rename.to_owned()
+    } else if field.name.starts_with("r#") {
+        field.name[2..].to_camel_case()
+    } else {
+        field.name.to_camel_case()
+    }
 }
 
 fn join_lines<F>(lines: &[String], formatter: F) -> String

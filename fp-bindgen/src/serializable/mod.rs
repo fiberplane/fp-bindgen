@@ -1,9 +1,9 @@
-#[cfg(feature = "chrono-compat")]
-mod chrono;
 #[cfg(feature = "http-compat")]
 mod http;
 #[cfg(feature = "serde-bytes-compat")]
 mod serde_bytes;
+#[cfg(feature = "time-compat")]
+mod time;
 
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},

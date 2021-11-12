@@ -5,11 +5,9 @@ edition = "2018"
 
 [dependencies]
 fp-bindgen-macros = { path = "../macros" }
-chrono = { version = "0.4.19", features = ["serde"] }
 once_cell = "1"
 rmp-serde = "=1.0.0-beta.2"
 serde = { version = "1.0", features = ["derive"] }
-serde_bytes = "0.11"
 
 [features]
 async = []
