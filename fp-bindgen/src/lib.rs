@@ -16,6 +16,7 @@ use std::{
     fmt::Display,
     fs,
 };
+use types::CargoDependency;
 
 primitive_impls!();
 
@@ -47,7 +48,7 @@ pub struct RustPluginConfig<'a> {
     pub name: &'a str,
     pub authors: &'a str,
     pub version: &'a str,
-    pub dependencies: BTreeMap<String, String>,
+    pub dependencies: BTreeMap<&'static str, CargoDependency>,
 }
 #[derive(Debug, Clone)]
 pub struct WasmerRuntimeConfig {

@@ -1,7 +1,8 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
 use crate::types::{
-    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+    format_name_with_generics, CargoDependency, EnumOptions, Field, GenericArgument, StructOptions,
+    Type, Variant,
 };
 use crate::RustPluginConfig;
 use std::{
@@ -64,37 +65,37 @@ fn generate_cargo_file(
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
-    let mut dependencies = BTreeMap::new();
-    dependencies.insert(
-        "fp-bindgen-support".to_owned(),
-        format!(
-            "{{ git = \"ssh://git@github.com/fiberplane/fp-bindgen.git\", branch = \"main\"{} }}",
-            if requires_async {
-                ", features = [\"async\"]"
-            } else {
-                ""
-            }
+    let mut dependencies = BTreeMap::from([
+        (
+            "fp-bindgen-support",
+            CargoDependency {
+                git: Some("ssh://git@github.com/fiberplane/fp-bindgen.git"),
+                branch: Some("main"),
+                path: None,
+                version: None,
+                features: BTreeSet::from(if requires_async { ["async"] } else { [] }),
+            },
         ),
-    );
-    dependencies.insert("once_cell".to_owned(), r#""1""#.to_owned());
-    dependencies.insert("rmp-serde".to_owned(), r#""=1.0.0-beta.2""#.to_owned());
-    dependencies.insert(
-        "serde".to_owned(),
-        r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
-    );
+        ("once_cell", CargoDependency::with_version("1")),
+        ("rmp-serde", CargoDependency::with_version("=1.0.0-beta.2")),
+        (
+            "serde",
+            CargoDependency::with_version_and_features("1", BTreeSet::from(["derive"])),
+        ),
+    ]);
 
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
         if let Type::Custom(custom_type) = ty {
             for (name, value) in custom_type.rs_dependencies.iter() {
-                dependencies.insert(name.clone(), value.clone());
+                dependencies.insert(name, value.clone());
             }
         }
     }
 
     // Inject dependencies passed through the config:
     for (name, value) in config.dependencies {
-        dependencies.insert(name, value);
+        dependencies.insert(name, value.clone());
     }
 
     write_bindings_file(

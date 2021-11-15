@@ -7,9 +7,11 @@ use std::{
 };
 use syn::{Item, PathArguments};
 
+mod cargo_dependency;
 mod enums;
 mod structs;
 
+pub use cargo_dependency::CargoDependency;
 pub use enums::{EnumOptions, Variant};
 pub use structs::{Field, FieldAttrs, StructOptions};
 
@@ -194,8 +196,8 @@ pub struct CustomType {
     ///
     /// Keys in the map are dependency names as they appear on the left-hand
     /// side of the `=` in the `Cargo.toml` `[dependencies]` section, while the
-    /// value is the literal part that comes on the right-hand side.
-    pub rs_dependencies: BTreeMap<String, String>,
+    /// value describes what comes on the right-hand side.
+    pub rs_dependencies: BTreeMap<&'static str, CargoDependency>,
 
     /// Name to refer to the type in the TypeScript generator.
     pub ts_ty: String,
