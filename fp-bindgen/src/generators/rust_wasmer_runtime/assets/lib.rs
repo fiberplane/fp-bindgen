@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::task::Waker;
 use support::FatPtr;
-use wasmer::{LazyInit, Memory, Module, NativeFunc, WasmerEnv};
+use wasmer::{LazyInit, Memory, Module, NativeFunc, Store, Universal, WasmerEnv};
 
 mod errors;
 pub mod spec;
@@ -13,13 +13,25 @@ pub struct Runtime {
 }
 
 impl Runtime {
-    pub fn new(
-        store: wasmer::Store,
-        wasm_module: impl AsRef<[u8]>,
-    ) -> Result<Self, errors::RuntimeError> {
+    pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, errors::RuntimeError> {
+        let store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
 
         Ok(Self { module })
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    fn default_store() -> wasmer::Store {
+        let compiler = wasmer::Cranelift::default();
+        let engine = Universal::new(compiler).engine();
+        Store::new(&engine)
+    }
+
+    #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
+    fn default_store() -> wasmer::Store {
+        let compiler = wasmer::Singlepass::default();
+        let engine = Universal::new(compiler).engine();
+        Store::new(&engine)
     }
 }
 
