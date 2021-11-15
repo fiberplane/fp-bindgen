@@ -1,3 +1,7 @@
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, ToTokens};
+
+use crate::formatter::{Either, ExportSafeFunction, ExportSafeFunctionArg, ExportSafeType};
 use crate::functions::{Function, FunctionList};
 use crate::generators::rust_plugin::{
     format_primitive, format_raw_type, format_type, generate_type_bindings,
@@ -47,128 +51,98 @@ pub fn generate_bindings(
     );
 }
 
+fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenStream {
+    let export_names = import_functions
+        .iter()
+        .map(|f| format!("__fp_gen_{}", f.name));
+    let wrapper_names = import_functions
+        .iter()
+        .map(|f| format_ident!("_{}", f.name));
+
+    quote! {
+        fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {
+            imports! {
+                "fp" => {
+                    "__fp_host_resolve_async_value" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
+                    #(#export_names => Function::new_native_with_env(store, env.clone(), #wrapper_names)),*
+                }
+            }
+        }
+    }
+}
+
 pub fn generate_function_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     generate_raw_export_wrappers: bool,
     path: &str,
 ) {
-    let imports_map = import_functions
-        .iter()
-        .map(|function| {
-            let name = &function.name;
-            format!(
-                "            \"__fp_gen_{}\" => Function::new_native_with_env(store, env.clone(), _{}),",
-                name, name
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    let create_import_object_func =
+        generate_create_import_object_func(&import_functions).to_string();
 
-    let imports = import_functions
-        .iter()
-        .map(|function| {
-            let name = &function.name;
-            let args_with_types = function
-                .args
-                .iter()
-                .map(|arg| {
-                    format!(
-                        ", {}: {}",
-                        arg.name,
-                        match arg.ty {
-                            Type::Primitive(primitive) => format_primitive(primitive),
-                            _ => "FatPtr".to_owned(),
-                        }
-                    )
-                })
-                .collect::<Vec<_>>()
-                .join("");
-            let import_args = function
-                .args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(_) => "".to_owned(),
-                    _ => format!(
-                        "    let {} = import_from_guest::<{}>(env, {});\n",
-                        arg.name,
-                        format_type(&arg.ty),
-                        arg.name
-                    ),
-                })
-                .collect::<Vec<_>>()
-                .join("");
-            let return_type = if function.is_async {
-                " -> FatPtr".to_owned()
-            } else {
-                match &function.return_type {
-                    Type::Unit => "".to_owned(),
-                    ty => format!(
-                        " -> {}",
-                        match ty {
-                            Type::Primitive(primitive) => format_primitive(*primitive),
-                            _ => "FatPtr".to_owned(),
-                        }
-                    ),
-                }
-            };
-            let args = function
-                .args
-                .iter()
-                .map(|arg| arg.name.clone())
-                .collect::<Vec<_>>()
-                .join(", ");
-            let call_fn = if function.is_async {
-                let call_async_fn = match &function.return_type {
-                    Type::Unit => format!(
-                        "super::{}({}).await;\n        let result_ptr = 0;",
-                        name, args
-                    ),
-                    _ => format!(
-                        "let result_ptr = export_to_guest(&env, &super::{}({}).await);",
-                        name, args
-                    ),
-                };
+    let imports = import_functions.iter().map(|function| {
+        let Function {
+            name,
+            args,
+            is_async,
+            return_type,
+            ..
+        } = function;
 
-                format!(
-                    "let env = env.clone();
-    let async_ptr = create_future_value(&env);
-    let handle = tokio::runtime::Handle::current();
-    handle.spawn(async move {{
-        {}
+        let underscore_name = format_ident!("_{}", name);
+        let input_args = args.iter().map(ExportSafeFunctionArg);
+        let wrapper_return_type = if *is_async {
+            quote! {FatPtr}
+        } else {
+            ExportSafeType(return_type).to_token_stream()
+        };
 
-        unsafe {{
-            env.__fp_guest_resolve_async_value
-                .get_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect(\"Runtime error: Cannot resolve async value\");
-        }}
-    }});
+        let complex_args = args
+            .iter()
+            .filter(|a| !matches!(a.ty, Type::Primitive(_)))
+            .collect::<Vec<_>>();
+        let complex_types = complex_args
+            .iter()
+            .map(|a| format_type(&a.ty).parse::<TokenStream>().unwrap());
+        let complex_idents = complex_args.iter().map(|a| format_ident!("{}", a.name)).collect::<Vec<_>>();
 
-    async_ptr",
-                    call_async_fn
-                )
-            } else {
-                match &function.return_type {
-                    Type::Unit => format!("super::{}({});", name, args),
-                    Type::Primitive(_) => format!("super::{}({})", name, args),
-                    _ => format!("export_to_guest(env, &super::{}({}))", name, args),
-                }
-            };
-            format!(
-                "pub fn _{}(env: &RuntimeInstanceData{}){} {{
-{}{}    {}
-}}",
-                name,
-                args_with_types,
-                return_type,
-                import_args,
-                if import_args.is_empty() { "" } else { "\n" },
-                call_fn
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n\n");
+        let impl_func_name = format_ident!("{}", name);
+        let arg_idents = args.iter().map(|a| format_ident!("{}",a.name));
+        let func_call = quote!(super::#impl_func_name(#(#arg_idents),*));
+
+        let wrapper = if *is_async {
+            quote!{
+                let env = env.clone();
+                let async_ptr = create_future_value(&env);
+                let handle = tokio::runtime::Handle::current();
+                handle.spawn(async move {
+                    let result = result.await;
+                    let result_ptr = export_to_guest(&env, &result);
+                    unsafe {
+                        env.__fp_guest_resolve_async_value
+                            .get_unchecked()
+                            .call(async_ptr, result_ptr)
+                            .expect("Runtime error: Cannot resolve async value");
+                    }
+                });
+                async_ptr
+            }
+        }
+        else if matches!(return_type, Type::Primitive(_)) {
+            quote!{result}
+        } else {
+            quote!{export_to_gues(env, &result)}
+        };
+
+        (quote! {
+            pub fn #underscore_name(env: &RuntimeInstanceData #(,#input_args)*) -> #wrapper_return_type {
+                #(let #complex_idents = import_from_guest::<#complex_types>(env, #complex_idents);)*
+
+                let result = #func_call;
+                #wrapper
+            }
+        }).to_string()
+    }).collect::<Vec<_>>().join("\n\n");
 
     let exports = export_functions
         .iter()
@@ -203,18 +177,12 @@ impl Runtime {{
 {}{}
 }}
 
-fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {{
-    imports! {{
-        \"fp\" => {{
-            \"__fp_host_resolve_async_value\" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
+
 {}
-        }}
-    }}
-}}
 
 {}
 ",
-            exports, raw_exports, imports_map, imports,
+            exports, raw_exports, create_import_object_func, imports,
         ),
     );
 }

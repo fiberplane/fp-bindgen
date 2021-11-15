@@ -1,5 +1,6 @@
 mod casing;
 mod docs;
+mod formatter;
 mod functions;
 mod generators;
 mod serializable;
