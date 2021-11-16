@@ -1,14 +1,11 @@
 use crate::functions::{Function, FunctionArg, FunctionList};
-use crate::generators::rust_plugin::{
-    generate_type_bindings,
-};
+use crate::generators::rust_plugin::generate_type_bindings;
 use crate::types::Type;
 use proc_macro2::{Punct, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use syn::token::Async;
 use std::collections::BTreeSet;
 use std::fs;
-
+use syn::token::Async;
 
 pub fn generate_bindings(
     import_functions: FunctionList,
@@ -29,11 +26,7 @@ pub fn generate_bindings(
         "rust_wasmer_runtime",
     );
 
-    generate_function_bindings(
-        import_functions,
-        export_functions,
-        &spec_path,
-    );
+    generate_function_bindings(import_functions, export_functions, &spec_path);
 
     write_bindings_file(
         format!("{}/errors.rs", path),
@@ -80,7 +73,6 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenS
         }
     }
 }
-
 
 pub struct ExportSafeFunctionArg<'a>(pub &'a FunctionArg);
 
@@ -149,12 +141,12 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         let asyncness = is_async.then(Async::default);
         let awaiter = is_async.then(|| quote! {let res = res.await?;});
 
-        let return_wrapper = if *is_async { 
-            quote!{
+        let return_wrapper = if *is_async {
+            quote! {
                 let result = ModuleRawFuture::new(env.clone(), result).await;
             }
         } else {
-            quote!{
+            quote! {
                 let result = import_from_guest_raw(&env, result);
             }
         };
@@ -214,29 +206,29 @@ impl ToTokens for RuntimeExportedFunction<'_> {
         let input_args = args.iter().map(ExportSafeFunctionArg);
         let wrapper_return_type = if *is_async {
             quote! {-> FatPtr}
-        }
-        else if matches!(return_type, Type::Unit) {
+        } else if matches!(return_type, Type::Unit) {
             TokenStream::default()
         } else {
             let est = ExportSafeType(return_type);
-            quote!{-> #est}
+            quote! {-> #est}
         };
 
         let complex_args = args
             .iter()
             .filter(|a| !matches!(a.ty, Type::Primitive(_)))
             .collect::<Vec<_>>();
-        let complex_types = complex_args
+        let complex_types = complex_args.iter().map(|a| &a.ty);
+        let complex_idents = complex_args
             .iter()
-            .map(|a| &a.ty);
-        let complex_idents = complex_args.iter().map(|a| format_ident!("{}", a.name)).collect::<Vec<_>>();
+            .map(|a| format_ident!("{}", a.name))
+            .collect::<Vec<_>>();
 
         let impl_func_name = format_ident!("{}", name);
-        let arg_idents = args.iter().map(|a| format_ident!("{}",a.name));
+        let arg_idents = args.iter().map(|a| format_ident!("{}", a.name));
         let func_call = quote!(super::#impl_func_name(#(#arg_idents),*));
 
         let wrapper = if *is_async {
-            quote!{
+            quote! {
                 let env = env.clone();
                 let async_ptr = create_future_value(&env);
                 let handle = tokio::runtime::Handle::current();
@@ -252,13 +244,11 @@ impl ToTokens for RuntimeExportedFunction<'_> {
                 });
                 async_ptr
             }
-        }
-        else
-        {
+        } else {
             match return_type {
-                Type::Primitive(_) => quote!{result},
-                Type::Unit => quote!{()},
-                _ => quote!{export_to_guest(env, &result)}
+                Type::Primitive(_) => quote! {result},
+                Type::Unit => quote! {()},
+                _ => quote! {export_to_guest(env, &result)},
             }
         };
 
@@ -306,9 +296,9 @@ pub fn generate_function_bindings(
         }
         #newline
         #newline
-        
+
         #create_import_object_func
-        
+
         #newline
         #newline
         #(#imports)*
@@ -325,8 +315,6 @@ where
 {
     fs::write(&file_path, &contents).expect("Could not write bindings file");
 }
-
-
 
 #[cfg(test)]
 mod test {
