@@ -1,17 +1,17 @@
 use crate::primitives::Primitive;
+pub use enums::{EnumOptions, Variant};
+use quote::quote;
 use quote::ToTokens;
 use std::{
     collections::{hash_map::DefaultHasher, BTreeMap, BTreeSet},
     hash::{Hash, Hasher},
     str::FromStr,
 };
+pub use structs::{Field, FieldAttrs, StructOptions};
 use syn::{Item, PathArguments};
 
 mod enums;
 mod structs;
-
-pub use enums::{EnumOptions, Variant};
-pub use structs::{Field, FieldAttrs, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
@@ -19,6 +19,13 @@ pub use structs::{Field, FieldAttrs, StructOptions};
 pub struct GenericArgument {
     pub name: String,
     pub ty: Option<Type>,
+}
+
+impl ToTokens for GenericArgument {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let ty = syn::parse_str::<syn::Type>(&self.name).unwrap();
+        (quote! {#ty}).to_tokens(tokens)
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -176,6 +183,39 @@ impl Ord for Type {
 impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.ord_key().partial_cmp(&other.ord_key())
+    }
+}
+
+impl ToTokens for Type {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        (match self {
+            Type::Alias(name, _) | Type::Custom(CustomType { rs_ty: name, .. }) => {
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#ty}
+            }
+            Type::Container(name, ty) | Type::List(name, ty) => {
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#name<#ty>}
+            }
+            Type::Struct(name, generic_args, _, _, _) | Type::Enum(name, generic_args, _, _, _) => {
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
+                if generic_args.is_empty() {
+                    quote! {#ty}
+                } else {
+                    quote! {#ty<#(#generic_args),*>}
+                }
+            }
+            Type::GenericArgument(arg) => quote! {#arg},
+            Type::Map(name, k, v) => {
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#name<#k,#v>}
+            }
+            Type::Primitive(primitive) => quote! {#primitive},
+            Type::String => quote! {String},
+            Type::Tuple(items) => quote! {(#(#items),*)},
+            Type::Unit => quote! {()},
+        })
+        .to_tokens(tokens)
     }
 }
 
