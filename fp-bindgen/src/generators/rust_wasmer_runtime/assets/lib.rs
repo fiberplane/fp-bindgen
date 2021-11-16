@@ -22,14 +22,14 @@ impl Runtime {
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     fn default_store() -> wasmer::Store {
-        let compiler = wasmer::Cranelift::default();
+        let compiler = wasmer_compiler_cranelift::Cranelift::default();
         let engine = Universal::new(compiler).engine();
         Store::new(&engine)
     }
 
     #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
     fn default_store() -> wasmer::Store {
-        let compiler = wasmer::Singlepass::default();
+        let compiler = wasmer_compiler_singlepass::Singlepass::default();
         let engine = Universal::new(compiler).engine();
         Store::new(&engine)
     }
