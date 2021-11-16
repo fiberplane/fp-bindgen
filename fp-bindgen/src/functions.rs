@@ -1,9 +1,7 @@
 use crate::{
     docs::get_doc_lines,
-    generators::rust_plugin::format_type,
     types::{resolve_type_or_panic, Type},
 };
-use proc_macro2::Ident;
 use quote::{format_ident, quote, ToTokens};
 use std::collections::BTreeSet;
 use syn::{token::Async, FnArg, ForeignItemFn, ReturnType};
@@ -141,7 +139,7 @@ impl ToTokens for Function {
         });
 
         (quote! {
-            //#(#doc_lines)*
+            #(#[doc = #doc_lines])*
             #asyncness fn #name(#(#args),*) -> #return_type
         })
         .to_tokens(tokens);

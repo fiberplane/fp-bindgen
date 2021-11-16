@@ -147,7 +147,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         let safe_arg_types = args.iter().map(|a| ExportSafeType(&a.ty));
         let safe_return_type = ExportSafeType(return_type);
 
-        let asyncness = is_async.then(|| Async::default());
+        let asyncness = is_async.then(Async::default);
         let awaiter = is_async.then(|| quote! {let res = res.await?;});
 
         let return_wrapper = if *is_async { 

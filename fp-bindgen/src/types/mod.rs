@@ -190,15 +190,15 @@ impl ToTokens for Type {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         (match self {
             Type::Alias(name, _) | Type::Custom(CustomType { rs_ty: name, .. }) => {
-                let ty = syn::parse_str::<syn::Type>(&name).unwrap();
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
                 quote! {#ty}
             }
             Type::Container(name, ty) | Type::List(name, ty) => {
-                let name = syn::parse_str::<syn::Type>(&name).unwrap();
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
                 quote! {#name<#ty>}
             }
             Type::Struct(name, generic_args, _, _, _) | Type::Enum(name, generic_args, _, _, _) => {
-                let ty = syn::parse_str::<syn::Type>(&name).unwrap();
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
                 if generic_args.is_empty() {
                     quote! {#ty}
                 } else {
@@ -207,7 +207,7 @@ impl ToTokens for Type {
             }
             Type::GenericArgument(arg) => quote! {#arg},
             Type::Map(name, k, v) => {
-                let name = syn::parse_str::<syn::Type>(&name).unwrap();
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
                 quote! {#name<#k,#v>}
             }
             Type::Primitive(primitive) => quote! {#primitive},
