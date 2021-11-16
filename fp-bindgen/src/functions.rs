@@ -135,7 +135,6 @@ impl ToTokens for Function {
         } = self;
 
         let name = format_ident!("{}", name);
-        let return_type = syn::parse_str::<syn::Type>(&format_type(return_type)).unwrap();
 
         let asyncness = is_async.then(|| Async {
             ..Default::default()
@@ -159,7 +158,6 @@ impl ToTokens for FunctionArg {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         let Self { name, ty } = self;
         let name = format_ident!("{}", name);
-        let ty = syn::parse_str::<syn::Type>(&format_type(ty)).unwrap();
 
         (quote! {
             #name: #ty

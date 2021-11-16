@@ -51,9 +51,7 @@ pub struct RustPluginConfig<'a> {
     pub dependencies: BTreeMap<String, String>,
 }
 #[derive(Debug, Clone)]
-pub struct WasmerRuntimeConfig {
-    pub generate_raw_export_wrappers: bool,
-}
+pub struct WasmerRuntimeConfig {}
 
 #[derive(Debug, Clone)]
 pub struct TsRuntimeConfig {
