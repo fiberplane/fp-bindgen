@@ -178,7 +178,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 let instance = Instance::new(&self.module, &import_object).unwrap();
                 env.init_with_instance(&instance).unwrap();
                 
-                #(let #serialize_names = export_to_guest_raw(#serialize_names);)*
+                #(let #serialize_names = export_to_guest_raw(&env, #serialize_names);)*
                 
                 let function = instance
                     .exports

@@ -21,7 +21,7 @@ impl Runtime {
         let import_object = create_import_object(self.module.store(), &env);
         let instance = Instance::new(&self.module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
-        let url = export_to_guest_raw(url);
+        let url = export_to_guest_raw(&env, url);
         let function = instance
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_fetch_data")
@@ -63,7 +63,7 @@ impl Runtime {
         let import_object = create_import_object(self.module.store(), &env);
         let instance = Instance::new(&self.module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
-        let a = export_to_guest_raw(a);
+        let a = export_to_guest_raw(&env, a);
         let function = instance
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_my_complex_exported_function")
