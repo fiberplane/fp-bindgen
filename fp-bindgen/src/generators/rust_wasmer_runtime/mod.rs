@@ -3,7 +3,6 @@ use crate::generators::rust_plugin::{
     generate_type_bindings,
 };
 use crate::types::Type;
-use crate::WasmerRuntimeConfig;
 use proc_macro2::{Punct, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::token::Async;
@@ -16,7 +15,6 @@ pub fn generate_bindings(
     export_functions: FunctionList,
     serializable_types: BTreeSet<Type>,
     deserializable_types: BTreeSet<Type>,
-    _runtime_config: WasmerRuntimeConfig,
     path: &str,
 ) {
     let spec_path = format!("{}/spec", path);
@@ -49,7 +47,8 @@ pub fn generate_bindings(
 }
 
 fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenStream {
-    //yes this is pretty ugly but fortunately *only* required here to get proper formatting with quote
+    //yes this is pretty ugly but fortunately *only* required here to get proper formatting with quote!
+    //since rustfmt doesn't format inside macro invocations :(
     let newline = Punct::new('\n', proc_macro2::Spacing::Alone);
     let space = Punct::new(' ', proc_macro2::Spacing::Joint);
     let spaces4: Vec<_> = (0..3).map(|_| &space).collect();
@@ -218,8 +217,7 @@ impl ToTokens for RuntimeExportedFunction<'_> {
         }
         else if matches!(return_type, Type::Unit) {
             TokenStream::default()
-        }
-        else {
+        } else {
             let est = ExportSafeType(return_type);
             quote!{-> #est}
         };

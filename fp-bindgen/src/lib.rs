@@ -22,7 +22,7 @@ primitive_impls!();
 #[derive(Debug, Clone)]
 pub enum BindingsType<'a> {
     RustPlugin(RustPluginConfig<'a>),
-    RustWasmerRuntime(WasmerRuntimeConfig),
+    RustWasmerRuntime,
     TsRuntime(TsRuntimeConfig),
 }
 
@@ -49,8 +49,6 @@ pub struct RustPluginConfig<'a> {
     pub version: &'a str,
     pub dependencies: BTreeMap<String, String>,
 }
-#[derive(Debug, Clone)]
-pub struct WasmerRuntimeConfig {}
 
 #[derive(Debug, Clone)]
 pub struct TsRuntimeConfig {
@@ -75,16 +73,13 @@ pub fn generate_bindings(
             plugin_config,
             config.path,
         ),
-        BindingsType::RustWasmerRuntime(runtime_config) => {
-            generators::rust_wasmer_runtime::generate_bindings(
-                import_functions,
-                export_functions,
-                serializable_types,
-                deserializable_types,
-                runtime_config,
-                config.path,
-            )
-        }
+        BindingsType::RustWasmerRuntime => generators::rust_wasmer_runtime::generate_bindings(
+            import_functions,
+            export_functions,
+            serializable_types,
+            deserializable_types,
+            config.path,
+        ),
         BindingsType::TsRuntime(runtime_config) => generators::ts_runtime::generate_bindings(
             import_functions,
             export_functions,
