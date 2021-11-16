@@ -162,24 +162,24 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 rmp_serde::from_slice(&res).unwrap()
             }
-            
+
             pub #asyncness fn #raw_name(&self #(,#raw_format_args)*) -> Result<Vec<u8>, InvocationError> {
                 let mut env = RuntimeInstanceData::default();
                 let import_object = create_import_object(self.module.store(), &env);
                 let instance = Instance::new(&self.module, &import_object).unwrap();
                 env.init_with_instance(&instance).unwrap();
-                
+
                 #(let #serialize_names = export_to_guest_raw(&env, #serialize_names);)*
-                
+
                 let function = instance
                     .exports
                     .get_native_function::<(#(#safe_arg_types),*), #safe_return_type>(#fp_gen_name)
                     .map_err(|_| InvocationError::FunctionNotExported)?;
 
                 let result = function.call((#(#arg_names),*))?;
-                
+
                 #return_wrapper
-                
+
                 Ok(result)
             }
             #newline
