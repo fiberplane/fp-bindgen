@@ -41,6 +41,9 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
+      - name: Check format
+        run: cargo fmt -- --check
+
       - name: Run tests
         run: cargo test
 
