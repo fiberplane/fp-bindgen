@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use crate::CustomType;
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},
-    types::{EnumOptions, GenericArgument, Variant},
+    types::{EnumOptions, GenericArgument, Variant, VariantAttrs},
     Type,
 };
 use std::{
@@ -266,11 +266,13 @@ where
                     name: "Ok".to_owned(),
                     ty: Type::Tuple(vec![Type::named_generic("T")]),
                     doc_lines: vec![" Represents a succesful result.".to_owned()],
+                    attrs: VariantAttrs::default(),
                 },
                 Variant {
                     name: "Err".to_owned(),
                     ty: Type::Tuple(vec![Type::named_generic("E")]),
                     doc_lines: vec![" Represents an error.".to_owned()],
+                    attrs: VariantAttrs::default(),
                 },
             ],
             EnumOptions::default(),
