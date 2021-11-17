@@ -425,7 +425,7 @@ mod tests {
     use super::resolve_type;
     use crate::{
         primitives::Primitive,
-        types::{GenericArgument, StructOptions},
+        types::{Field, FieldAttrs, GenericArgument, StructOptions},
         Type,
     };
     use std::collections::BTreeSet;
@@ -511,5 +511,136 @@ mod tests {
         types.insert(vec.clone());
 
         assert_eq!(resolve_type(&ty, &types), Some(vec));
+    }
+
+    #[test]
+    fn test_resolve_nested_specialized_type_among_unspecialized() {
+        let ty: syn::Type = parse_quote!(Vec<Point<f64>>);
+
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: None,
+        }));
+        let generic_point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        let specialized_point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(specialized_point.clone()));
+
+        let mut types = BTreeSet::new();
+        types.insert(t);
+        types.insert(generic_point);
+        types.insert(specialized_point);
+        types.insert(vec.clone());
+
+        assert_eq!(resolve_type(&ty, &types), Some(vec));
+    }
+
+    #[test]
+    fn test_with_specialized_args() {
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: None,
+        }));
+        assert_eq!(
+            t.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::GenericArgument(Box::new(GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }))
+        );
+
+        let v = Type::GenericArgument(Box::new(GenericArgument {
+            name: "V".to_owned(),
+            ty: None,
+        }));
+        assert_eq!(
+            v.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::GenericArgument(Box::new(GenericArgument {
+                name: "V".to_owned(),
+                ty: None,
+            }))
+        );
+
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        assert_eq!(
+            point.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::Struct(
+                "Point".to_owned(),
+                vec![GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                }],
+                vec![],
+                vec![Field {
+                    name: "value".to_owned(),
+                    ty: Type::GenericArgument(Box::new(GenericArgument {
+                        name: "T".to_owned(),
+                        ty: Some(Type::Primitive(Primitive::F64)),
+                    })),
+                    doc_lines: vec![],
+                    attrs: FieldAttrs::default(),
+                }],
+                StructOptions::default(),
+            )
+        );
     }
 }
