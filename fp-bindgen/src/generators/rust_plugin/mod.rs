@@ -82,7 +82,6 @@ fn generate_cargo_file(
         "serde".to_owned(),
         r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
     );
-    dependencies.insert("serde_bytes".to_owned(), r#""0.11""#.to_owned());
 
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
@@ -492,22 +491,19 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
-            if matches!(&field.ty, Type::Container(name, _) if name == "Option")
-                && !serde_attrs
+            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
+                if !serde_attrs
+                    .iter()
+                    .any(|attr| attr == "default" || attr.starts_with("default = "))
+                {
+                    serde_attrs.push("default".to_owned());
+                }
+                if !serde_attrs
                     .iter()
                     .any(|attr| attr.starts_with("skip_serializing_if ="))
-            {
-                serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
-            }
-
-            if is_binary_type(&field.ty)
-                && !serde_attrs.iter().any(|attr| {
-                    attr.starts_with("deserialize_with =")
-                        || attr.starts_with("serialize_with =")
-                        || attr.starts_with("with =")
-                })
-            {
-                serde_attrs.push("with = \"serde_bytes\"".to_owned());
+                {
+                    serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                }
             }
 
             let docs = if field.doc_lines.is_empty() {
@@ -527,6 +523,7 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
             let annotations = if serde_attrs.is_empty() {
                 "".to_owned()
             } else {
+                serde_attrs.sort();
                 format!("#[serde({})]\n", serde_attrs.join(", "))
             };
 
@@ -556,22 +553,9 @@ pub fn format_type(ty: &Type) -> String {
         Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "({})",
-            items
-                .iter()
-                .map(|item| item.name())
-                .collect::<Vec<_>>()
-                .join(", ")
+            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
         ),
         Type::Unit => "()".to_owned(),
-    }
-}
-
-/// Formats types so that all complex types are replaced with the raw serialized version
-pub fn format_raw_type(ty: &Type) -> String {
-    match ty {
-        Type::Primitive(primitive) => format_primitive(*primitive),
-        Type::Unit => "()".to_owned(),
-        _ => "Vec<u8>".to_string(),
     }
 }
 
@@ -590,19 +574,6 @@ pub fn format_primitive(primitive: Primitive) -> String {
         Primitive::U64 => "u64",
     };
     string.to_owned()
-}
-
-/// Detects types that can be encoded as a binary blob.
-fn is_binary_type(ty: &Type) -> bool {
-    match ty {
-        Type::List(name, ty) if name == "Vec" && ty.as_ref() == &Type::Primitive(Primitive::U8) => {
-            true
-        }
-        Type::Container(name, ty) if (name == "Box" || name == "Option") => {
-            is_binary_type(ty.as_ref())
-        }
-        _ => false,
-    }
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

@@ -9,4 +9,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 example-bindings = { path = "../bindings/rust-plugin" }
-chrono = "0.4.19"
+time = "0.3"

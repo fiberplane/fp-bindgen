@@ -181,7 +181,14 @@ fn parse_generic_args_for_type(
                 },
             }),
         });
-        resolve_type(&ty, dependencies)
+        // It's possible `resolve_type()` simply resolves to the generic
+        // argument itself, in which case we should ignore the match, lest the
+        // type of the generic argument for which we called this function turns
+        // into itself.
+        match resolve_type(&ty, dependencies) {
+            Some(Type::GenericArgument(_)) => None,
+            other => other,
+        }
     };
 
     let generic_args = syn::parse_str::<AngleBracketedGenericArguments>(generic_args).unwrap();
@@ -255,5 +262,87 @@ pub fn peel(name: &str) -> (&str, &str) {
             &name[start_index..end_index + 1],
         ),
         _ => (name, ""),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_generic_args_for_type;
+    use crate::{
+        primitives::Primitive,
+        types::{Field, FieldAttrs, GenericArgument, StructOptions, Type},
+    };
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn test_parse_generic_args_for_specialized_type() {
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: Some(Type::Primitive(Primitive::F64)),
+        }));
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+
+        let dependencies = BTreeSet::from([t, point.clone()]);
+
+        assert_eq!(
+            parse_generic_args_for_type("<T>", &point, "Point<f64>", &dependencies),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]
+        );
+    }
+
+    #[test]
+    fn test_parse_generic_args_for_generic_type() {
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: None,
+        }));
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+
+        let dependencies = BTreeSet::from([t, point.clone()]);
+
+        assert_eq!(
+            parse_generic_args_for_type("<T>", &point, "Point<T>", &dependencies),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }]
+        );
     }
 }

@@ -1,8 +1,8 @@
-use chrono::{DateTime, Utc};
-use fp_bindgen::{prelude::*, WasmerRuntimeConfig};
+use fp_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
+use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
 
@@ -31,9 +31,9 @@ pub struct ComplexHostToGuest {
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
     pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
     #[fp(rename = "optional_timestamp")]
-    pub renamed: Option<DateTime<Utc>>,
+    pub renamed: Option<OffsetDateTime>,
     /// Raw identifiers are supported too.
     pub r#type: String,
 }
@@ -44,7 +44,7 @@ pub type ComplexAlias = ComplexGuestToHost;
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
-    pub timestamp: DateTime<Utc>,
+    pub timestamp: OffsetDateTime,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
@@ -65,8 +65,8 @@ pub struct RequestOptions {
     pub url: String,
     pub method: RequestMethod,
     pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none", with = "serde_bytes")]
-    pub body: Option<Vec<u8>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body: Option<ByteBuf>,
 }
 
 /// A response to a request.
@@ -170,9 +170,7 @@ fn main() {
                 r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned(),
             )]),
         }),
-        BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
-            generate_raw_export_wrappers: true,
-        }),
+        BindingsType::RustWasmerRuntime,
         BindingsType::TsRuntime(TsRuntimeConfig {
             generate_raw_export_wrappers: true,
         }),
@@ -243,9 +241,7 @@ fn test_generate_rust_wasmer_runtime() {
         ),
     ];
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
-            generate_raw_export_wrappers: true
-        }),
+        bindings_type: BindingsType::RustWasmerRuntime,
         path: "bindings/rust-wasmer-runtime",
     });
     for (path, expected) in FILES {

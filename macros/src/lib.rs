@@ -4,7 +4,7 @@ use crate::{
 };
 use proc_macro::{TokenStream, TokenTree};
 use proc_macro_error::{abort, proc_macro_error, ResultExt};
-use quote::{ToTokens, __private::ext, format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use std::{collections::HashSet, iter::once};
 use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemUse, Pat, PatPath, Path,
