@@ -1,5 +1,5 @@
 use crate::primitives::Primitive;
-pub use enums::{EnumOptions, Variant};
+pub use enums::{EnumOptions, Variant, VariantAttrs};
 use quote::quote;
 use quote::ToTokens;
 use std::{
@@ -143,9 +143,8 @@ impl Type {
                 variants
                     .into_iter()
                     .map(|variant| Variant {
-                        doc_lines: variant.doc_lines,
-                        name: variant.name,
                         ty: variant.ty.with_specialized_args(specialized_args),
+                        ..variant
                     })
                     .collect(),
                 opts,

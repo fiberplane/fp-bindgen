@@ -96,6 +96,7 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
+    #[fp(rename = "other/misc")]
     Other {
         reason: String,
     },

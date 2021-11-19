@@ -3,7 +3,7 @@ use super::{
     structs::{Field, StructOptions},
     GenericArgument, Type,
 };
-use crate::{casing::Casing, docs::get_doc_lines, types::structs::FieldAttrs};
+use crate::{casing::Casing, docs::get_doc_lines, types::FieldAttrs};
 use quote::ToTokens;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -90,11 +90,13 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                 Type::Tuple(item_types)
             };
             let doc_lines = get_doc_lines(&variant.attrs);
+            let attrs = VariantAttrs::from_attrs(&variant.attrs);
 
             Variant {
                 name,
                 ty,
                 doc_lines,
+                attrs,
             }
         })
         .collect();
@@ -241,4 +243,82 @@ pub struct Variant {
     pub name: String,
     pub ty: Type,
     pub doc_lines: Vec<String>,
+    pub attrs: VariantAttrs,
+}
+
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
+pub struct VariantAttrs {
+    /// Optional name to use in the serialized format
+    /// (only used if different than the variant name itself).
+    ///
+    /// See also: https://serde.rs/variant-attrs.html#rename
+    pub rename: Option<String>,
+}
+
+impl VariantAttrs {
+    pub fn from_attrs(attrs: &[Attribute]) -> Self {
+        let mut opts = Self::default();
+        for attr in attrs {
+            if attr.path.is_ident("fp") || attr.path.is_ident("serde") {
+                opts.merge_with(
+                    &syn::parse2::<Self>(attr.tokens.clone())
+                        .expect("Could not parse variant attributes"),
+                );
+            }
+        }
+        opts
+    }
+
+    fn merge_with(&mut self, other: &Self) {
+        if other.rename.is_some() {
+            self.rename = other.rename.clone();
+        }
+    }
+
+    pub fn to_serde_attrs(&self) -> Vec<String> {
+        let mut serde_attrs = vec![];
+        if let Some(rename) = self.rename.as_ref() {
+            serde_attrs.push(format!("rename = \"{}\"", rename));
+        }
+        serde_attrs
+    }
+}
+
+impl Parse for VariantAttrs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        parenthesized!(content in input);
+
+        let parse_value = || -> Result<String> {
+            content.parse::<Token![=]>()?;
+            Ok(content
+                .parse::<LitStr>()?
+                .to_token_stream()
+                .to_string()
+                .trim_matches('"')
+                .to_owned())
+        };
+
+        let mut result = Self::default();
+        loop {
+            let key: Ident = content.call(IdentExt::parse_any)?;
+            match key.to_string().as_ref() {
+                "rename" => result.rename = Some(parse_value()?),
+                other => {
+                    return Err(Error::new(
+                        content.span(),
+                        format!("Unexpected variant attribute: {}", other),
+                    ))
+                }
+            }
+
+            if content.is_empty() {
+                break;
+            }
+
+            content.parse::<Token![,]>()?;
+        }
+
+        Ok(result)
+    }
 }

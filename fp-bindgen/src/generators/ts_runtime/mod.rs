@@ -631,7 +631,7 @@ fn create_enum_definition(
     let variants = variants
         .iter()
         .map(|variant| {
-            let variant_name = opts.variant_casing.format_string(&variant.name);
+            let variant_name = get_variant_name(variant, &opts);
             let variant_decl = match &variant.ty {
                 Type::Unit => {
                     if let Some(tag) = &opts.tag_prop_name {
@@ -883,6 +883,19 @@ fn get_field_name(field: &Field) -> String {
         field.name[2..].to_camel_case()
     } else {
         field.name.to_camel_case()
+    }
+}
+
+fn get_variant_name(variant: &Variant, opts: &EnumOptions) -> String {
+    if let Some(rename) = variant.attrs.rename.as_ref() {
+        rename.to_owned()
+    } else {
+        opts.variant_casing
+            .format_string(if variant.name.starts_with("r#") {
+                &variant.name[2..]
+            } else {
+                &variant.name
+            })
     }
 }
 

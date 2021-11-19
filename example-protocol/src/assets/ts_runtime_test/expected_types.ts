@@ -76,7 +76,7 @@ export type RequestError =
     /**
      * Misc.
      */
-    | { type: "other"; reason: string };
+    | { type: "other/misc"; reason: string };
 
 export type RequestMethod =
     | "DELETE"
