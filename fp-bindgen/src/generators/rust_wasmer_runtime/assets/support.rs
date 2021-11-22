@@ -86,9 +86,10 @@ pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) 
 
 pub(crate) fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
     let mut buffer = Vec::new();
+    let mut serializer = Serializer::new(&mut buffer)
+        .with_human_readable();
     value
-        .serialize(&mut Serializer::new(&mut buffer))
-        .with_human_readable()
+        .serialize(&mut serializer)
         .unwrap();
     
 pub(crate) fn deserialize_from_slice<T: Deserialize>(slice: &[u8]) -> T {
