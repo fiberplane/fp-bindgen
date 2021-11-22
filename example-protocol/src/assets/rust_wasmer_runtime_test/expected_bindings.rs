@@ -1,20 +1,46 @@
 use super::types::*;
-use crate::errors::InvocationError;
-use crate::{
-    support::{
-        create_future_value, export_to_guest, export_to_guest_raw, import_from_guest,
-        resolve_async_value, FatPtr, ModuleRawFuture,
+use fp_bindgen_support::{
+    common::mem::FatPtr,
+    host::{
+        errors::{InvocationError, RuntimeError},
+        mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
+        r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
+        runtime::RuntimeInstanceData,
     },
-    Runtime, RuntimeInstanceData,
 };
-use wasmer::{imports, Function, ImportObject, Instance, Store, Value, WasmerEnv};
+use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
+
+pub struct Runtime {
+    module: Module,
+}
 
 impl Runtime {
+    pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
+        let store = Self::default_store();
+        let module = Module::new(&store, wasm_module)?;
+        Ok(Self { module })
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    fn default_store() -> wasmer::Store {
+        let compiler = wasmer_compiler_cranelift::Cranelift::default();
+        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
+        Store::new(&engine)
+    }
+
+    #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
+    fn default_store() -> wasmer::Store {
+        let compiler = wasmer_compiler_singlepass::Singlepass::default();
+        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
+        Store::new(&engine)
+    }
+
     pub async fn fetch_data(&self, url: String) -> Result<String, InvocationError> {
-        let url = serialize_to_vec(url);
-        let res = self.fetch_data_raw(url);
-        let res = res.await?;
-        rmp_serde::from_slice(&res).unwrap()
+        let url = rmp_serde::to_vec(&url).unwrap();
+        let result = self.fetch_data_raw(url);
+        let result = result.await;
+        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        result
     }
     pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -26,15 +52,16 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call((url))?;
+        let result = function.call(url)?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
         Ok(result)
     }
 
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
-        let res = self.my_async_exported_function_raw();
-        let res = res.await?;
-        rmp_serde::from_slice(&res).unwrap()
+        let result = self.my_async_exported_function_raw();
+        let result = result.await;
+        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        result
     }
     pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -45,7 +72,7 @@ impl Runtime {
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_my_async_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(())?;
+        let result = function.call()?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
         Ok(result)
     }
@@ -54,9 +81,10 @@ impl Runtime {
         &self,
         a: ComplexHostToGuest,
     ) -> Result<ComplexAlias, InvocationError> {
-        let a = serialize_to_vec(a);
-        let res = self.my_complex_exported_function_raw(a);
-        rmp_serde::from_slice(&res).unwrap()
+        let a = rmp_serde::to_vec(&a).unwrap();
+        let result = self.my_complex_exported_function_raw(a);
+        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        result
     }
     pub fn my_complex_exported_function_raw(&self, a: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -68,20 +96,16 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_my_complex_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call((a))?;
+        let result = function.call(a)?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
 
     pub fn my_plain_exported_function(&self, a: u32, b: u32) -> Result<u32, InvocationError> {
-        let res = self.my_plain_exported_function_raw(a, b);
-        rmp_serde::from_slice(&res).unwrap()
+        let result = self.my_plain_exported_function_raw(a, b);
+        result
     }
-    pub fn my_plain_exported_function_raw(
-        &self,
-        a: u32,
-        b: u32,
-    ) -> Result<Vec<u8>, InvocationError> {
+    pub fn my_plain_exported_function_raw(&self, a: u32, b: u32) -> Result<u32, InvocationError> {
         let mut env = RuntimeInstanceData::default();
         let import_object = create_import_object(self.module.store(), &env);
         let instance = Instance::new(&self.module, &import_object).unwrap();
@@ -90,8 +114,7 @@ impl Runtime {
             .exports
             .get_native_function::<(u32, u32), u32>("__fp_gen_my_plain_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call((a, b))?;
-        let result = import_from_guest_raw(&env, result);
+        let result = function.call(a, b)?;
         Ok(result)
     }
 }
@@ -131,12 +154,7 @@ pub fn _make_request(env: &RuntimeInstanceData, opts: FatPtr) -> FatPtr {
     handle.spawn(async move {
         let result = result.await;
         let result_ptr = export_to_guest(&env, &result);
-        unsafe {
-            env.__fp_guest_resolve_async_value
-                .get_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect("Runtime error: Cannot resolve async value");
-        }
+        env.guest_resolve_async_value(async_ptr, result_ptr);
     });
     async_ptr
 }
@@ -149,12 +167,7 @@ pub fn _my_async_imported_function(env: &RuntimeInstanceData) -> FatPtr {
     handle.spawn(async move {
         let result = result.await;
         let result_ptr = export_to_guest(&env, &result);
-        unsafe {
-            env.__fp_guest_resolve_async_value
-                .get_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect("Runtime error: Cannot resolve async value");
-        }
+        env.guest_resolve_async_value(async_ptr, result_ptr);
     });
     async_ptr
 }

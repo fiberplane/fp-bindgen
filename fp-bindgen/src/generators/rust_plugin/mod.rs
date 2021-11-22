@@ -70,7 +70,7 @@ fn generate_cargo_file(
         format!(
             "{{ git = \"ssh://git@github.com/fiberplane/fp-bindgen.git\", branch = \"main\"{} }}",
             if requires_async {
-                ", features = [\"async\"]"
+                ", features = [\"guest\", \"async\"]"
             } else {
                 ""
             }

@@ -48,7 +48,7 @@ pub struct ComplexGuestToHost {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::other")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RequestMethod {
     Delete,
@@ -59,7 +59,7 @@ pub enum RequestMethod {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "camelCase")]
 pub struct RequestOptions {
     pub url: String,
@@ -71,7 +71,7 @@ pub struct RequestOptions {
 
 /// A response to a request.
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
     /// Response headers, by name.
@@ -167,7 +167,8 @@ fn main() {
             version: VERSION,
             dependencies: BTreeMap::from([(
                 "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned(),
+                r#"{ path = "../../fp-bindgen-support", features = ["guest", "async"] }"#
+                    .to_owned(),
             )]),
         }),
         BindingsType::RustWasmerRuntime,

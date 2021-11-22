@@ -27,16 +27,6 @@ pub fn generate_bindings(
     );
 
     generate_function_bindings(import_functions, export_functions, &spec_path);
-
-    write_bindings_file(
-        format!("{}/errors.rs", path),
-        include_bytes!("assets/errors.rs"),
-    );
-    write_bindings_file(format!("{}/lib.rs", path), include_bytes!("assets/lib.rs"));
-    write_bindings_file(
-        format!("{}/support.rs", path),
-        include_bytes!("assets/support.rs"),
-    );
 }
 
 fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenStream {
@@ -96,15 +86,23 @@ impl ToTokens for ExportSafeType<'_> {
     }
 }
 
+struct ComplexTypeToVec<'a>(&'a Type);
+impl ToTokens for ComplexTypeToVec<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        (match self.0 {
+            Type::Primitive(p) => quote! {#p},
+            _ => (quote! {Vec<u8>}),
+        })
+        .to_tokens(tokens)
+    }
+}
+
 struct ComplexArgsToVec<'a>(&'a FunctionArg);
 
 impl ToTokens for ComplexArgsToVec<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = format_ident!("{}", self.0.name);
-        let ty = match self.0.ty {
-            Type::Primitive(p) => quote! {#p},
-            _ => (quote! {Vec<u8>}),
-        };
+        let ty = ComplexTypeToVec(&self.0.ty);
         (quote! {#name: #ty}).to_tokens(tokens)
     }
 }
@@ -134,36 +132,49 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 (!matches!(a.ty, Type::Primitive(..))).then(|| format_ident!("{}", a.name))
             })
             .collect();
-        let raw_format_args = args.iter().map(ComplexArgsToVec);
         let safe_arg_types = args.iter().map(|a| ExportSafeType(&a.ty));
         let safe_return_type = ExportSafeType(return_type);
+        let raw_format_args = args.iter().map(ComplexArgsToVec);
+        let raw_format_return_type = ComplexTypeToVec(return_type);
 
         let asyncness = is_async.then(Async::default);
-        let awaiter = is_async.then(|| quote! {let res = res.await?;});
 
-        let return_wrapper = if *is_async {
-            quote! {
-                let result = ModuleRawFuture::new(env.clone(), result).await;
-            }
+        let (raw_return_wrapper, return_wrapper) = if *is_async {
+            (
+                quote! {
+                    let result = ModuleRawFuture::new(env.clone(), result).await;
+                },
+                quote! {
+                    let result = result.await;
+                    let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+                },
+            )
+        } else if !matches!(return_type, Type::Primitive(..)) {
+            (
+                quote! {
+                    let result = import_from_guest_raw(&env, result);
+                },
+                quote! {
+                    let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+                },
+            )
         } else {
-            quote! {
-                let result = import_from_guest_raw(&env, result);
-            }
+            (TokenStream::default(), TokenStream::default())
         };
 
         (quote! {
             #(#[doc = #doc_lines])*
             pub #asyncness fn #name(&self #(,#args)*) -> Result<#return_type, InvocationError> {
-                #(let #serialize_names = serialize_to_vec(#serialize_names);)*
+                #(let #serialize_names = rmp_serde::to_vec(&#serialize_names).unwrap();)*
 
-                let res = self.#raw_name(#(#arg_names),*);
+                let result = self.#raw_name(#(#arg_names),*);
 
-                #awaiter
+                #return_wrapper
 
-                rmp_serde::from_slice(&res).unwrap()
+                result
             }
 
-            pub #asyncness fn #raw_name(&self #(,#raw_format_args)*) -> Result<Vec<u8>, InvocationError> {
+            pub #asyncness fn #raw_name(&self #(,#raw_format_args)*) -> Result<#raw_format_return_type, InvocationError> {
                 let mut env = RuntimeInstanceData::default();
                 let import_object = create_import_object(self.module.store(), &env);
                 let instance = Instance::new(&self.module, &import_object).unwrap();
@@ -176,9 +187,9 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                     .get_native_function::<(#(#safe_arg_types),*), #safe_return_type>(#fp_gen_name)
                     .map_err(|_| InvocationError::FunctionNotExported)?;
 
-                let result = function.call((#(#arg_names),*))?;
+                let result = function.call(#(#arg_names),*)?;
 
-                #return_wrapper
+                #raw_return_wrapper
 
                 Ok(result)
             }
@@ -235,12 +246,7 @@ impl ToTokens for RuntimeExportedFunction<'_> {
                 handle.spawn(async move {
                     let result = result.await;
                     let result_ptr = export_to_guest(&env, &result);
-                    unsafe {
-                        env.__fp_guest_resolve_async_value
-                            .get_unchecked()
-                            .call(async_ptr, result_ptr)
-                            .expect("Runtime error: Cannot resolve async value");
-                    }
+                    env.guest_resolve_async_value(async_ptr, result_ptr);
                 });
                 async_ptr
             }
@@ -280,18 +286,48 @@ pub fn generate_function_bindings(
 
     let full = rustfmt_wrapper::rustfmt(quote! {
         use super::types::*;
-        use crate::errors::InvocationError;
-        use crate::{
-            support::{
-                create_future_value, export_to_guest, export_to_guest_raw, import_from_guest,
-                resolve_async_value, FatPtr, ModuleRawFuture,
+        use fp_bindgen_support::{
+            common::mem::FatPtr,
+            host::{
+                errors::{InvocationError, RuntimeError},
+                mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
+                r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
+                runtime::RuntimeInstanceData,
             },
-            Runtime, RuntimeInstanceData,
         };
-        use wasmer::{imports, Function, ImportObject, Instance, Store, Value, WasmerEnv};
+        use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
+        #newline
+        #newline
+        pub struct Runtime {
+            module: Module,
+        }
         #newline
         #newline
         impl Runtime {
+            pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
+                let store = Self::default_store();
+                let module = Module::new(&store, wasm_module)?;
+
+                Ok(Self { module })
+            }
+            #newline
+            #newline
+            #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+            fn default_store() -> wasmer::Store {
+                let compiler = wasmer_compiler_cranelift::Cranelift::default();
+                let engine = wasmer_engine_universal::Universal::new(compiler).engine();
+                Store::new(&engine)
+            }
+            #newline
+            #newline
+            #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
+            fn default_store() -> wasmer::Store {
+                let compiler = wasmer_compiler_singlepass::Singlepass::default();
+                let engine = wasmer_engine_universal::Universal::new(compiler).engine();
+                Store::new(&engine)
+            }
+            #newline
+            #newline
             #(#exports)*
         }
         #newline
