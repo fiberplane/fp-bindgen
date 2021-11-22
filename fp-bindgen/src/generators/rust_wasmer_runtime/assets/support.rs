@@ -92,7 +92,7 @@ pub(crate) fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
         .serialize(&mut serializer)
         .unwrap();
     
-pub(crate) fn deserialize_from_slice<T: Deserialize>(slice: &[u8]) -> T {
+pub(crate) fn deserialize_from_slice<'a, T: Deserialize<'a>>(slice: &'a[u8]) -> T {
     let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
     T::deserialize(&mut deserializer).unwrap()
 }
