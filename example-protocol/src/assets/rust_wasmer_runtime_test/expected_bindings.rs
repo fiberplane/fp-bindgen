@@ -14,8 +14,7 @@ impl Runtime {
         let url = serialize_to_vec(url);
         let res = self.fetch_data_raw(url);
         let res = res.await?;
-        let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
-        String::deserialize(&mut deserializer).unwrap()
+        deserialize_from_slice(&res)
     }
     pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -35,8 +34,7 @@ impl Runtime {
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
         let res = self.my_async_exported_function_raw();
         let res = res.await?;
-        let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
-        ComplexGuestToHost::deserialize(&mut deserializer).unwrap()
+        deserialize_from_slice(&res)
     }
     pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -58,8 +56,7 @@ impl Runtime {
     ) -> Result<ComplexAlias, InvocationError> {
         let a = serialize_to_vec(a);
         let res = self.my_complex_exported_function_raw(a);
-        let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
-        ComplexAlias::deserialize(&mut deserializer).unwrap()
+        deserialize_from_slice(&res)
     }
     pub fn my_complex_exported_function_raw(&self, a: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
         let mut env = RuntimeInstanceData::default();
@@ -78,8 +75,7 @@ impl Runtime {
 
     pub fn my_plain_exported_function(&self, a: u32, b: u32) -> Result<u32, InvocationError> {
         let res = self.my_plain_exported_function_raw(a, b);
-        let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
-        u32::deserialize(&mut deserializer).unwrap()
+        deserialize_from_slice(&res)
     }
     pub fn my_plain_exported_function_raw(
         &self,
