@@ -83,15 +83,11 @@ pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) 
     value
 }
 
-pub(crate) fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
-    let mut buffer = Vec::new();
-    value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
-    buffer
-}
-
 /// Serialize a value and put it in linear memory.
 pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
-    let buffer = serialize_to_vec(value);
+    let mut buffer = Vec::new();
+    value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
+
     export_to_guest_raw(env, buffer)
 }
 

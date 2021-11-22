@@ -1,4 +1,3 @@
-use quote::{quote, ToTokens};
 use std::str::FromStr;
 
 /// Type of primitive that is supported out-of-the-box.
@@ -56,24 +55,5 @@ impl FromStr for Primitive {
             string => return Err(format!("Unknown primitive type: \"{}\"", string)),
         };
         Ok(primitive)
-    }
-}
-
-impl ToTokens for Primitive {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        (match self {
-            Primitive::Bool => quote! {bool},
-            Primitive::F32 => quote! {f32},
-            Primitive::F64 => quote! {f64},
-            Primitive::I8 => quote! {i8},
-            Primitive::I16 => quote! {i16},
-            Primitive::I32 => quote! {i32},
-            Primitive::I64 => quote! {i64},
-            Primitive::U8 => quote! {u8},
-            Primitive::U16 => quote! {u16},
-            Primitive::U32 => quote! {u32},
-            Primitive::U64 => quote! {u64},
-        })
-        .to_tokens(tokens)
     }
 }

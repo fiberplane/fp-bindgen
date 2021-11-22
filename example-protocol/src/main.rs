@@ -1,4 +1,4 @@
-use fp_bindgen::prelude::*;
+use fp_bindgen::{prelude::*, WasmerRuntimeConfig};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
@@ -171,7 +171,9 @@ fn main() {
                 r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned(),
             )]),
         }),
-        BindingsType::RustWasmerRuntime,
+        BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
+            generate_raw_export_wrappers: true,
+        }),
         BindingsType::TsRuntime(TsRuntimeConfig {
             generate_raw_export_wrappers: true,
         }),
@@ -242,7 +244,9 @@ fn test_generate_rust_wasmer_runtime() {
         ),
     ];
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustWasmerRuntime,
+        bindings_type: BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
+            generate_raw_export_wrappers: true
+        }),
         path: "bindings/rust-wasmer-runtime",
     });
     for (path, expected) in FILES {
