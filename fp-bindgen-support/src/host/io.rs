@@ -15,3 +15,8 @@ where
     let (ptr, len) = from_fat_ptr(ptr);
     (WasmPtr::new(ptr), len)
 }
+
+/// Create a fat pointer from a ptr and length
+pub(crate) fn to_fat_ptr(ptr: u32, len: u32) -> FatPtr {
+    (ptr as FatPtr) << 32 | (len as FatPtr)
+}

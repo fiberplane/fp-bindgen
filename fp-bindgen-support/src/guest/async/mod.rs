@@ -1,8 +1,8 @@
 mod queue;
-mod task;
+pub mod task;
 use crate::common::{
     mem::{from_fat_ptr, FatPtr},
-    r#async::{AsyncValue, FUTURE_STATUS_READY},
+    r#async::{AsyncValue, FUTURE_STATUS_PENDING, FUTURE_STATUS_READY},
 };
 use once_cell::unsync::Lazy;
 use std::collections::BTreeMap;
@@ -37,13 +37,13 @@ impl Future for HostFuture {
         let (ptr, _) = from_fat_ptr(self.ptr);
         let async_value = unsafe { read_volatile(ptr as *const AsyncValue) };
         match async_value.status {
-            STATUS_PENDING => {
+            FUTURE_STATUS_PENDING => {
                 unsafe {
                     WAKERS.insert(self.ptr, cx.waker().clone());
                 }
                 Poll::Pending
             }
-            STATUS_READY => Poll::Ready(async_value.buffer_ptr()),
+            FUTURE_STATUS_READY => Poll::Ready(async_value.buffer_ptr()),
             status => panic!("Unexpected status: {}", status),
         }
     }

@@ -1,16 +1,21 @@
+use super::{
+    io::{from_fat_ptr, to_wasm_ptr},
+    runtime::RuntimeInstanceData,
+};
+use crate::common::{
+    mem::FatPtr,
+    r#async::{AsyncValue, FUTURE_STATUS_PENDING, FUTURE_STATUS_READY},
+};
+use std::{mem::size_of, task::Waker};
+
 pub mod future;
 
 /// Create an empty FutureValue in the linear memory and return a FatPtr to it.
-pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
+pub fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
-    let size = size_of::<AsyncValue>();
-    let ptr = unsafe {
-        env.__fp_malloc
-            .get_unchecked()
-            .call(size as u32)
-            .expect("runtime error")
-    };
+    let size = size_of::<AsyncValue>(); //TODO: Is this *actually* safe? Might be a different size in wasm land...
+    let ptr = env.malloc(size as u32);
 
     let (async_ptr, async_len) = to_wasm_ptr(ptr);
     let values = async_ptr.deref(memory, 0, async_len).unwrap();
@@ -26,11 +31,7 @@ pub(crate) fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 /// want to deserialize it (which would actually free it as well).
 /// This function also doesn't call another function since everything is
 /// contained in the env object.
-pub(crate) fn resolve_async_value(
-    env: &RuntimeInstanceData,
-    async_value_ptr: FatPtr,
-    result_ptr: FatPtr,
-) {
+pub fn resolve_async_value(env: &RuntimeInstanceData, async_value_ptr: FatPtr, result_ptr: FatPtr) {
     // First assign the result ptr and mark the async value as ready:
     let memory = unsafe { env.memory.get_unchecked() };
     let (async_ptr, async_len) = to_wasm_ptr(async_value_ptr);
@@ -45,5 +46,6 @@ pub(crate) fn resolve_async_value(
         .lock()
         .unwrap()
         .remove(&async_value_ptr)
+        .as_ref()
         .map(Waker::wake_by_ref);
 }

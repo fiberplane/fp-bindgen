@@ -1,17 +1,11 @@
+use super::{io::to_wasm_ptr, runtime::RuntimeInstanceData};
 use crate::common::mem::FatPtr;
-
-use super::RuntimeInstanceData;
-use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
+use rmp_serde::{decode::ReadReader, Deserializer};
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
-use std::future::Future;
-use std::marker::PhantomData;
-use std::mem::size_of;
-use std::task::Poll;
-use wasmer::{Array, WasmPtr};
 
 /// Serialize an object from the linear memory and after that free up the memory
-pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
+pub fn import_from_guest<'de, T: Deserialize<'de>>(
     env: &RuntimeInstanceData,
     fat_ptr: FatPtr,
 ) -> T {
@@ -26,7 +20,7 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+pub fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
@@ -44,26 +38,18 @@ fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> 
         view.iter().map(Cell::get).collect()
     };
 
-    unsafe {
-        env.__fp_free
-            .get_unchecked()
-            .call(fat_ptr)
-            .expect("free should be called")
-    };
+    env.free(fat_ptr);
 
     value
 }
 
 /// Serialize a value and put it in linear memory.
-pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
-    let mut buffer = Vec::new();
-    value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
-
-    export_to_guest_raw(env, buffer)
+pub fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
+    export_to_guest_raw(env, rmp_serde::to_vec(value).unwrap())
 }
 
 /// Copy the buffer into linear memory.
-pub(crate) fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
+pub fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
     let memory = unsafe { env.memory.get_unchecked() };
 
     let len = buffer.len() as u32;
@@ -73,12 +59,7 @@ pub(crate) fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) ->
         panic!("Buffer too large ({} bytes)", len);
     }
 
-    let fat_ptr = unsafe {
-        env.__fp_malloc
-            .get_unchecked()
-            .call(len)
-            .expect("unable to call malloc")
-    };
+    let fat_ptr = env.malloc(len);
 
     let (ptr, len) = to_wasm_ptr(fat_ptr);
 
