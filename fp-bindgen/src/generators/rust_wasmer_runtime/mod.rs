@@ -160,7 +160,8 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 #awaiter
 
-                rmp_serde::from_slice(&res).unwrap()
+                let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
+                #return_type::deserialize(&mut deserializer).unwrap()
             }
 
             pub #asyncness fn #raw_name(&self #(,#raw_format_args)*) -> Result<Vec<u8>, InvocationError> {
