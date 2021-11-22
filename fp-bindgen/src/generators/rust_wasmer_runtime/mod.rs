@@ -283,8 +283,8 @@ pub fn generate_function_bindings(
         use crate::errors::InvocationError;
         use crate::{
             support::{
-                create_future_value, export_to_guest, export_to_guest_raw, import_from_guest,
-                resolve_async_value, FatPtr, ModuleRawFuture,
+                create_future_value, deserialize_from_slice, export_to_guest, export_to_guest_raw,
+                import_from_guest, resolve_async_value, serialize_to_vec, FatPtr, ModuleRawFuture,
             },
             Runtime, RuntimeInstanceData,
         };

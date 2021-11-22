@@ -84,14 +84,16 @@ pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) 
     value
 }
 
+/// Serialize the given value to MessagePack
 pub(crate) fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
     let mut buffer = Vec::new();
     let mut serializer = Serializer::new(&mut buffer)
         .with_human_readable();
     value
         .serialize(&mut serializer)
-        .unwrap();
+        .unwrap()
     
+/// Deserialize the given MessagePack-encoded slice
 pub(crate) fn deserialize_from_slice<'a, T: Deserialize<'a>>(slice: &'a[u8]) -> T {
     let mut deserializer = rmp_serde::Deserializer::new(&res).with_human_readable();
     T::deserialize(&mut deserializer).unwrap()
