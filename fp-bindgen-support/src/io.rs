@@ -10,7 +10,11 @@ pub type FatPtr = u64;
 pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
     let mut buffer = Vec::new();
     value
-        .serialize(&mut Serializer::new(&mut buffer).with_struct_map())
+        .serialize(
+            &mut Serializer::new(&mut buffer)
+                .with_struct_map()
+                .with_human_readable(),
+        )
         .expect("Serialization error");
 
     let len = buffer.len();
@@ -52,7 +56,7 @@ pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(fat_ptr: FatPtr) 
     }
 
     let slice = std::slice::from_raw_parts(ptr, len as usize);
-    let mut deserializer = Deserializer::new(slice);
+    let mut deserializer = Deserializer::new(slice).with_human_readable();
     let value = T::deserialize(&mut deserializer).unwrap();
 
     __fp_free(fat_ptr);

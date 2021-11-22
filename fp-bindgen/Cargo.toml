@@ -19,5 +19,5 @@ proc-macro2 = "1"
 quote = "1"
 serde_bytes = { version = "0.11", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
-time = { version = "0.3", optional = true }
+time = { version = "0.3", features = ["serde-human-readable"], optional = true }
 rustfmt-wrapper = "0.1.0"

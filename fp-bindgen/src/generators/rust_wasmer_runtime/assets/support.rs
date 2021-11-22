@@ -46,7 +46,8 @@ pub(crate) fn import_from_guest<'de, T: Deserialize<'de>>(
 ) -> T {
     let value = import_from_guest_raw(env, fat_ptr);
 
-    let mut deserializer = Deserializer::<ReadReader<&[u8]>>::new(value.as_ref());
+    let mut deserializer =
+        Deserializer::<ReadReader<&[u8]>>::new(value.as_ref()).with_human_readable();
     T::deserialize(&mut deserializer).unwrap()
 }
 
@@ -85,9 +86,10 @@ pub(crate) fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) 
 
 pub(crate) fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
     let mut buffer = Vec::new();
-    value.serialize(&mut Serializer::new(&mut buffer)).unwrap();
-    buffer
-}
+    value
+        .serialize(&mut Serializer::new(&mut buffer))
+        .with_human_readable()
+        .unwrap();
 
 /// Serialize a value and put it in linear memory.
 pub(crate) fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
