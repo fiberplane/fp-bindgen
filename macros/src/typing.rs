@@ -56,7 +56,8 @@ pub(crate) fn get_output_type(output: &ReturnType) -> &Type {
 
 pub(crate) fn replace_complex_type(ty: &mut Type, crate_path: &str) {
     if is_type_complex(ty) {
-        *ty = syn::parse_str::<Type>(format!("{}::FatPtr", crate_path).as_str()).unwrap_or_abort();
+        *ty = syn::parse_str::<Type>(format!("{}::common::mem::FatPtr", crate_path).as_str())
+            .unwrap_or_abort();
     }
 }
 
