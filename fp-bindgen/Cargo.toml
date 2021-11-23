@@ -8,6 +8,7 @@ edition = "2018"
 default = ["time-compat", "serde-bytes-compat"]
 serde-bytes-compat = ["serde_bytes"]
 time-compat = ["time"]
+generators = ["rustfmt-wrapper"]
 
 [dependencies]
 dashmap = "4"
@@ -20,4 +21,4 @@ quote = "1"
 serde_bytes = { version = "0.11", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", optional = true }
-rustfmt-wrapper = "0.1.0"
+rustfmt-wrapper = { version = "0.1.0", optional = true }
