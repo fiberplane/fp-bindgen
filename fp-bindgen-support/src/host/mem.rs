@@ -7,7 +7,9 @@ use std::cell::Cell;
 /// Serialize the given value to MessagePack
 pub fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
     let mut buffer = Vec::new();
-    let mut serializer = Serializer::new(&mut buffer).with_human_readable();
+    let mut serializer = Serializer::new(&mut buffer)
+        .with_struct_map()
+        .with_human_readable();
     value.serialize(&mut serializer).unwrap();
     buffer
 }
