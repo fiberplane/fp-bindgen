@@ -352,7 +352,7 @@ impl Serializable for time::OffsetDateTime {
             rs_ty: "time::OffsetDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
                 "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde"] }"#.to_owned(),
+                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
             )]),
             ts_ty: "string".to_owned(),
         })
@@ -376,7 +376,7 @@ impl Serializable for time::PrimitiveDateTime {
             rs_ty: "time::PrimitiveDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
                 "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde"] }"#.to_owned(),
+                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
             )]),
             ts_ty: "string".to_owned(),
         })

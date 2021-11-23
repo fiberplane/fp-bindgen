@@ -1,8 +1,24 @@
 use super::{io::to_wasm_ptr, runtime::RuntimeInstanceData};
 use crate::common::mem::FatPtr;
-use rmp_serde::{decode::ReadReader, Deserializer};
+use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::cell::Cell;
+
+/// Serialize the given value to MessagePack
+pub fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
+    let mut buffer = Vec::new();
+    let mut serializer = Serializer::new(&mut buffer)
+        .with_struct_map()
+        .with_human_readable();
+    value.serialize(&mut serializer).unwrap();
+    buffer
+}
+
+/// Deserialize the given MessagePack-encoded slice
+pub fn deserialize_from_slice<'a, T: Deserialize<'a>>(slice: &'a [u8]) -> T {
+    let mut deserializer = rmp_serde::Deserializer::new(slice).with_human_readable();
+    T::deserialize(&mut deserializer).unwrap()
+}
 
 /// Serialize an object from the linear memory and after that free up the memory
 pub fn import_from_guest<'de, T: Deserialize<'de>>(
@@ -11,7 +27,8 @@ pub fn import_from_guest<'de, T: Deserialize<'de>>(
 ) -> T {
     let value = import_from_guest_raw(env, fat_ptr);
 
-    let mut deserializer = Deserializer::<ReadReader<&[u8]>>::new(value.as_ref());
+    let mut deserializer =
+        Deserializer::<ReadReader<&[u8]>>::new(value.as_ref()).with_human_readable();
     T::deserialize(&mut deserializer).unwrap()
 }
 

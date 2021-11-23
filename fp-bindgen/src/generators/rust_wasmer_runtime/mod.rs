@@ -146,7 +146,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 },
                 quote! {
                     let result = result.await;
-                    let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+                    let result = result.map(|ref data| deserialize_from_slice(data));
                 },
             )
         } else if !matches!(return_type, Type::Primitive(..)) {
@@ -155,7 +155,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                     let result = import_from_guest_raw(&env, result);
                 },
                 quote! {
-                    let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+                    let result = result.map(|ref data| deserialize_from_slice(data));
                 },
             )
         } else {
@@ -290,7 +290,7 @@ pub fn generate_function_bindings(
             common::mem::FatPtr,
             host::{
                 errors::{InvocationError, RuntimeError},
-                mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
+                mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw, deserialize_from_slice, serialize_to_vec},
                 r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
                 runtime::RuntimeInstanceData,
             },

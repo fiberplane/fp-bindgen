@@ -3,7 +3,10 @@ use fp_bindgen_support::{
     common::mem::FatPtr,
     host::{
         errors::{InvocationError, RuntimeError},
-        mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
+        mem::{
+            deserialize_from_slice, export_to_guest, export_to_guest_raw, import_from_guest,
+            import_from_guest_raw, serialize_to_vec,
+        },
         r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
         runtime::RuntimeInstanceData,
     },
@@ -39,7 +42,7 @@ impl Runtime {
         let url = rmp_serde::to_vec(&url).unwrap();
         let result = self.fetch_data_raw(url);
         let result = result.await;
-        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        let result = result.map(|ref data| deserialize_from_slice(data));
         result
     }
     pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
@@ -60,7 +63,7 @@ impl Runtime {
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
         let result = self.my_async_exported_function_raw();
         let result = result.await;
-        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        let result = result.map(|ref data| deserialize_from_slice(data));
         result
     }
     pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
@@ -83,7 +86,7 @@ impl Runtime {
     ) -> Result<ComplexAlias, InvocationError> {
         let a = rmp_serde::to_vec(&a).unwrap();
         let result = self.my_complex_exported_function_raw(a);
-        let result = result.map(|ref data| rmp_serde::from_slice(data).unwrap());
+        let result = result.map(|ref data| deserialize_from_slice(data));
         result
     }
     pub fn my_complex_exported_function_raw(&self, a: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
