@@ -7,7 +7,10 @@ edition = "2021"
 
 [dependencies]
 example-bindings = { path = "../bindings/rust-plugin" }
-fp-bindgen-support = { path = "../fp-bindgen-support", features = ["host", "async"] }
+fp-bindgen-support = { path = "../fp-bindgen-support", features = [
+    "host",
+    "async",
+] }
 once_cell = "1"
 rmp-serde = "=1.0.0-beta.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -15,7 +18,7 @@ serde_bytes = "0.11"
 time = { version = "0.3", features = ["serde"] }
 wasmer = { version = "2.0", default-features = false }
 wasmer-engine-universal = { version = "2.0", features = ["compiler"] }
-tokio = {version="1.9.0", features = ["rt"]}
+tokio = { version = "1.9.0", features = ["rt"] }
 
 
 [target.'cfg(any(target_arch = "arm", target_arch = "aarch64"))'.dependencies]
