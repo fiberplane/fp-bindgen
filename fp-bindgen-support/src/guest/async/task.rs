@@ -2,7 +2,6 @@
 // See: https://github.com/rustwasm/wasm-bindgen/blob/master/crates/futures/src/task/singlethread.rs
 // Licensed under Apache/MIT
 
-use crate::{export_value_to_host, host_resolve_async_value, to_fat_ptr, AsyncValue, FatPtr};
 use serde::Serialize;
 use std::cell::{Cell, RefCell};
 use std::future::Future;
@@ -10,6 +9,12 @@ use std::mem::ManuallyDrop;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, RawWaker, RawWakerVTable, Waker};
+
+use crate::common::mem::{to_fat_ptr, FatPtr};
+use crate::common::r#async::AsyncValue;
+use crate::guest::io::export_value_to_host;
+
+use super::host_resolve_async_value;
 
 struct Inner {
     future: Pin<Box<dyn Future<Output = ()> + 'static>>,

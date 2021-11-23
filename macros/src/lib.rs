@@ -257,12 +257,12 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let ret = fp_bindgen_support::Task::alloc_and_spawn(#func_call);
+            let ret = fp_bindgen_support::guest::r#async::task::Task::alloc_and_spawn(#func_call);
         }
     } else {
         // Check the output type and replace complex ones with FatPtr
         let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-            quote! {let ret = fp_bindgen_support::export_value_to_host(&ret);}
+            quote! {let ret = fp_bindgen_support::guest::io::export_value_to_host(&ret);}
         } else {
             Default::default()
         };
@@ -277,7 +277,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_support::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #(let #complex_names = unsafe { fp_bindgen_support::guest::io::import_value_from_host::<#complex_types>(#complex_names) };)*
             #func_wrapper
             ret
         }
@@ -392,14 +392,14 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let ret_wrapper = if func.sig.asyncness.is_some() {
         quote! {
             let ret = unsafe {
-                fp_bindgen_support::import_value_from_host(fp_bindgen_support::HostFuture::new(ret).await)
+                fp_bindgen_support::guest::io::import_value_from_host(fp_bindgen_support::guest::r#async::HostFuture::new(ret).await)
             };
         }
     } else {
         // Check the output type and replace complex ones with FatPtr
         if typing::is_ret_type_complex(&func.sig.output) {
             quote! {
-                let ret = unsafe { fp_bindgen_support::import_value_from_host(ret) };
+                let ret = unsafe { fp_bindgen_support::guest::io::import_value_from_host(ret) };
             }
         } else {
             Default::default()
@@ -416,7 +416,7 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         #[inline(always)]
         #(#attrs)*
         pub #wrapper_sig {
-            #(let #complex_names = fp_bindgen_support::export_value_to_host(&#complex_names);)*
+            #(let #complex_names = fp_bindgen_support::guest::io::export_value_to_host(&#complex_names);)*
             let ret = unsafe { #func_call };
             #ret_wrapper
             ret

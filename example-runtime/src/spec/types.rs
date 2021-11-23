@@ -78,7 +78,7 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
-    #[serde(rename = "other/misc", rename_all = "camelCase")]
+    #[serde(rename_all = "camelCase")]
     Other { reason: String },
 }
 
