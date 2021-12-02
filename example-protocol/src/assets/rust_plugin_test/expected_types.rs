@@ -30,6 +30,7 @@ pub struct ComplexHostToGuest {
 
     /// Raw identifiers are supported too.
     pub r#type: String,
+    pub id: uuid::Uuid,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

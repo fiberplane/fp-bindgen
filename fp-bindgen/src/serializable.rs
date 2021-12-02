@@ -318,6 +318,23 @@ where
     }
 }
 
+impl<T, const C: usize> Serializable for [T; C]
+where
+    T: Serializable,
+{
+    fn name() -> String {
+        format!("[{};{}]", T::name(), C)
+    }
+
+    fn ty() -> Type {
+        Type::List("Array".to_owned(), Box::new(T::ty()))
+    }
+
+    fn build_dependencies() -> BTreeSet<Type> {
+        T::type_with_dependencies()
+    }
+}
+
 #[cfg(feature = "serde-bytes-compat")]
 impl Serializable for serde_bytes::ByteBuf {
     fn name() -> String {
@@ -377,6 +394,30 @@ impl Serializable for time::PrimitiveDateTime {
             rs_dependencies: BTreeMap::from([(
                 "time".to_owned(),
                 r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
+            )]),
+            ts_ty: "string".to_owned(),
+        })
+    }
+
+    fn build_dependencies() -> BTreeSet<Type> {
+        BTreeSet::new()
+    }
+}
+
+#[cfg(feature = "uuid-compat")]
+impl Serializable for uuid::Uuid {
+    fn name() -> String {
+        "Uuid".to_owned()
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            name: "Uuid".to_owned(),
+            type_args: vec![],
+            rs_ty: "uuid::Uuid".to_owned(),
+            rs_dependencies: BTreeMap::from([(
+                "uuid".to_owned(),
+                r#"{ version = "0.8", features = ["serde"] }"#.to_owned(),
             )]),
             ts_ty: "string".to_owned(),
         })

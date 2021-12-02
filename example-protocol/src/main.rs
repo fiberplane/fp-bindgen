@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 pub type Body = ByteBuf;
 
@@ -36,6 +37,7 @@ pub struct ComplexHostToGuest {
     pub renamed: Option<OffsetDateTime>,
     /// Raw identifiers are supported too.
     pub r#type: String,
+    pub id: Uuid,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;

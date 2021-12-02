@@ -31,6 +31,7 @@ export type ComplexHostToGuest = {
      * Raw identifiers are supported too.
      */
     type: string;
+    id: string;
 };
 
 export type ExplicitedlyImportedType = {

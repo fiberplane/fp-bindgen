@@ -5,9 +5,10 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [features]
-default = ["time-compat", "serde-bytes-compat"]
+default = ["time-compat", "serde-bytes-compat", "uuid-compat"]
 serde-bytes-compat = ["serde_bytes"]
 time-compat = ["time"]
+uuid-compat = ["uuid"]
 generators = ["rustfmt-wrapper"]
 
 [dependencies]
@@ -22,3 +23,4 @@ serde_bytes = { version = "0.11", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", features = ["serde-human-readable"], optional = true }
 rustfmt-wrapper = { version = "0.1.0", optional = true }
+uuid = { version = "*", optional = true }
