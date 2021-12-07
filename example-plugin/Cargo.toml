@@ -8,5 +8,5 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-example-bindings = { path = "../bindings/rust-plugin" }
+example-bindings = { path = "../example-protocol/bindings/rust-plugin" }
 time = { version = "0.3", features = ["serde-human-readable"] }

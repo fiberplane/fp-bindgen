@@ -168,7 +168,7 @@ fn main() {
             version: VERSION,
             dependencies: BTreeMap::from([(
                 "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../fp-bindgen-support", features = ["guest", "async"] }"#
+                r#"{ path = "../../../fp-bindgen-support", features = ["guest", "async"] }"#
                     .to_owned(),
             )]),
         }),

@@ -48,4 +48,13 @@ jobs:
         run: cargo test
 
       - name: Verify example-plugin builds
-        run: cargo build
+        run: |
+          cd example-plugin
+          cargo build
+          cd ..
+
+      - name: Verify example-runtime builds
+        run: |
+          cd example-runtime
+          cargo build
+          cd ..
