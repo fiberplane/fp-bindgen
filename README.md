@@ -7,10 +7,10 @@ Macros for generating WebAssembly bindings.
 `fp-bindgen` is not the only tool for generating WASM bindings. The most well-known tool for this
 is probably `wasm-bindgen`, though it is limited to Rust modules running inside browser
 environments. A more generic alternative, based on the WASM
-[interface types proposal](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md), is `wit-bindgen`. We do believe interface types to be the future of
-WASM bindings, but for the short-term, `fp-bindgen` provides bindings that work with a stable
-serialization format, which helps us to avoid versioning issues and opens up compatibility with
-tools such as Serde.
+[interface types proposal](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md),
+is `wit-bindgen`. We do believe interface types to be the future of WASM bindings, but for the
+short-term, `fp-bindgen` provides bindings that work with a stable serialization format, which helps
+us to avoid versioning issues and opens up compatibility with tools such as Serde.
 
 It is worth mentioning that, though we have a [specification](#specification) for our communication
 primitives that allows generators for other languages to be contributed, `fp-bindgen` is opinionated
