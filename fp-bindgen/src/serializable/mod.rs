@@ -1,8 +1,6 @@
 use dashmap::{mapref::one::Ref, DashMap};
 use once_cell::sync::Lazy;
 
-#[cfg(any(feature = "time-compat", feature = "serde-bytes-compat"))]
-use crate::CustomType;
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},
     types::{EnumOptions, GenericArgument, Variant, VariantAttrs},
@@ -13,6 +11,11 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
 };
+
+#[cfg(feature = "serde-bytes-compat")]
+mod serde_bytes;
+#[cfg(feature = "time-compat")]
+mod time;
 
 pub trait Serializable: 'static {
     /// The name of the type as defined in the protocol.
@@ -315,75 +318,6 @@ where
 
     fn build_dependencies() -> BTreeSet<Type> {
         T::type_with_dependencies()
-    }
-}
-
-#[cfg(feature = "serde-bytes-compat")]
-impl Serializable for serde_bytes::ByteBuf {
-    fn name() -> String {
-        "ByteBuf".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "ByteBuf".to_owned(),
-            type_args: vec![],
-            rs_ty: "serde_bytes::ByteBuf".to_owned(),
-            rs_dependencies: BTreeMap::from([("serde_bytes".to_owned(), r#""0.11""#.to_owned())]),
-            ts_ty: "ArrayBuffer".to_owned(),
-        })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
-}
-
-#[cfg(feature = "time-compat")]
-impl Serializable for time::OffsetDateTime {
-    fn name() -> String {
-        "OffsetDateTime".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "OffsetDateTime".to_owned(),
-            type_args: vec![],
-            rs_ty: "time::OffsetDateTime".to_owned(),
-            rs_dependencies: BTreeMap::from([(
-                "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
-            )]),
-            ts_ty: "string".to_owned(),
-        })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
-}
-
-#[cfg(feature = "time-compat")]
-impl Serializable for time::PrimitiveDateTime {
-    fn name() -> String {
-        "PrimitiveDateTime".to_owned()
-    }
-
-    fn ty() -> Type {
-        Type::Custom(CustomType {
-            name: "PrimitiveDateTime".to_owned(),
-            type_args: vec![],
-            rs_ty: "time::PrimitiveDateTime".to_owned(),
-            rs_dependencies: BTreeMap::from([(
-                "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
-            )]),
-            ts_ty: "string".to_owned(),
-        })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
     }
 }
 

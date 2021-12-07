@@ -4,11 +4,11 @@ Macros for generating WebAssembly bindings.
 
 ## Comparison to other "bindgen" tools
 
-`fp-bindgen` is not the only tool for generating WASM bindings. The most well-known tool for this
+`fp-bindgen` is not the only tool for generating Wasm bindings. The most well-known tool for this
 is probably `wasm-bindgen`, though it is limited to Rust modules running inside browser
-environments. A more generic alternative, based on the WASM
+environments. A more generic alternative, based on the Wasm
 [interface types proposal](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md),
-is `wit-bindgen`. We do believe interface types to be the future of WASM bindings, but for the
+is `wit-bindgen`. We do believe interface types to be the future of Wasm bindings, but for the
 short-term, `fp-bindgen` provides bindings that work with a stable serialization format, which helps
 us to avoid versioning issues and opens up compatibility with tools such as Serde.
 
@@ -19,12 +19,13 @@ enabling tight integration with existing crates from the Rust ecosystem.
 
 The following table is intended to highlight the major differences between the different tools:
 
-| Feature              |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
-| -------------------- | :----------------------: | :------------: | :--------------------------------: |
-| Host environments    | Wasmer (Rust), browser\* |    Browser     | Wasmtime (Rust, Python), browser\* |
-| Guest languages      |          Rust\*          |      Rust      |             Rust, C\*              |
-| Protocol format      |   Rust (using macros)    |      N/A       |                .wit                |
-| Serialization format |       MessagePack        |      JSON      |               Custom               |
+| Feature                                                   |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
+| --------------------------------------------------------- | :----------------------: | :------------: | :--------------------------------: |
+| Host environments                                         | Wasmer (Rust), browser\* |    Browser     | Wasmtime (Rust, Python), browser\* |
+| Guest languages                                           |          Rust\*          |      Rust      |             Rust, C\*              |
+| Protocol format                                           |   Rust (using macros)    |      N/A       |                .wit                |
+| Serialization format                                      |       MessagePack        |      JSON      |               Custom               |
+| [Can use existing Rust types](#using-existing-rust-types) |         &#9989;          |    &#10060;    |              &#10060;              |
 
 \*) These are only the _currently supported_ options. More may be added in the future.
 
@@ -36,17 +37,18 @@ Using `fp-bindgen` is a three-step process:
   structures available for communication across the Wasm bridge.
 - Then you [generate the bindings](#generating-bindings) for the hosts and plugin language that are
   relevant to you.
-- Finally, you can start implementing plugins and runtimes using the generated bindings.
+- Finally, you can start [implementing plugins and runtimes](#using-the-bindings) using the
+  generated bindings.
 
 ## Defining a protocol
 
 Before you can generate bindings using this library, you first define a protocol of functions that
 can be called by the _runtime_ (the Wasm host) and functions that can be called by the _plugin_ (the
-Wasm guest module). The protocol specifies the function declarations, put inside `fp-bindgen`
+Wasm guest module). The protocol specifies the function declarations, which are placed inside two
 macros: `fp_import!` and `fp_export!`. These macros specify which functions can be imported and
 which can be exported, _from the perspective of the plugin_. In other words, `fp_import!` functions
 can be called by the plugin and must be implemented by the runtime, while `fp_export!` functions can
-be called by the runtime and may be implemented by the plugin.
+be called by the runtime and _may_ be implemented by the plugin.
 
 **Example:**
 
@@ -60,9 +62,15 @@ fp_export! {
 }
 ```
 
-Functions can pass Rust `struct`s and `enum`s as their arguments and return value, but only by value
-(passing a reference across the Wasm bridge is currently not supported) and only for types that
-implement `Serializable`.
+**Important caveat:** There must be exactly one `fp_import!` block and one `fp_export!` block in the
+same module as where you invoke `fp_bindgen!()`. If you only have imports, or only have exports, you
+should create an empty block for the other.
+
+### Data structures
+
+Besides primitives, functions can pass Rust `struct`s and `enum`s as their arguments and return
+value, but only by value (passing a reference across the Wasm bridge is currently not supported) and
+only for types that implement `Serializable`.
 
 **Example:**
 
@@ -83,8 +91,7 @@ Note that `Serializable` is implemented by default for some common standard type
 
 ### Async functions
 
-Functions can also be `async`, which can be achieved by nothing more than putting the `async`
-keyword in front of the function declaration.
+Functions can also be `async`, which works as you would expect:
 
 **Example:**
 
@@ -96,9 +103,10 @@ fp_import! {
 
 ### Using existing Rust types
 
-Sometimes you may wish to use Rust types for your protocol that you want to use directly in the
-generated runtime or plugin implementation. In such a case, generation of the data types would be
-a hindrance, rather than an aid, so we allow explicit annotations to achieve this:
+Sometimes you may wish to use Rust types for your protocol that you also want to use directly in the
+generated runtime or plugin implementation. In such a case, generation of the data types might force
+you to perform unnecessary copies, so we allow explicit annotations to import the existing
+definition instead of generating a new one:
 
 **Example:**
 
@@ -112,10 +120,10 @@ pub struct MyStruct {
 }
 ```
 
-In this example, `MyStruct` has a double duty: it acts both as a type definition for the protocol
-(through `fp-bindgen`'s `Serializable` trait), which can still be used for generating a TypeScript
-type definition, for instance. _And_ it acts as a type that can be directly used by the Rust Wasmer
-runtime, under the assumption the runtime can import it from `my_crate::prelude`.
+In this example, `MyStruct` has a double function: it acts both as a type definition for the
+protocol (through `fp-bindgen`'s `Serializable` trait), which can still be used for generating a
+TypeScript type definition, for instance. _And_ it acts as a type that can be directly used by the
+Rust Wasmer runtime, under the assumption the runtime can import it from `my_crate::prelude`.
 
 Please note that in this case, you do have a bigger responsibility to make sure the definition
 fulfills the requirements of the code generator, hence why Serde's trait derives and annotations
@@ -127,6 +135,15 @@ protocol itself is specified using Rust syntax as well. If desired, we could ext
 TypeScript generator as well, though that would imply an even bigger responsibility for the user to
 keep their TypeScript types in sync with the protocol.
 
+### Cargo features
+
+The `fp-bindgen` crate supports optional Cargo features for compatibility with some common types
+from the crate ecosystem:
+
+- `serde-bytes-compat`: Enables compatibility with `serde_bytes`'s `ByteBuf` type (the `Bytes` type
+  is a reference type, which `fp-bindgen` doesn't support in general).
+- `time-compat`: Enables compatibility with `time`'s `PrimitiveDateTime` and `OffsetDateTime` types.
+
 ## Generating bindings
 
 To generate bindings based on your protocol, you first need to create a function that will generate
@@ -134,22 +151,36 @@ them for you. Creating this function is easy, because its implementation can be 
 using the `fp_bindgen` macro:
 
 ```rust
-fn generate_bindings(bindings_type: &str) {
-    let output_path = format!("bindings/{}", bindings_type);
-    fp_bindgen!(bindings_type, &output_path);
-}
+let bindings_type = BindingsType::RustWasmerRuntime;
+fp_bindgen!(BindingConfig {
+    bindings_type,
+    path: &format!("bindings/{}", bindings_type)
+});
 ```
 
-The macro accepts two arguments: the type of bindings to generate, and where to write them.
 Currently, we support the following binding types:
 
-- `"rust-plugin"`: Generates bindings for a Rust plugin.
-- `"rust-wasmer-runtime"`: Generates runtime bindings for use with Wasmer.
-- `"ts-runtime"`: Generates bindings for a TypeScript runtime.
+- `BindingsType::RustPlugin`: Generates bindings for a Rust plugin.
+- `BindingsType::RustWasmerRuntime`: Generates runtime bindings for use with Wasmer.
+- `BindingsType::TsRuntime`: Generates bindings for a TypeScript runtime.
 
-**Important caveat:** There must be exactly one `fp_import!` block and one `fp_export!` block in the
-same module as where you invoke `fp_bindgen!()`. If you only have imports, or only have exports, you
-should create an empty block for the other.
+Note that some binding types take an additional config argument.
+
+## Using the bindings
+
+How to use the generated bindings differs between the various types.
+
+### Using the Rust plugin bindings
+
+TODO
+
+### Using the Rust Wasmer runtime bindings
+
+TODO
+
+### Using the TypeScript runtime bindings
+
+TODO
 
 ## Examples
 
@@ -199,27 +230,6 @@ problematic is if you pass them as a generic argument to another type, such as `
 
 If this (or other issues with aliases) affect you, please
 [file an issue](https://github.com/fiberplane/fp-bindgen/issues).
-
-### Why not utilize [`ts-rs`](https://github.com/Aleph-Alpha/ts-rs) for the TypeScript generator?
-
-The `derive` macro exported by `ts-rs` parses Rust data structures into a `DerivedTS` struct. As the
-name suggests, this struct is highly TypeScript-specific, so if we were to integrate this, it would
-exist in parallel to code for generating the other Rust bindings. However, because we need to
-perform type extraction at a very early stage in our pipeline, this would basically result in two
-disjoint pipelines: one for Rust and one for TS.
-
-So while utilizing `ts-rs` would help us get the TS bindings off the ground fast, it wouldn't help
-us with the Rust side of things at all. If anything, it would likely complicate long-term
-maintenance as developers now need to understand two completely separate pipelines, and the needs of
-`ts-rs` and this crate would need to be tightly synchronized (there would be pretty tight coupling
-between the two).
-
-As a final nail in the coffin, the Rust pipeline would need to be generic anyway, because it will be
-used for generating both the runtime and the plugin bindings. Extending it so the TypeScript
-generator can also work on top of the same pipeline was only a small step at that point.
-
-Even so, having previously contributed to the `ts-rs` project, we'd like to extend our thanks to
-everyone who has contributed to it for the inspiration it gave us.
 
 ### What about versioning?
 
