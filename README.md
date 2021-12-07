@@ -12,6 +12,11 @@ WASM bindings, but for the short-term, `fp-bindgen` provides bindings that work 
 serialization format, which helps us to avoid versioning issues and opens up compatibility with
 tools such as Serde.
 
+It is worth mentioning that, though we have a [specification](#specification) for our communication
+primitives that allows generators for other languages to be contributed, `fp-bindgen` is opinionated
+towards Rust. It uses Rust data structures and function signatures as its "protocol format",
+enabling tight integration with existing crates from the Rust ecosystem.
+
 The following table is intended to highlight the major differences between the different tools:
 
 | Feature              |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
