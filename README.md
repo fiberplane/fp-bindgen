@@ -2,15 +2,26 @@
 
 Macros for generating WebAssembly bindings.
 
-## Comparison to `wasm-bindgen`
+## Comparison to other "bindgen" tools
 
-`fp-bindgen` is an alternative to `wasm-bindgen`, but diverges primarily in two ways:
+`fp-bindgen` is not the only tool for generating WASM bindings. The most well-known tool for this
+is probably `wasm-bindgen`, though it is limited to Rust modules running inside browser
+environments. A more generic alternative, based on the WASM
+[interface types proposal](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md), is `wit-bindgen`. We do believe interface types to be the future of
+WASM bindings, but for the short-term, `fp-bindgen` provides bindings that work with a stable
+serialization format, which helps us to avoid versioning issues and opens up compatibility with
+tools such as Serde.
 
-- It doesn't assume the Wasm host is a browser or other JS-based runtime. Instead, it can generate
-  bindings for both JS and Rust runtimes and our communication primitives are
-  [documented](#specification) so that bindings for other languages can be contributed.
-- It uses [MessagePack](https://msgpack.org/index.html) for serializing complex data structures, to
-  improve performance over `wasm-bindgen`'s JSON serialization.
+The following table is intended to highlight the major differences between the different tools:
+
+| Feature              |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
+| -------------------- | :----------------------: | :------------: | :--------------------------------: |
+| Host environments    | Wasmer (Rust), browser\* |    Browser     | Wasmtime (Rust, Python), browser\* |
+| Guest languages      |          Rust\*          |      Rust      |             Rust, C\*              |
+| Protocol format      |   Rust (using macros)    |      N/A       |                .wit                |
+| Serialization format |       MessagePack        |      JSON      |               Custom               |
+
+\*) These are only the _currently supported_ options. More may be added in the future.
 
 ## Usage
 
