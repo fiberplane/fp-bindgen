@@ -213,7 +213,12 @@ provided on the `Runtime` instance as methods. Please be aware that implementati
 
 ### Using the TypeScript runtime bindings
 
-TODO
+The generator for the TypeScript runtime works similarly to that for the Wasmer runtime, but it
+generates an `index.ts` and a `types.ts`. `types.ts` contains the type definitions for all the data
+structures, while the `index.ts` exports a `createRuntime()` function that you can use for
+instantiating the runtime. Upon instantiation, you are expected to provide implementations for all
+the `fp_import!` functions, while the returned `Promise` will give you an object with all the
+`fp_export!` functions the provided plugin has implemented.
 
 ## Examples
 
