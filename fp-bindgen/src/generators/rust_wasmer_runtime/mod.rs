@@ -14,19 +14,18 @@ pub fn generate_bindings(
     deserializable_types: BTreeSet<Type>,
     path: &str,
 ) {
-    let spec_path = format!("{}/spec", path);
-    fs::create_dir_all(&spec_path).expect("Could not create spec/ directory");
+    fs::create_dir_all(&path).expect("Could not create output directory");
 
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:
     generate_type_bindings(
         deserializable_types,
         serializable_types,
-        &spec_path,
+        path,
         "rust_wasmer_runtime",
     );
 
-    generate_function_bindings(import_functions, export_functions, &spec_path);
+    generate_function_bindings(import_functions, export_functions, path);
 }
 
 fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenStream {

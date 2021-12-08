@@ -190,7 +190,7 @@ fn my_exported_function(a: u32, b: u32) -> u32 {
 itself is imported. The function signature must match exactly with one of the `fp_export!`
 functions.
 
-When compiling a plugin, don't forget to compile against "wasm32-unknown-unknown" target, or you
+When compiling a plugin, don't forget to compile against the "wasm32-unknown-unknown" target, or you
 will receive linker errors.
 
 See the `example-plugin/` directory for an example of a plugin that uses bindings generated from
@@ -198,7 +198,18 @@ our `example-protocol/`.
 
 ### Using the Rust Wasmer runtime bindings
 
-TODO
+The generator for our Rust Wasmer runtime works a bit differently. Instead of generating a crate,
+it generates two files: `bindings.rs` and `types.rs`. These can be placed in a module of your
+choosing (we chose a module named `spec` in the `example-runtime/`).
+
+As the implementor of the runtime, it is then your responsibility to implement the `fp_import!`
+functions within the same module as you've placed the generated files. You can see an example of
+this in `example-runtime/spec/mod.rs`.
+
+Finally, the `bindings.rs` file contains a constructor (`Runtime::new()`) that you can use to
+instantiate Wasmer runtimes with the Wasm module provided as a blob. The `fp_export!` functions are
+provided on the `Runtime` instance as methods. Please be aware that implementation of the
+`fp_export!` functions is always at the discretion of the plugin, and an attempt to invoke a missing implementation can fail with an `InvocationError::FunctionNotExported` error.
 
 ### Using the TypeScript runtime bindings
 
