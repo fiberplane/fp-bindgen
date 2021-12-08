@@ -53,6 +53,9 @@ jobs:
           cargo run
           cd ..
 
+      - name: Install Wasm target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Verify example-plugin builds
         run: |
           cd example-plugin
