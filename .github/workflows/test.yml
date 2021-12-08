@@ -47,6 +47,12 @@ jobs:
       - name: Run tests
         run: cargo test
 
+      - name: Verify example-protocol can be compiled
+        run: |
+          cd example-protocol
+          cargo run
+          cd ..
+
       - name: Verify example-plugin builds
         run: |
           cd example-plugin
