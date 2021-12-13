@@ -168,7 +168,7 @@ fn main() {
             version: VERSION,
             dependencies: BTreeMap::from([(
                 "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../fp-bindgen-support", features = ["guest", "async"] }"#
+                r#"{ path = "../../../fp-bindgen-support", features = ["guest", "async"] }"#
                     .to_owned(),
             )]),
         }),
@@ -234,11 +234,11 @@ fn test_generate_rust_plugin() {
 fn test_generate_rust_wasmer_runtime() {
     static FILES: &[(&str, &[u8])] = &[
         (
-            "bindings/rust-wasmer-runtime/spec/bindings.rs",
+            "bindings/rust-wasmer-runtime/bindings.rs",
             include_bytes!("assets/rust_wasmer_runtime_test/expected_bindings.rs"),
         ),
         (
-            "bindings/rust-wasmer-runtime/spec/types.rs",
+            "bindings/rust-wasmer-runtime/types.rs",
             include_bytes!("assets/rust_wasmer_runtime_test/expected_types.rs"),
         ),
     ];
