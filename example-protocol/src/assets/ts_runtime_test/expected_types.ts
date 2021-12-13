@@ -45,6 +45,27 @@ export type GroupImportedType2 = {
     youWillSeeThis: boolean;
 };
 
+/**
+ * Similar to the `RequestOptions` struct, but using types from the `http` crate.
+ */
+export type HttpRequestOptions = {
+    url: string;
+    method: Method;
+    headers: Record<string, string>;
+    body?: ArrayBuffer;
+};
+
+export type Method = 
+    | "GET"
+    | "POST"
+    | "PUT"
+    | "DELETE"
+    | "HEAD"
+    | "OPTIONS"
+    | "CONNECT"
+    | "PATCH"
+    | "TRACE";
+
 export type Point<T> = {
     value: T;
 };

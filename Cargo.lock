@@ -340,6 +340,7 @@ name = "example-protocol"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen",
+ "http",
  "pretty_assertions 0.7.2",
  "serde",
  "serde_bytes",

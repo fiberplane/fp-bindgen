@@ -239,6 +239,9 @@ pub struct CustomType {
     /// value describes what comes on the right-hand side.
     pub rs_dependencies: BTreeMap<&'static str, CargoDependency>,
 
+    /// Serde attributes to add to fields of this type.
+    pub serde_attrs: Vec<String>,
+
     /// Name to refer to the type in the TypeScript generator.
     pub ts_ty: String,
 

@@ -22,6 +22,7 @@ impl Serializable for time::OffsetDateTime {
                     features: BTreeSet::from(["serde-human-readable"]),
                 },
             )]),
+            serde_attrs: vec![],
             ts_ty: "string".to_owned(),
             ts_declaration: None,
         })
@@ -52,6 +53,7 @@ impl Serializable for time::PrimitiveDateTime {
                     features: BTreeSet::from(["serde-human-readable"]),
                 },
             )]),
+            serde_attrs: vec![],
             ts_ty: "string".to_owned(),
             ts_declaration: None,
         })

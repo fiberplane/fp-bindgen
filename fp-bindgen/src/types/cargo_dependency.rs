@@ -63,5 +63,37 @@ impl CargoDependency {
 }
 
 impl fmt::Display for CargoDependency {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {}
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut attributes = Vec::new();
+
+        if let Some(path) = self.path {
+            attributes.push(format!("path = {}", quote_value(path)));
+        } else if let Some(git) = self.git {
+            attributes.push(format!("git = {}", quote_value(git)));
+            if let Some(branch) = self.branch {
+                attributes.push(format!("branch = {}", quote_value(branch)));
+            }
+        }
+
+        if let Some(version) = self.version {
+            attributes.push(format!("version = {}", quote_value(version)));
+        }
+
+        if !self.features.is_empty() {
+            attributes.push(format!(
+                "features = [{}]",
+                self.features
+                    .iter()
+                    .map(|f| quote_value(f))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+
+        write!(f, "{{ {} }}", attributes.join(", "))
+    }
+}
+
+fn quote_value(val: &str) -> String {
+    format!("\"{}\"", val.replace("\\", "\\\\").replace("\"", "\\\""))
 }

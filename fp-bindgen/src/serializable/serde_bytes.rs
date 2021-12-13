@@ -16,6 +16,7 @@ impl Serializable for serde_bytes::ByteBuf {
                 "serde_bytes",
                 CargoDependency::with_version("0.11"),
             )]),
+            serde_attrs: vec![],
             ts_ty: "ArrayBuffer".to_owned(),
             ts_declaration: None,
         })

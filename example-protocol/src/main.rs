@@ -1,7 +1,8 @@
-use fp_bindgen::prelude::*;
+use fp_bindgen::{prelude::*, types::CargoDependency};
+use http::Method;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
@@ -69,6 +70,16 @@ pub struct RequestOptions {
     pub body: Option<ByteBuf>,
 }
 
+/// Similar to the `RequestOptions` struct, but using types from the `http` crate.
+#[derive(Clone, Debug, Serializable)]
+pub struct HttpRequestOptions {
+    pub url: String,
+    pub method: Method,
+    pub headers: HashMap<String, String>,
+    #[fp(skip_serializing_if = "Option::is_none")]
+    pub body: Option<ByteBuf>,
+}
+
 /// A response to a request.
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
 #[fp(rust_wasmer_runtime_module = "example_bindings")]
@@ -124,7 +135,6 @@ mod foobar {
 
 fp_import! {
     use ExplicitedlyImportedType;
-
     use foobar::{baz::GroupImportedType1, GroupImportedType2};
 
     /// Logs a message to the (development) console.
@@ -146,6 +156,7 @@ fp_import! {
 
 fp_export! {
     use ExplicitedlyImportedType;
+    use HttpRequestOptions;
 
     fn my_plain_exported_function(a: u32, b: u32) -> u32;
 
@@ -167,9 +178,14 @@ fn main() {
             authors: AUTHORS,
             version: VERSION,
             dependencies: BTreeMap::from([(
-                "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../../fp-bindgen-support", features = ["guest", "async"] }"#
-                    .to_owned(),
+                "fp-bindgen-support",
+                CargoDependency {
+                    path: Some("../../../fp-bindgen-support"),
+                    features: BTreeSet::from(["async", "guest"]),
+                    git: None,
+                    branch: None,
+                    version: None,
+                },
             )]),
         }),
         BindingsType::RustWasmerRuntime,
@@ -218,8 +234,14 @@ fn test_generate_rust_plugin() {
             authors: AUTHORS,
             version: VERSION,
             dependencies: BTreeMap::from([(
-                "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned()
+                "fp-bindgen-support",
+                CargoDependency {
+                    path: Some("../../fp-bindgen-support"),
+                    features: BTreeSet::from(["async"]),
+                    git: None,
+                    branch: None,
+                    version: None
+                }
             )])
         }),
         path: "bindings/rust-plugin",

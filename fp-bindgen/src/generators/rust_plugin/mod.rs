@@ -85,7 +85,7 @@ fn generate_cargo_file(
         ("rmp-serde", CargoDependency::with_version("=1.0.0-beta.2")),
         (
             "serde",
-            CargoDependency::with_version_and_features("1", BTreeSet::from(["derive"])),
+            CargoDependency::with_version_and_features("1.0", BTreeSet::from(["derive"])),
         ),
     ]);
 
@@ -506,19 +506,27 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
-            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
-                if !serde_attrs
-                    .iter()
-                    .any(|attr| attr == "default" || attr.starts_with("default = "))
-                {
-                    serde_attrs.push("default".to_owned());
+            match &field.ty {
+                Type::Container(name, _) if name == "Option" => {
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr == "default" || attr.starts_with("default = "))
+                    {
+                        serde_attrs.push("default".to_owned());
+                    }
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr.starts_with("skip_serializing_if ="))
+                    {
+                        serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                    }
                 }
-                if !serde_attrs
-                    .iter()
-                    .any(|attr| attr.starts_with("skip_serializing_if ="))
-                {
-                    serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                Type::Custom(custom_type) => {
+                    for attr in custom_type.serde_attrs.iter() {
+                        serde_attrs.push(attr.clone());
+                    }
                 }
+                _ => {}
             }
 
             let docs = if field.doc_lines.is_empty() {

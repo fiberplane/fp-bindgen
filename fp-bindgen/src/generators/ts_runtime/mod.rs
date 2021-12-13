@@ -2,7 +2,8 @@ use crate::functions::{Function, FunctionList};
 use crate::prelude::Primitive;
 use crate::serializable::Serializable;
 use crate::types::{
-    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+    format_name_with_generics, CustomType, EnumOptions, Field, GenericArgument, StructOptions,
+    Type, Variant,
 };
 use crate::TsRuntimeConfig;
 use inflector::Inflector;
@@ -587,6 +588,11 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
                 name,
                 format_type(ty.as_ref())
             )),
+            Type::Custom(CustomType {
+                ts_ty,
+                ts_declaration: Some(ts_declaration),
+                ..
+            }) => Some(format!("export type {} = {};", ts_ty, ts_declaration,)),
             Type::Enum(name, generic_args, doc_lines, variants, opts) => Some(
                 create_enum_definition(name, generic_args, doc_lines, variants, opts.clone()),
             ),

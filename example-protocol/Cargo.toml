@@ -11,6 +11,7 @@ fp-bindgen = { path = "../fp-bindgen", features = [
     "time-compat",
     "generators",
 ] }
+http = "0.2"
 pretty_assertions = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"

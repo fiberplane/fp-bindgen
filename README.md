@@ -245,11 +245,20 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 
 Are you using the type in one of the `fp_import!` or `fp_export!` functions? Deriving `Serializable`
 makes it possible to use the type as part of your protocol, but it won't become part of the
-generated bindings until it is actually used. Note that usage can be either direct (referenced
-directly by one of the `fp_import!` or `fp_export!` functions), or indirect when it is referenced
-by another type that is already in use.
+generated bindings until it is actually referenced. Note that types can be either referenced
+directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is already in use.
 
-Are you using the type and you believe the omission is in error? Please
+If a type is not referenced either directly or indirectly by any of the functions that are part of
+your protocol, you can force inclusion by adding a `use` statement referencing the type to either
+the `fp_import!` or `fp_export!` section:
+
+```rs
+fp_import! {
+    use MyType;
+}
+```
+
+Are you referencing the type and it is still not included in your bindings? Please
 [file an issue](https://github.com/fiberplane/fp-bindgen/issues).
 
 ### Can I use aliases?
