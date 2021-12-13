@@ -65,6 +65,11 @@ fn generate_cargo_file(
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
+    let mut support_features = BTreeSet::from(["guest"]);
+    if requires_async {
+        support_features.insert("async");
+    }
+
     let mut dependencies = BTreeMap::from([
         (
             "fp-bindgen-support",
@@ -73,7 +78,7 @@ fn generate_cargo_file(
                 branch: Some("main"),
                 path: None,
                 version: None,
-                features: BTreeSet::from(if requires_async { ["async"] } else { [] }),
+                features: support_features,
             },
         ),
         ("once_cell", CargoDependency::with_version("1")),
@@ -332,7 +337,8 @@ fn create_enum_definition(
     let variants = variants
         .into_iter()
         .flat_map(|variant| {
-            let variant_decl = match variant.ty {
+            let mut serde_attrs = variant.attrs.to_serde_attrs();
+            let mut variant_decl = match variant.ty {
                 Type::Unit => format!("{},", variant.name),
                 Type::Struct(_, _, _, fields, _) => {
                     let fields = format_struct_fields(&fields);
@@ -356,10 +362,13 @@ fn create_enum_definition(
                         let fields = fields.join(" ");
                         format!(" {} ", &fields.trim_end_matches(','))
                     };
-                    format!(
-                        "#[serde(rename_all = \"camelCase\")]\n{} {{{}}},",
-                        variant.name, fields
-                    )
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr.starts_with("rename_all ="))
+                    {
+                        serde_attrs.push("rename_all = \"camelCase\"".to_owned());
+                    }
+                    format!("{} {{{}}},", variant.name, fields)
                 }
                 Type::Tuple(items) => {
                     let items = items
@@ -371,6 +380,11 @@ fn create_enum_definition(
                 }
                 other => panic!("Unsupported type for enum variant: {:?}", other),
             };
+
+            if !serde_attrs.is_empty() {
+                serde_attrs.sort();
+                variant_decl = format!("#[serde({})]\n{}", serde_attrs.join(", "), variant_decl);
+            }
 
             let lines = if variant.doc_lines.is_empty() {
                 variant_decl
@@ -557,15 +571,6 @@ pub fn format_type(ty: &Type) -> String {
             items.iter().map(format_type).collect::<Vec<_>>().join(", ")
         ),
         Type::Unit => "()".to_owned(),
-    }
-}
-
-/// Formats types so that all complex types are replaced with the raw serialized version
-pub fn format_raw_type(ty: &Type) -> String {
-    match ty {
-        Type::Primitive(primitive) => format_primitive(*primitive),
-        Type::Unit => "()".to_owned(),
-        _ => "Vec<u8>".to_string(),
     }
 }
 

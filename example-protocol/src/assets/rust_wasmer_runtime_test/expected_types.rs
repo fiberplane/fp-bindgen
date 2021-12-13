@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap};
 
-pub use my_crate::other::RequestMethod;
-pub use my_crate::prelude::RequestOptions;
-pub use my_crate::prelude::Response;
+pub use example_bindings::RequestMethod;
+pub use example_bindings::RequestOptions;
+pub use example_bindings::Response;
 
 pub type Body = serde_bytes::ByteBuf;
 
@@ -78,7 +78,7 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
-    #[serde(rename_all = "camelCase")]
+    #[serde(rename = "other/misc", rename_all = "camelCase")]
     Other { reason: String },
 }
 

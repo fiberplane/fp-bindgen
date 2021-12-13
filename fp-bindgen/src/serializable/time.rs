@@ -15,10 +15,11 @@ impl Serializable for time::OffsetDateTime {
             rs_dependencies: BTreeMap::from([(
                 "time",
                 CargoDependency {
+                    branch: None,
                     git: None,
                     path: None,
                     version: Some("0.3"),
-                    features: BTreeSet::from(["serde"]),
+                    features: BTreeSet::from(["serde-human-readable"]),
                 },
             )]),
             ts_ty: "string".to_owned(),
@@ -44,10 +45,11 @@ impl Serializable for time::PrimitiveDateTime {
             rs_dependencies: BTreeMap::from([(
                 "time",
                 CargoDependency {
+                    branch: None,
                     git: None,
                     path: None,
                     version: Some("0.3"),
-                    features: BTreeSet::from(["serde"]),
+                    features: BTreeSet::from(["serde-human-readable"]),
                 },
             )]),
             ts_ty: "string".to_owned(),

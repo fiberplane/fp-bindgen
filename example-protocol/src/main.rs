@@ -1,4 +1,4 @@
-use fp_bindgen::{prelude::*, WasmerRuntimeConfig};
+use fp_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, HashMap};
@@ -48,7 +48,7 @@ pub struct ComplexGuestToHost {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::other")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum RequestMethod {
     Delete,
@@ -59,7 +59,7 @@ pub enum RequestMethod {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "camelCase")]
 pub struct RequestOptions {
     pub url: String,
@@ -71,7 +71,7 @@ pub struct RequestOptions {
 
 /// A response to a request.
 #[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[fp(rust_wasmer_runtime_module = "example_bindings")]
 #[serde(rename_all = "camelCase")]
 pub struct Response {
     /// Response headers, by name.
@@ -96,6 +96,7 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
+    #[fp(rename = "other/misc")]
     Other {
         reason: String,
     },
@@ -167,12 +168,11 @@ fn main() {
             version: VERSION,
             dependencies: BTreeMap::from([(
                 "fp-bindgen-support".to_owned(),
-                r#"{ path = "../../fp-bindgen-support", features = ["async"] }"#.to_owned(),
+                r#"{ path = "../../../fp-bindgen-support", features = ["guest", "async"] }"#
+                    .to_owned(),
             )]),
         }),
-        BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
-            generate_raw_export_wrappers: true,
-        }),
+        BindingsType::RustWasmerRuntime,
         BindingsType::TsRuntime(TsRuntimeConfig {
             generate_raw_export_wrappers: true,
         }),
@@ -234,18 +234,16 @@ fn test_generate_rust_plugin() {
 fn test_generate_rust_wasmer_runtime() {
     static FILES: &[(&str, &[u8])] = &[
         (
-            "bindings/rust-wasmer-runtime/spec/bindings.rs",
+            "bindings/rust-wasmer-runtime/bindings.rs",
             include_bytes!("assets/rust_wasmer_runtime_test/expected_bindings.rs"),
         ),
         (
-            "bindings/rust-wasmer-runtime/spec/types.rs",
+            "bindings/rust-wasmer-runtime/types.rs",
             include_bytes!("assets/rust_wasmer_runtime_test/expected_types.rs"),
         ),
     ];
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustWasmerRuntime(WasmerRuntimeConfig {
-            generate_raw_export_wrappers: true
-        }),
+        bindings_type: BindingsType::RustWasmerRuntime,
         path: "bindings/rust-wasmer-runtime",
     });
     for (path, expected) in FILES {

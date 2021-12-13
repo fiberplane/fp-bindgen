@@ -41,8 +41,29 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --all-features
 
+      - name: Check format
+        run: cargo fmt -- --check
+
       - name: Run tests
         run: cargo test
 
+      - name: Verify example-protocol can be compiled
+        run: |
+          cd example-protocol
+          cargo run
+          cd ..
+
+      - name: Install Wasm target
+        run: rustup target add wasm32-unknown-unknown
+
       - name: Verify example-plugin builds
-        run: cargo build
+        run: |
+          cd example-plugin
+          cargo build
+          cd ..
+
+      - name: Verify example-runtime builds
+        run: |
+          cd example-runtime
+          cargo build
+          cd ..

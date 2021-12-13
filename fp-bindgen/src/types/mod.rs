@@ -1,4 +1,5 @@
 use crate::primitives::Primitive;
+use quote::quote;
 use quote::ToTokens;
 use std::{
     collections::{hash_map::DefaultHasher, BTreeMap, BTreeSet},
@@ -12,7 +13,7 @@ mod enums;
 mod structs;
 
 pub use cargo_dependency::CargoDependency;
-pub use enums::{EnumOptions, Variant};
+pub use enums::{EnumOptions, Variant, VariantAttrs};
 pub use structs::{Field, FieldAttrs, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
@@ -21,6 +22,13 @@ pub use structs::{Field, FieldAttrs, StructOptions};
 pub struct GenericArgument {
     pub name: String,
     pub ty: Option<Type>,
+}
+
+impl ToTokens for GenericArgument {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let ty = syn::parse_str::<syn::Type>(&self.name).unwrap();
+        (quote! {#ty}).to_tokens(tokens)
+    }
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -138,9 +146,8 @@ impl Type {
                 variants
                     .into_iter()
                     .map(|variant| Variant {
-                        doc_lines: variant.doc_lines,
-                        name: variant.name,
                         ty: variant.ty.with_specialized_args(specialized_args),
+                        ..variant
                     })
                     .collect(),
                 opts,
@@ -178,6 +185,39 @@ impl Ord for Type {
 impl PartialOrd for Type {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.ord_key().partial_cmp(&other.ord_key())
+    }
+}
+
+impl ToTokens for Type {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        (match self {
+            Type::Alias(name, _) | Type::Custom(CustomType { rs_ty: name, .. }) => {
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#ty}
+            }
+            Type::Container(name, ty) | Type::List(name, ty) => {
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#name<#ty>}
+            }
+            Type::Struct(name, generic_args, _, _, _) | Type::Enum(name, generic_args, _, _, _) => {
+                let ty = syn::parse_str::<syn::Type>(name).unwrap();
+                if generic_args.is_empty() {
+                    quote! {#ty}
+                } else {
+                    quote! {#ty<#(#generic_args),*>}
+                }
+            }
+            Type::GenericArgument(arg) => quote! {#arg},
+            Type::Map(name, k, v) => {
+                let name = syn::parse_str::<syn::Type>(name).unwrap();
+                quote! {#name<#k,#v>}
+            }
+            Type::Primitive(primitive) => quote! {#primitive},
+            Type::String => quote! {String},
+            Type::Tuple(items) => quote! {(#(#items),*)},
+            Type::Unit => quote! {()},
+        })
+        .to_tokens(tokens)
     }
 }
 
@@ -391,7 +431,7 @@ mod tests {
     use super::resolve_type;
     use crate::{
         primitives::Primitive,
-        types::{GenericArgument, StructOptions},
+        types::{Field, FieldAttrs, GenericArgument, StructOptions},
         Type,
     };
     use std::collections::BTreeSet;
@@ -477,5 +517,136 @@ mod tests {
         types.insert(vec.clone());
 
         assert_eq!(resolve_type(&ty, &types), Some(vec));
+    }
+
+    #[test]
+    fn test_resolve_nested_specialized_type_among_unspecialized() {
+        let ty: syn::Type = parse_quote!(Vec<Point<f64>>);
+
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: None,
+        }));
+        let generic_point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        let specialized_point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        let vec = Type::List("Vec".to_owned(), Box::new(specialized_point.clone()));
+
+        let mut types = BTreeSet::new();
+        types.insert(t);
+        types.insert(generic_point);
+        types.insert(specialized_point);
+        types.insert(vec.clone());
+
+        assert_eq!(resolve_type(&ty, &types), Some(vec));
+    }
+
+    #[test]
+    fn test_with_specialized_args() {
+        let t = Type::GenericArgument(Box::new(GenericArgument {
+            name: "T".to_owned(),
+            ty: None,
+        }));
+        assert_eq!(
+            t.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::GenericArgument(Box::new(GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }))
+        );
+
+        let v = Type::GenericArgument(Box::new(GenericArgument {
+            name: "V".to_owned(),
+            ty: None,
+        }));
+        assert_eq!(
+            v.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::GenericArgument(Box::new(GenericArgument {
+                name: "V".to_owned(),
+                ty: None,
+            }))
+        );
+
+        let point = Type::Struct(
+            "Point".to_owned(),
+            vec![GenericArgument {
+                name: "T".to_owned(),
+                ty: None,
+            }],
+            vec![],
+            vec![Field {
+                name: "value".to_owned(),
+                ty: Type::GenericArgument(Box::new(GenericArgument {
+                    name: "T".to_owned(),
+                    ty: None,
+                })),
+                doc_lines: vec![],
+                attrs: FieldAttrs::default(),
+            }],
+            StructOptions::default(),
+        );
+        assert_eq!(
+            point.with_specialized_args(&[GenericArgument {
+                name: "T".to_owned(),
+                ty: Some(Type::Primitive(Primitive::F64)),
+            }]),
+            Type::Struct(
+                "Point".to_owned(),
+                vec![GenericArgument {
+                    name: "T".to_owned(),
+                    ty: Some(Type::Primitive(Primitive::F64)),
+                }],
+                vec![],
+                vec![Field {
+                    name: "value".to_owned(),
+                    ty: Type::GenericArgument(Box::new(GenericArgument {
+                        name: "T".to_owned(),
+                        ty: Some(Type::Primitive(Primitive::F64)),
+                    })),
+                    doc_lines: vec![],
+                    attrs: FieldAttrs::default(),
+                }],
+                StructOptions::default(),
+            )
+        );
     }
 }

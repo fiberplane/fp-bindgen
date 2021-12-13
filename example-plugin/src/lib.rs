@@ -66,7 +66,7 @@ async fn fetch_data(url: String) -> String {
 
     match result {
         Ok(response) => {
-            String::from_utf8(response.body).unwrap_or_else(|_| "Invalid utf8".to_owned())
+            String::from_utf8(response.body.to_vec()).unwrap_or_else(|_| "Invalid utf8".to_owned())
         }
         Err(err) => format!("Error: {:?}", err),
     }
