@@ -92,15 +92,25 @@ fn generate_cargo_file(
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
         if let Type::Custom(custom_type) = ty {
-            for (name, value) in custom_type.rs_dependencies.iter() {
-                dependencies.insert(name, value.clone());
+            for (name, dependency) in custom_type.rs_dependencies.iter() {
+                let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
+                    existing_dependency.merge_or_replace_with(&dependency)
+                } else {
+                    dependency.clone()
+                };
+                dependencies.insert(name, dependency);
             }
         }
     }
 
     // Inject dependencies passed through the config:
-    for (name, value) in config.dependencies {
-        dependencies.insert(name, value.clone());
+    for (name, dependency) in config.dependencies {
+        let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
+            existing_dependency.merge_or_replace_with(&dependency)
+        } else {
+            dependency.clone()
+        };
+        dependencies.insert(name, dependency);
     }
 
     write_bindings_file(

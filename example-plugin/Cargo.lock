@@ -15,10 +15,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
+name = "bytes"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
+
+[[package]]
 name = "example-bindings"
 version = "1.0.0"
 dependencies = [
  "fp-bindgen-support",
+ "http",
  "once_cell",
  "rmp-serde",
  "serde",
@@ -33,6 +40,12 @@ dependencies = [
  "example-bindings",
  "time",
 ]
+
+[[package]]
+name = "fnv"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "fp-bindgen-macros"
@@ -50,10 +63,22 @@ name = "fp-bindgen-support"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen-macros",
+ "http",
  "once_cell",
  "rmp-serde",
  "serde",
  "serde_bytes",
+]
+
+[[package]]
+name = "http"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1323096b05d41827dadeaee54c9981958c0f94e670bc94ed80037d1a7b8b186b"
+dependencies = [
+ "bytes",
+ "fnv",
+ "itoa",
 ]
 
 [[package]]
