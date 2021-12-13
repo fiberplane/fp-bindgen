@@ -195,7 +195,8 @@ When compiling a plugin, don't forget to compile against the "wasm32-unknown-unk
 will receive linker errors.
 
 See the `example-plugin/` directory for an example of a plugin that uses bindings generated from
-our `example-protocol/`.
+our `example-protocol/` (do note this plugin only builds after you've run `cargo run` inside the
+`example-protocol/` directory).
 
 ### Using the Rust Wasmer runtime bindings
 
@@ -205,7 +206,8 @@ choosing (we chose a module named `spec` in the `example-runtime/`).
 
 As the implementor of the runtime, it is then your responsibility to implement the `fp_import!`
 functions within the same module as you've placed the generated files. You can see an example of
-this in `example-runtime/spec/mod.rs`.
+this in `example-runtime/spec/mod.rs` (do note the example runtime only builds after you've run
+`cargo run` inside the `example-protocol/` directory).
 
 Finally, the `bindings.rs` file contains a constructor (`Runtime::new()`) that you can use to
 instantiate Wasmer runtimes with the Wasm module provided as a blob. The `fp_export!` functions are
