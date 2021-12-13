@@ -1,5 +1,5 @@
 use fp_bindgen::{prelude::*, types::CargoDependency};
-use http::Method;
+use http::{Method, Uri};
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -73,7 +73,7 @@ pub struct RequestOptions {
 /// Similar to the `RequestOptions` struct, but using types from the `http` crate.
 #[derive(Clone, Debug, Serializable)]
 pub struct HttpRequestOptions {
-    pub url: String,
+    pub url: Uri,
     pub method: Method,
     pub headers: HashMap<String, String>,
     #[fp(skip_serializing_if = "Option::is_none")]

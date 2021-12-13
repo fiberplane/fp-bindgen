@@ -58,7 +58,8 @@ pub struct GroupImportedType2 {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpRequestOptions {
-    pub url: String,
+    #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_uri", serialize_with = "fp_bindgen_support::http::serialize_uri")]
+    pub url: http::Uri,
     #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_http_method", serialize_with = "fp_bindgen_support::http::serialize_http_method")]
     pub method: http::Method,
     pub headers: HashMap<String, String>,
