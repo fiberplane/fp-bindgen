@@ -164,7 +164,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         (quote! {
             #(#[doc = #doc_lines])*
             pub #asyncness fn #name(&self #(,#args)*) -> Result<#return_type, InvocationError> {
-                #(let #serialize_names = rmp_serde::to_vec(&#serialize_names).unwrap();)*
+                #(let #serialize_names = serialize_to_vec(&#serialize_names);)*
 
                 let result = self.#raw_name(#(#arg_names),*);
 
