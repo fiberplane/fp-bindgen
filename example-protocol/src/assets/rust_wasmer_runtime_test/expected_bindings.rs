@@ -39,7 +39,7 @@ impl Runtime {
     }
 
     pub async fn fetch_data(&self, url: String) -> Result<String, InvocationError> {
-        let url = rmp_serde::to_vec(&url).unwrap();
+        let url = serialize_to_vec(&url);
         let result = self.fetch_data_raw(url);
         let result = result.await;
         let result = result.map(|ref data| deserialize_from_slice(data));
@@ -84,7 +84,7 @@ impl Runtime {
         &self,
         a: ComplexHostToGuest,
     ) -> Result<ComplexAlias, InvocationError> {
-        let a = rmp_serde::to_vec(&a).unwrap();
+        let a = serialize_to_vec(&a);
         let result = self.my_complex_exported_function_raw(a);
         let result = result.map(|ref data| deserialize_from_slice(data));
         result
