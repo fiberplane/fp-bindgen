@@ -1,5 +1,5 @@
 use super::Serializable;
-use crate::{CustomType, Type};
+use crate::types::{CargoDependency, CustomType, Type};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for serde_bytes::ByteBuf {
@@ -12,8 +12,13 @@ impl Serializable for serde_bytes::ByteBuf {
             name: "ByteBuf".to_owned(),
             type_args: vec![],
             rs_ty: "serde_bytes::ByteBuf".to_owned(),
-            rs_dependencies: BTreeMap::from([("serde_bytes".to_owned(), r#""0.11""#.to_owned())]),
+            rs_dependencies: BTreeMap::from([(
+                "serde_bytes",
+                CargoDependency::with_version("0.11"),
+            )]),
+            serde_attrs: vec![],
             ts_ty: "ArrayBuffer".to_owned(),
+            ts_declaration: None,
         })
     }
 

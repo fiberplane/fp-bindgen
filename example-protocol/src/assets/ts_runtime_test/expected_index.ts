@@ -14,6 +14,7 @@ import type {
     ExplicitedlyImportedType,
     GroupImportedType1,
     GroupImportedType2,
+    HttpRequestOptions,
     Point,
     RequestError,
     RequestMethod,

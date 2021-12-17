@@ -79,6 +79,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
+name = "bytes"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4872d67bab6358e59559027aa3b9157c53d9358c51423c17554809a8858e0f8"
+
+[[package]]
 name = "cc"
 version = "1.0.71"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -296,6 +302,7 @@ name = "example-protocol"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen",
+ "http",
  "pretty_assertions 0.7.2",
  "serde",
  "serde_bytes",
@@ -321,6 +328,7 @@ dependencies = [
  "Inflector",
  "dashmap",
  "fp-bindgen-macros",
+ "http",
  "once_cell",
  "pretty_assertions 1.0.0",
  "proc-macro2",
@@ -347,6 +355,7 @@ name = "fp-bindgen-support"
 version = "0.1.0"
 dependencies = [
  "fp-bindgen-macros",
+ "http",
  "once_cell",
  "rmp-serde",
  "serde",
@@ -405,6 +414,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2456aef2e6b6a9784192ae780c0f15bc57df0e918585282325e8c8ac27737654"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "http"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1323096b05d41827dadeaee54c9981958c0f94e670bc94ed80037d1a7b8b186b"
+dependencies = [
+ "bytes",
+ "fnv",
+ "itoa",
 ]
 
 [[package]]

@@ -1,7 +1,8 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
 use crate::types::{
-    format_name_with_generics, EnumOptions, Field, GenericArgument, StructOptions, Type, Variant,
+    format_name_with_generics, CargoDependency, EnumOptions, Field, GenericArgument, StructOptions,
+    Type, Variant,
 };
 use crate::RustPluginConfig;
 use std::{
@@ -64,37 +65,52 @@ fn generate_cargo_file(
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
 
-    let mut dependencies = BTreeMap::new();
-    dependencies.insert(
-        "fp-bindgen-support".to_owned(),
-        format!(
-            "{{ git = \"ssh://git@github.com/fiberplane/fp-bindgen.git\", branch = \"main\"{} }}",
-            if requires_async {
-                ", features = [\"guest\", \"async\"]"
-            } else {
-                ""
-            }
+    let mut support_features = BTreeSet::from(["guest"]);
+    if requires_async {
+        support_features.insert("async");
+    }
+
+    let mut dependencies = BTreeMap::from([
+        (
+            "fp-bindgen-support",
+            CargoDependency {
+                git: Some("ssh://git@github.com/fiberplane/fp-bindgen.git"),
+                branch: Some("main"),
+                path: None,
+                version: None,
+                features: support_features,
+            },
         ),
-    );
-    dependencies.insert("once_cell".to_owned(), r#""1""#.to_owned());
-    dependencies.insert("rmp-serde".to_owned(), r#""=1.0.0-beta.2""#.to_owned());
-    dependencies.insert(
-        "serde".to_owned(),
-        r#"{ version = "1.0", features = ["derive"] }"#.to_owned(),
-    );
+        ("once_cell", CargoDependency::with_version("1")),
+        ("rmp-serde", CargoDependency::with_version("=1.0.0-beta.2")),
+        (
+            "serde",
+            CargoDependency::with_version_and_features("1.0", BTreeSet::from(["derive"])),
+        ),
+    ]);
 
     // Inject dependencies from custom types:
     for ty in serializable_types.iter().chain(deserializable_types.iter()) {
         if let Type::Custom(custom_type) = ty {
-            for (name, value) in custom_type.rs_dependencies.iter() {
-                dependencies.insert(name.clone(), value.clone());
+            for (name, dependency) in custom_type.rs_dependencies.iter() {
+                let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
+                    existing_dependency.merge_or_replace_with(&dependency)
+                } else {
+                    dependency.clone()
+                };
+                dependencies.insert(name, dependency);
             }
         }
     }
 
     // Inject dependencies passed through the config:
-    for (name, value) in config.dependencies {
-        dependencies.insert(name, value);
+    for (name, dependency) in config.dependencies {
+        let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
+            existing_dependency.merge_or_replace_with(&dependency)
+        } else {
+            dependency.clone()
+        };
+        dependencies.insert(name, dependency);
     }
 
     write_bindings_file(
@@ -500,19 +516,27 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
-            if matches!(&field.ty, Type::Container(name, _) if name == "Option") {
-                if !serde_attrs
-                    .iter()
-                    .any(|attr| attr == "default" || attr.starts_with("default = "))
-                {
-                    serde_attrs.push("default".to_owned());
+            match &field.ty {
+                Type::Container(name, _) if name == "Option" => {
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr == "default" || attr.starts_with("default = "))
+                    {
+                        serde_attrs.push("default".to_owned());
+                    }
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr.starts_with("skip_serializing_if ="))
+                    {
+                        serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                    }
                 }
-                if !serde_attrs
-                    .iter()
-                    .any(|attr| attr.starts_with("skip_serializing_if ="))
-                {
-                    serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
+                Type::Custom(custom_type) => {
+                    for attr in custom_type.serde_attrs.iter() {
+                        serde_attrs.push(attr.clone());
+                    }
                 }
+                _ => {}
             }
 
             let docs = if field.doc_lines.is_empty() {

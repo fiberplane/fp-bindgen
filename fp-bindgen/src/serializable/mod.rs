@@ -1,17 +1,18 @@
-use dashmap::{mapref::one::Ref, DashMap};
-use once_cell::sync::Lazy;
-
 use crate::{
     generics::{contains_generic_arg, specialize_type_with_dependencies},
     types::{EnumOptions, GenericArgument, Variant, VariantAttrs},
     Type,
 };
+use dashmap::{mapref::one::Ref, DashMap};
+use once_cell::sync::Lazy;
 use std::{
     any::TypeId,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
 };
 
+#[cfg(feature = "http-compat")]
+mod http;
 #[cfg(feature = "serde-bytes-compat")]
 mod serde_bytes;
 #[cfg(feature = "time-compat")]

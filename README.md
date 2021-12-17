@@ -140,6 +140,7 @@ keep their TypeScript types in sync with the protocol.
 The `fp-bindgen` crate supports optional Cargo features for compatibility with some common types
 from the crate ecosystem:
 
+- `http-compat`: Enables compatibility with types from the `http` crate.
 - `serde-bytes-compat`: Enables compatibility with `serde_bytes`'s `ByteBuf` type (the `Bytes` type
   is a reference type, which `fp-bindgen` doesn't support in general).
 - `time-compat`: Enables compatibility with `time`'s `PrimitiveDateTime` and `OffsetDateTime` types.
@@ -194,7 +195,8 @@ When compiling a plugin, don't forget to compile against the "wasm32-unknown-unk
 will receive linker errors.
 
 See the `example-plugin/` directory for an example of a plugin that uses bindings generated from
-our `example-protocol/`.
+our `example-protocol/` (do note this plugin only builds after you've run `cargo run` inside the
+`example-protocol/` directory).
 
 ### Using the Rust Wasmer runtime bindings
 
@@ -204,7 +206,8 @@ choosing (we chose a module named `spec` in the `example-runtime/`).
 
 As the implementor of the runtime, it is then your responsibility to implement the `fp_import!`
 functions within the same module as you've placed the generated files. You can see an example of
-this in `example-runtime/spec/mod.rs`.
+this in `example-runtime/spec/mod.rs` (do note the example runtime only builds after you've run
+`cargo run` inside the `example-protocol/` directory).
 
 Finally, the `bindings.rs` file contains a constructor (`Runtime::new()`) that you can use to
 instantiate Wasmer runtimes with the Wasm module provided as a blob. The `fp_export!` functions are
@@ -244,11 +247,20 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 
 Are you using the type in one of the `fp_import!` or `fp_export!` functions? Deriving `Serializable`
 makes it possible to use the type as part of your protocol, but it won't become part of the
-generated bindings until it is actually used. Note that usage can be either direct (referenced
-directly by one of the `fp_import!` or `fp_export!` functions), or indirect when it is referenced
-by another type that is already in use.
+generated bindings until it is actually referenced. Note that types can be either referenced
+directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is already in use.
 
-Are you using the type and you believe the omission is in error? Please
+If a type is not referenced either directly or indirectly by any of the functions that are part of
+your protocol, you can force inclusion by adding a `use` statement referencing the type to either
+the `fp_import!` or `fp_export!` section:
+
+```rs
+fp_import! {
+    use MyType;
+}
+```
+
+Are you referencing the type and it is still not included in your bindings? Please
 [file an issue](https://github.com/fiberplane/fp-bindgen/issues).
 
 ### Can I use aliases?

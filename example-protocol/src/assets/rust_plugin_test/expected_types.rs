@@ -50,6 +50,19 @@ pub struct GroupImportedType2 {
     pub you_will_see_this: bool,
 }
 
+/// Similar to the `RequestOptions` struct, but using types from the `http` crate.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HttpRequestOptions {
+    #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_uri", serialize_with = "fp_bindgen_support::http::serialize_uri")]
+    pub url: http::Uri,
+    #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_http_method", serialize_with = "fp_bindgen_support::http::serialize_http_method")]
+    pub method: http::Method,
+    pub headers: HashMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub body: Option<serde_bytes::ByteBuf>,
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Point<T> {

@@ -1,5 +1,4 @@
 use crate::primitives::Primitive;
-pub use enums::{EnumOptions, Variant, VariantAttrs};
 use quote::quote;
 use quote::ToTokens;
 use std::{
@@ -7,11 +6,15 @@ use std::{
     hash::{Hash, Hasher},
     str::FromStr,
 };
-pub use structs::{Field, FieldAttrs, StructOptions};
 use syn::{Item, PathArguments};
 
+mod cargo_dependency;
 mod enums;
 mod structs;
+
+pub use cargo_dependency::CargoDependency;
+pub use enums::{EnumOptions, Variant, VariantAttrs};
+pub use structs::{Field, FieldAttrs, StructOptions};
 
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
@@ -233,11 +236,18 @@ pub struct CustomType {
     ///
     /// Keys in the map are dependency names as they appear on the left-hand
     /// side of the `=` in the `Cargo.toml` `[dependencies]` section, while the
-    /// value is the literal part that comes on the right-hand side.
-    pub rs_dependencies: BTreeMap<String, String>,
+    /// value describes what comes on the right-hand side.
+    pub rs_dependencies: BTreeMap<&'static str, CargoDependency>,
+
+    /// Serde attributes to add to fields of this type.
+    pub serde_attrs: Vec<String>,
 
     /// Name to refer to the type in the TypeScript generator.
     pub ts_ty: String,
+
+    /// Optional declaration, for when `ts_ty` does not refer to a built-in
+    /// type.
+    pub ts_declaration: Option<String>,
 }
 
 pub fn format_name_with_generics(name: &str, generic_args: &[GenericArgument]) -> String {

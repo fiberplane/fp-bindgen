@@ -1,5 +1,5 @@
 use super::Serializable;
-use crate::{CustomType, Type};
+use crate::types::{CargoDependency, CustomType, Type};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for time::OffsetDateTime {
@@ -13,10 +13,18 @@ impl Serializable for time::OffsetDateTime {
             type_args: vec![],
             rs_ty: "time::OffsetDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
-                "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
+                "time",
+                CargoDependency {
+                    branch: None,
+                    git: None,
+                    path: None,
+                    version: Some("0.3"),
+                    features: BTreeSet::from(["serde-human-readable"]),
+                },
             )]),
+            serde_attrs: vec![],
             ts_ty: "string".to_owned(),
+            ts_declaration: None,
         })
     }
 
@@ -36,10 +44,18 @@ impl Serializable for time::PrimitiveDateTime {
             type_args: vec![],
             rs_ty: "time::PrimitiveDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
-                "time".to_owned(),
-                r#"{ version = "0.3", features = ["serde-human-readable"] }"#.to_owned(),
+                "time",
+                CargoDependency {
+                    branch: None,
+                    git: None,
+                    path: None,
+                    version: Some("0.3"),
+                    features: BTreeSet::from(["serde-human-readable"]),
+                },
             )]),
+            serde_attrs: vec![],
             ts_ty: "string".to_owned(),
+            ts_declaration: None,
         })
     }
 

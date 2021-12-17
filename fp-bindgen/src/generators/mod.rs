@@ -1,13 +1,16 @@
-pub mod rust_plugin;
-pub mod rust_wasmer_runtime;
-pub mod ts_runtime;
-
-use crate::{functions::FunctionList, types::Type};
+use crate::{
+    functions::FunctionList,
+    types::{CargoDependency, Type},
+};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
     fs,
 };
+
+pub mod rust_plugin;
+pub mod rust_wasmer_runtime;
+pub mod ts_runtime;
 
 #[derive(Debug, Clone)]
 pub enum BindingsType<'a> {
@@ -37,7 +40,7 @@ pub struct RustPluginConfig<'a> {
     pub name: &'a str,
     pub authors: &'a str,
     pub version: &'a str,
-    pub dependencies: BTreeMap<String, String>,
+    pub dependencies: BTreeMap<&'a str, CargoDependency>,
 }
 
 #[derive(Debug, Clone)]
