@@ -82,7 +82,7 @@ fn generate_cargo_file(
             },
         ),
         ("once_cell", CargoDependency::with_version("1")),
-        ("rmp-serde", CargoDependency::with_version("=1.0.0-beta.2")),
+        ("rmp-serde", CargoDependency::with_version("1.0.0")),
         (
             "serde",
             CargoDependency::with_version_and_features("1.0", BTreeSet::from(["derive"])),
