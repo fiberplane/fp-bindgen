@@ -40,7 +40,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                 );
             }
 
-            let name = variant.ident.to_string();
+            let variant_name = variant.ident.to_string();
             let ty = if variant.fields.is_empty() {
                 Type::Unit
             } else if variant.fields.iter().any(|field| field.ident.is_some()) {
@@ -56,7 +56,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                         let ty = resolve_type_or_panic(
                             &field.ty,
                             dependencies,
-                            "Unresolvable variant field type",
+                            &format!("Unresolvable variant field type in enum {}", name),
                         );
                         let doc_lines = get_doc_lines(&field.attrs);
                         let attrs = FieldAttrs::from_attrs(&field.attrs);
@@ -69,7 +69,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                     })
                     .collect();
                 Type::Struct(
-                    name.clone(),
+                    variant_name.clone(),
                     vec![],
                     vec![],
                     fields,
@@ -83,7 +83,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                         resolve_type_or_panic(
                             &field.ty,
                             dependencies,
-                            "Unresolvable variant item type",
+                            &format!("Unresolvable variant item type in enum {}", name),
                         )
                     })
                     .collect();
@@ -93,7 +93,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
             let attrs = VariantAttrs::from_attrs(&variant.attrs);
 
             Variant {
-                name,
+                name: variant_name,
                 ty,
                 doc_lines,
                 attrs,
