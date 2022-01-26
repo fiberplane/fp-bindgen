@@ -10,7 +10,7 @@ edition = "2021"
 # in the protocol, using `#[fp(rust_wasmer_runtime_module = "example_bindings")]` directives.
 # Normally, the runtime would never link against plugin bindings:
 example-bindings = { path = "../example-protocol/bindings/rust-plugin" }
-fp-bindgen-support = { path = "../fp-bindgen-support", features = [
+fp-bindgen-support = { path = "../../fp-bindgen-support", features = [
     "async",
     "host",
     "http",
