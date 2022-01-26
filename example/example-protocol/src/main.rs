@@ -180,7 +180,7 @@ fn main() {
             dependencies: BTreeMap::from([(
                 "fp-bindgen-support",
                 CargoDependency {
-                    path: Some("../../../fp-bindgen-support"),
+                    path: Some("../../../../fp-bindgen-support"),
                     features: BTreeSet::from(["async", "guest"]),
                     git: None,
                     branch: None,
