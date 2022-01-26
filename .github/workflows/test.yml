@@ -49,21 +49,21 @@ jobs:
 
       - name: Verify example-protocol can be compiled
         run: |
-          cd example-protocol
+          pushd example/example-protocol
           cargo run
-          cd ..
+          popd
 
       - name: Install Wasm target
         run: rustup target add wasm32-unknown-unknown
 
       - name: Verify example-plugin builds
         run: |
-          cd example-plugin
+          pushd example/example-plugin
           cargo build
-          cd ..
+          popd
 
       - name: Verify example-runtime builds
         run: |
-          cd example-runtime
+          pushd example/example-runtime
           cargo build
-          cd ..
+          popd
