@@ -94,7 +94,7 @@ fn generate_cargo_file(
         if let Type::Custom(custom_type) = ty {
             for (name, dependency) in custom_type.rs_dependencies.iter() {
                 let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
-                    existing_dependency.merge_or_replace_with(&dependency)
+                    existing_dependency.merge_or_replace_with(dependency)
                 } else {
                     dependency.clone()
                 };
@@ -148,7 +148,7 @@ pub fn generate_type_bindings(
 
     let std_types = all_types
         .iter()
-        .flat_map(|ty| collect_std_types(ty))
+        .flat_map(collect_std_types)
         .collect::<BTreeSet<_>>();
     let std_imports = if std_types.is_empty() {
         "".to_owned()
@@ -381,11 +381,7 @@ fn create_enum_definition(
                     format!("{} {{{}}},", variant.name, fields)
                 }
                 Type::Tuple(items) => {
-                    let items = items
-                        .iter()
-                        .map(|item| format_type(item))
-                        .collect::<Vec<_>>()
-                        .join(", ");
+                    let items = items.iter().map(format_type).collect::<Vec<_>>().join(", ");
                     format!("{}({}),", variant.name, items)
                 }
                 other => panic!("Unsupported type for enum variant: {:?}", other),

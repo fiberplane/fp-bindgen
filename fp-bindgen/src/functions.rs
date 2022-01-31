@@ -85,7 +85,7 @@ impl Function {
                     ty: resolve_type_or_panic(
                         arg.ty.as_ref(),
                         serializable_types,
-                        "Unresolvable argument type",
+                        &format!("Unresolvable argument type for function {}", name),
                     ),
                 },
             })
@@ -95,7 +95,7 @@ impl Function {
             ReturnType::Type(_, return_type) => resolve_type_or_panic(
                 return_type.as_ref(),
                 deserializable_types,
-                "Unresolvable return type",
+                &format!("Unresolvable return type for function {}", name),
             ),
         };
         let is_async = item.sig.asyncness.is_some();

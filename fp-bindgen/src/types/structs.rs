@@ -29,16 +29,20 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
         .fields
         .iter()
         .map(|field| {
-            let name = field
+            let field_name = field
                 .ident
                 .as_ref()
                 .expect("Struct fields must be named")
                 .to_string();
-            let ty = resolve_type_or_panic(&field.ty, dependencies, "Unresolvable field type");
+            let ty = resolve_type_or_panic(
+                &field.ty,
+                dependencies,
+                &format!("Unresolvable field type in struct {}", name),
+            );
             let doc_lines = get_doc_lines(&field.attrs);
             let attrs = FieldAttrs::from_attrs(&field.attrs);
             Field {
-                name,
+                name: field_name,
                 ty,
                 doc_lines,
                 attrs,

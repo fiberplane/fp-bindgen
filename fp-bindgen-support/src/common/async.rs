@@ -5,7 +5,7 @@ pub const FUTURE_STATUS_READY: u32 = 1;
 
 #[doc(hidden)]
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct AsyncValue {
     pub status: u32,
     pub ptr: u32,
@@ -20,7 +20,14 @@ impl AsyncValue {
             len: 0,
         }
     }
+
     pub fn buffer_ptr(&self) -> FatPtr {
         to_fat_ptr(self.ptr as *const u8, self.len)
+    }
+}
+
+impl Default for AsyncValue {
+    fn default() -> Self {
+        Self::new()
     }
 }

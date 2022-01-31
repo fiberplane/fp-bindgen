@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::task::Waker;
 use wasmer::{LazyInit, Memory, NativeFunc, WasmerEnv};
 
-#[derive(WasmerEnv, Clone)]
+#[derive(Clone, Default, WasmerEnv)]
 pub struct RuntimeInstanceData {
     #[wasmer(export)]
     pub(crate) memory: LazyInit<Memory>,
@@ -47,17 +47,5 @@ impl RuntimeInstanceData {
                 .call(ptr)
                 .expect("unable to call free")
         };
-    }
-}
-
-impl Default for RuntimeInstanceData {
-    fn default() -> Self {
-        Self {
-            memory: Default::default(),
-            wakers: Default::default(),
-            __fp_free: Default::default(),
-            __fp_guest_resolve_async_value: Default::default(),
-            __fp_malloc: Default::default(),
-        }
     }
 }

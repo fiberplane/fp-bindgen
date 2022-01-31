@@ -72,14 +72,6 @@ impl Type {
         }
     }
 
-    pub fn generic_args(&self) -> Vec<GenericArgument> {
-        match self {
-            Self::Enum(_, generic_args, _, _, _) => generic_args.clone(),
-            Self::Struct(_, generic_args, _, _, _) => generic_args.clone(),
-            _ => vec![],
-        }
-    }
-
     pub fn name(&self) -> String {
         match self {
             Self::Alias(name, _) => name.clone(),
