@@ -14,7 +14,16 @@ use syn::{
     Ident, ItemEnum, LitStr, Result, Token,
 };
 
-pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Type {
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Enum {
+    pub name: String,
+    pub generic_args: Vec<GenericArgument>,
+    pub variants: Vec<Variant>,
+    pub doc_lines: Vec<String>,
+    pub options: EnumOptions,
+}
+
+pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Enum {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -28,7 +37,6 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
             _ => None,
         })
         .collect();
-    let doc_lines = get_doc_lines(&item.attrs);
     let variants = item
         .variants
         .iter()
@@ -100,8 +108,14 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
             }
         })
         .collect();
-    let opts = EnumOptions::from_attrs(&item.attrs);
-    Type::Enum(name, generic_args, doc_lines, variants, opts)
+
+    Enum {
+        name,
+        generic_args,
+        variants,
+        doc_lines: get_doc_lines(&item.attrs),
+        options: EnumOptions::from_attrs(&item.attrs),
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]

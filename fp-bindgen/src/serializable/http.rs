@@ -7,7 +7,7 @@ impl Serializable for http::Method {
         "Method".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "Method".to_owned(),
             type_args: vec![],
@@ -45,7 +45,7 @@ impl Serializable for http::uri::Scheme {
         "Scheme".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "Scheme".to_owned(),
             type_args: vec![],
@@ -71,7 +71,7 @@ impl Serializable for http::uri::Uri {
         "Uri".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "Uri".to_owned(),
             type_args: vec![],

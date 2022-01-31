@@ -37,6 +37,7 @@ pub struct ComplexHostToGuest {
     pub renamed: Option<OffsetDateTime>,
     /// Raw identifiers are supported too.
     pub r#type: String,
+    pub value: Value,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -111,6 +112,15 @@ pub enum RequestError {
     Other {
         reason: String,
     },
+}
+
+/// Tagged dynamic value.
+#[derive(Serializable)]
+pub enum Value {
+    Integer(i64),
+    Float(f64),
+    List(Vec<Value>),
+    Map(BTreeMap<String, Value>),
 }
 
 #[derive(Serializable)]

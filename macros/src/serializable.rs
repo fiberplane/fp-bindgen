@@ -88,7 +88,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                 #name
             }
 
-            fn ty() -> fp_bindgen::prelude::Type {
+            fn build_ty() -> fp_bindgen::prelude::Type {
                 fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
             }
 

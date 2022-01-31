@@ -10,7 +10,16 @@ use syn::{
     Ident, ItemStruct, LitStr, Result, Token,
 };
 
-pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Type {
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Struct {
+    pub name: String,
+    pub generic_args: Vec<GenericArgument>,
+    pub fields: Vec<Field>,
+    pub doc_lines: Vec<String>,
+    pub options: StructOptions,
+}
+
+pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Struct {
     let name = item.ident.to_string();
     let generic_args = item
         .generics
@@ -24,7 +33,6 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
             _ => None,
         })
         .collect();
-    let doc_lines = get_doc_lines(&item.attrs);
     let fields = item
         .fields
         .iter()
@@ -49,8 +57,14 @@ pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>)
             }
         })
         .collect();
-    let opts = StructOptions::from_attrs(&item.attrs);
-    Type::Struct(name, generic_args, doc_lines, fields, opts)
+
+    Struct {
+        name,
+        generic_args,
+        fields,
+        doc_lines: get_doc_lines(&item.attrs),
+        options: StructOptions::from_attrs(&item.attrs),
+    }
 }
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]

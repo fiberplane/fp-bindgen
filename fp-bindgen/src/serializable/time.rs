@@ -7,7 +7,7 @@ impl Serializable for time::OffsetDateTime {
         "OffsetDateTime".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "OffsetDateTime".to_owned(),
             type_args: vec![],
@@ -38,7 +38,7 @@ impl Serializable for time::PrimitiveDateTime {
         "PrimitiveDateTime".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "PrimitiveDateTime".to_owned(),
             type_args: vec![],

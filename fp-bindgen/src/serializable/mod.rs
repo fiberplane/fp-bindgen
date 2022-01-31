@@ -3,12 +3,12 @@ use crate::{
     types::{EnumOptions, GenericArgument, Variant, VariantAttrs},
     Type,
 };
-use dashmap::{mapref::one::Ref, DashMap};
 use once_cell::sync::Lazy;
 use std::{
     any::TypeId,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
+    sync::RwLock,
 };
 
 #[cfg(feature = "http-compat")]
@@ -18,17 +18,24 @@ mod serde_bytes;
 #[cfg(feature = "time-compat")]
 mod time;
 
+static CACHED_TYPES: Lazy<RwLock<HashMap<TypeId, Type>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+static CACHED_DEPENDENCIES: Lazy<RwLock<HashMap<TypeId, BTreeSet<Type>>>> =
+    Lazy::new(|| RwLock::new(HashMap::new()));
+
 pub trait Serializable: 'static {
     /// The name of the type as defined in the protocol.
     fn name() -> String;
-
-    /// The type definition.
-    fn ty() -> Type;
 
     /// Whether this type is a primitive.
     fn is_primitive() -> bool {
         false
     }
+
+    /// Builder function for the `ty()` function. Trait implementations can
+    /// implement this function, while using the default implementation for
+    /// `ty()` to make sure the type is only built and resolved once.
+    fn build_ty() -> Type;
 
     /// Builder function for the `dependencies()` function. Trait
     /// implementations can implement this function, while using the default
@@ -36,16 +43,31 @@ pub trait Serializable: 'static {
     /// only built and resolved once.
     fn build_dependencies() -> BTreeSet<Type>;
 
-    /// Other (non-primitive) data structures this data structure depends on.
-    fn dependencies() -> Ref<'static, TypeId, BTreeSet<Type>> {
+    /// The type definition.
+    fn ty() -> Type {
         let type_id = TypeId::of::<Self>();
-        static CACHED_DEPENDENCIES: Lazy<DashMap<TypeId, BTreeSet<Type>>> = Lazy::new(DashMap::new);
-
-        if !CACHED_DEPENDENCIES.contains_key(&type_id) {
-            CACHED_DEPENDENCIES.insert(type_id, Self::build_dependencies());
+        if let Some(ty) = CACHED_TYPES.read().unwrap().get(&type_id) {
+            return ty.clone();
         }
 
-        CACHED_DEPENDENCIES.get(&type_id).unwrap()
+        let ty = Self::build_ty();
+        CACHED_TYPES.write().unwrap().insert(type_id, ty.clone());
+        ty
+    }
+
+    /// Other (non-primitive) data structures this data structure depends on.
+    fn dependencies() -> BTreeSet<Type> {
+        let type_id = TypeId::of::<Self>();
+        if let Some(dependencies) = CACHED_DEPENDENCIES.read().unwrap().get(&type_id) {
+            return dependencies.clone();
+        }
+
+        let dependencies = Self::build_dependencies();
+        CACHED_DEPENDENCIES
+            .write()
+            .unwrap()
+            .insert(type_id, dependencies.clone());
+        dependencies
     }
 
     /// Returns a set with the type of `Self` and all of its dependencies.
@@ -120,7 +142,7 @@ where
         format!("Box<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Container("Box".to_owned(), Box::new(T::ty()))
     }
 
@@ -138,7 +160,7 @@ where
         format!("BTreeMap<{}, {}>", K::name(), V::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Map("BTreeMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
@@ -158,7 +180,7 @@ where
         format!("BTreeSet<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::List("BTreeSet".to_owned(), Box::new(T::ty()))
     }
 
@@ -176,7 +198,7 @@ where
         format!("HashMap<{}, {}>", K::name(), V::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Map("HashMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
     }
 
@@ -196,7 +218,7 @@ where
         format!("HashSet<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::List("HashSet".to_owned(), Box::new(T::ty()))
     }
 
@@ -213,7 +235,7 @@ where
         format!("Option<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Container("Option".to_owned(), Box::new(T::ty()))
     }
 
@@ -230,7 +252,7 @@ where
         format!("Rc<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Container("Rc".to_owned(), Box::new(T::ty()))
     }
 
@@ -248,7 +270,7 @@ where
         format!("Result<{}, {}>", T::name(), E::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Enum(
             "Result".to_owned(),
             vec![
@@ -296,7 +318,7 @@ impl Serializable for String {
         "String".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::String
     }
 
@@ -313,7 +335,7 @@ where
         format!("Vec<{}>", T::name())
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::List("Vec".to_owned(), Box::new(T::ty()))
     }
 
@@ -349,7 +371,7 @@ mod tests {
         fn name() -> String {
             Self::ty().name()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item(
                 "pub struct Point < T > {pub value : T ,}",
                 &Self::dependencies(),
@@ -380,7 +402,7 @@ mod tests {
         fn name() -> String {
             "Complex".to_owned()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item(
                 "pub struct Complex {pub points : Vec < Point < f64 >>,}",
                 &Self::dependencies(),
@@ -435,7 +457,7 @@ mod tests {
         fn name() -> String {
             "ComplexNested".to_owned()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item("pub struct ComplexNested {pub complex_nested : BTreeMap < String , Vec < Point < f64 >>>,}", &Self::dependencies())
         }
         fn build_dependencies() -> BTreeSet<Type> {
@@ -514,7 +536,7 @@ mod tests {
         fn name() -> String {
             "Recursive".to_owned()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item(
                 "pub struct Recursive {pub recursive : Point < Point < f64 >>,}",
                 &Self::dependencies(),
@@ -578,7 +600,7 @@ mod tests {
         fn name() -> String {
             "NestedRecursive".to_owned()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item(
                 "pub struct NestedRecursive {pub nested_recursive : Vec < Point < Point < f64 >>>,}",
                 &Self::dependencies(),
@@ -646,7 +668,7 @@ mod tests {
         fn name() -> String {
             "CombinedFields".to_owned()
         }
-        fn ty() -> Type {
+        fn build_ty() -> Type {
             Type::from_item(
                 "pub struct CombinedFields {pub points : Vec < Point < f64 > >,pub nested_recursive : Vec < Point < Point < f64 >>>,}",
                 &Self::dependencies(),

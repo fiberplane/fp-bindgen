@@ -7,7 +7,7 @@ impl Serializable for serde_bytes::ByteBuf {
         "ByteBuf".to_owned()
     }
 
-    fn ty() -> Type {
+    fn build_ty() -> Type {
         Type::Custom(CustomType {
             name: "ByteBuf".to_owned(),
             type_args: vec![],

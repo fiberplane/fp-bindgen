@@ -30,12 +30,12 @@ impl Primitive {
                     #ty_str.to_owned()
                 }
 
-                fn ty() -> Type {
-                    Type::Primitive(Primitive::#self)
-                }
-
                 fn is_primitive() -> bool {
                     true
+                }
+
+                fn build_ty() -> Type {
+                    Type::Primitive(Primitive::#self)
                 }
 
                 fn build_dependencies() -> BTreeSet<Type> {

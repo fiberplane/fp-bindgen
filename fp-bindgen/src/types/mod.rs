@@ -16,12 +16,15 @@ pub use cargo_dependency::CargoDependency;
 pub use enums::{EnumOptions, Variant, VariantAttrs};
 pub use structs::{Field, FieldAttrs, StructOptions};
 
+use self::enums::Enum;
+use self::structs::Struct;
+
 /// A generic argument has a name (T, E, ...) and an optional type, which is only known in contexts
 /// when we are dealing with concrete instances of the generic type.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct GenericArgument {
     pub name: String,
-    pub ty: Option<Type>,
+    pub ty: Option<TypeIdent>,
 }
 
 impl ToTokens for GenericArgument {
@@ -33,38 +36,31 @@ impl ToTokens for GenericArgument {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {
-    Alias(String, Box<Type>),
-    Container(String, Box<Type>),
+    Alias(String, TypeIdent),
+    Container(String, TypeIdent),
     Custom(CustomType),
-    Enum(
-        String,
-        Vec<GenericArgument>,
-        Vec<String>,
-        Vec<Variant>,
-        EnumOptions,
-    ),
-    GenericArgument(Box<GenericArgument>),
-    List(String, Box<Type>),
-    Map(String, Box<Type>, Box<Type>),
+    Enum(Enum),
+    List(String, TypeIdent),
+    Map(String, TypeIdent, TypeIdent),
     Primitive(Primitive),
     String,
-    Struct(
-        String,
-        Vec<GenericArgument>,
-        Vec<String>,
-        Vec<Field>,
-        StructOptions,
-    ),
-    Tuple(Vec<Type>),
+    Struct(Struct),
+    Tuple(Vec<TypeIdent>),
     Unit,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct TypeIdent {
+    pub name: String,
+    pub generics: Vec<GenericArgument>,
 }
 
 impl Type {
     pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
         let item = syn::parse_str::<Item>(item_str).unwrap();
         match item {
-            Item::Enum(item) => enums::parse_enum_item(item, dependencies),
-            Item::Struct(item) => structs::parse_struct_item(item, dependencies),
+            Item::Enum(item) => Type::Enum(enums::parse_enum_item(item, dependencies)),
+            Item::Struct(item) => Type::Struct(structs::parse_struct_item(item, dependencies)),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item
