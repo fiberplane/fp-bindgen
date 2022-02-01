@@ -1,6 +1,6 @@
 # fp-bindgen
 
-Macros for generating WebAssembly bindings.
+Bindings generator for full-stack WASM plugins.
 
 ## Comparison to other "bindgen" tools
 
