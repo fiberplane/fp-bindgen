@@ -1,6 +1,5 @@
 use crate::{
-    generics::{contains_generic_arg, specialize_type_with_dependencies},
-    types::{EnumOptions, GenericArgument, Variant, VariantAttrs},
+    types::{Enum, EnumOptions, TypeIdent, Variant, VariantAttrs},
     Type,
 };
 use once_cell::sync::Lazy;
@@ -24,113 +23,26 @@ static CACHED_DEPENDENCIES: Lazy<RwLock<HashMap<TypeId, BTreeSet<Type>>>> =
     Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub trait Serializable: 'static {
-    /// The name of the type as defined in the protocol.
-    fn name() -> String;
+    /// The identifier of the type as defined in the protocol.
+    fn ident() -> TypeIdent;
+
+    /// The type definition.
+    fn ty() -> Type;
 
     /// Whether this type is a primitive.
     fn is_primitive() -> bool {
         false
     }
 
-    /// Builder function for the `ty()` function. Trait implementations can
-    /// implement this function, while using the default implementation for
-    /// `ty()` to make sure the type is only built and resolved once.
-    fn build_ty() -> Type;
+    /// Identifiers of other types this type depends on. Only direct
+    /// dependencies need to be returned.
+    fn dependencies() -> HashSet<TypeIdent>;
 
-    /// Builder function for the `dependencies()` function. Trait
-    /// implementations can implement this function, while using the default
-    /// implementation for `dependencies()` to make sure the dependencies are
-    /// only built and resolved once.
-    fn build_dependencies() -> BTreeSet<Type>;
-
-    /// The type definition.
-    fn ty() -> Type {
-        let type_id = TypeId::of::<Self>();
-        if let Some(ty) = CACHED_TYPES.read().unwrap().get(&type_id) {
-            return ty.clone();
+    /// Collects all the identifiers of the type and its dependencies.
+    fn collect_dependency_idents(idents: &mut HashSet<TypeIdent>) {
+        if idents.insert(Self::ident()) {
+            idents.extend(&mut Self::dependencies().drain())
         }
-
-        let ty = Self::build_ty();
-        CACHED_TYPES.write().unwrap().insert(type_id, ty.clone());
-        ty
-    }
-
-    /// Other (non-primitive) data structures this data structure depends on.
-    fn dependencies() -> BTreeSet<Type> {
-        let type_id = TypeId::of::<Self>();
-        if let Some(dependencies) = CACHED_DEPENDENCIES.read().unwrap().get(&type_id) {
-            return dependencies.clone();
-        }
-
-        let dependencies = Self::build_dependencies();
-        CACHED_DEPENDENCIES
-            .write()
-            .unwrap()
-            .insert(type_id, dependencies.clone());
-        dependencies
-    }
-
-    /// Returns a set with the type of `Self` and all of its dependencies.
-    fn type_with_dependencies() -> BTreeSet<Type> {
-        Self::named_type_with_dependencies("")
-    }
-
-    /// Returns a set with the type of `Self`, instantiated using the given `name`,
-    /// and all of its dependencies.
-    fn named_type_with_dependencies(name: &str) -> BTreeSet<Type> {
-        Self::named_type_with_dependencies_and_generics(name, "")
-    }
-
-    /// Returns a set with the type of `Self` and all of its dependencies, but specializes
-    /// generic arguments with specialized types.
-    ///
-    /// In addition, we receive the declaration of the generic arguments of the type
-    /// whose `dependencies` we are gathering. This helps us to determine generic
-    /// arguments and/or aliases in the given `name`.
-    ///
-    /// ## Example:
-    ///
-    /// If `Self` refers to `Option<T>`, but `name` is `Option<f64>`, we can specialize
-    /// the `T` argument of the `Option` to be `f64` instead.
-    fn named_type_with_dependencies_and_generics(name: &str, generic_args: &str) -> BTreeSet<Type> {
-        let mut dependencies = if Self::is_primitive() {
-            BTreeSet::new()
-        } else {
-            specialize_type_with_dependencies(Self::ty(), name, &Self::dependencies())
-        };
-
-        if !name.is_empty() && Self::name() != name {
-            let generic_args = if generic_args.is_empty() {
-                syn::Generics::default()
-            } else {
-                syn::parse_str(generic_args).expect("Cannot parse generic arguments")
-            };
-            let generic_arg = generic_args
-                .params
-                .iter()
-                .find_map(|param| match param {
-                    syn::GenericParam::Type(generic_ty) if generic_ty.ident == name => {
-                        Some(generic_ty)
-                    }
-                    _ => None,
-                })
-                .map(|generic_ty| GenericArgument {
-                    name: generic_ty.ident.to_string(),
-                    ty: None,
-                });
-
-            if let Some(dependency) = match generic_arg {
-                Some(arg) => Some(Type::GenericArgument(Box::new(arg))),
-                None if !contains_generic_arg(name) => {
-                    Some(Type::Alias(name.to_owned(), Box::new(Self::ty())))
-                }
-                _ => None,
-            } {
-                dependencies.insert(dependency);
-            }
-        }
-
-        dependencies
     }
 }
 
@@ -138,16 +50,19 @@ impl<T> Serializable for Box<T>
 where
     T: Serializable,
 {
-    fn name() -> String {
-        format!("Box<{}>", T::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "Box".to_owned(),
+            generic_args: vec![T::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Container("Box".to_owned(), Box::new(T::ty()))
+    fn ty() -> Type {
+        Type::Container("Box".to_owned(), T::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([T::ident()])
     }
 }
 
@@ -156,19 +71,19 @@ where
     K: Serializable,
     V: Serializable,
 {
-    fn name() -> String {
-        format!("BTreeMap<{}, {}>", K::name(), V::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "BTreeMap".to_owned(),
+            generic_args: vec![K::ident(), V::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Map("BTreeMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
+    fn ty() -> Type {
+        Type::Map("BTreeMap".to_owned(), K::ident(), V::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        let mut dependencies = BTreeSet::new();
-        dependencies.append(&mut K::type_with_dependencies());
-        dependencies.append(&mut V::type_with_dependencies());
-        dependencies
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([K::ident(), V::ident()])
     }
 }
 
@@ -176,16 +91,19 @@ impl<T> Serializable for BTreeSet<T>
 where
     T: Serializable,
 {
-    fn name() -> String {
-        format!("BTreeSet<{}>", T::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "BTreeSet".to_owned(),
+            generic_args: vec![T::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::List("BTreeSet".to_owned(), Box::new(T::ty()))
+    fn ty() -> Type {
+        Type::List("BTreeSet".to_owned(), T::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([T::ident()])
     }
 }
 
@@ -194,19 +112,19 @@ where
     K: Serializable,
     V: Serializable,
 {
-    fn name() -> String {
-        format!("HashMap<{}, {}>", K::name(), V::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "HashMap".to_owned(),
+            generic_args: vec![K::ident(), V::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Map("HashMap".to_owned(), Box::new(K::ty()), Box::new(V::ty()))
+    fn ty() -> Type {
+        Type::Map("HashMap".to_owned(), K::ident(), V::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        let mut dependencies = BTreeSet::new();
-        dependencies.append(&mut K::type_with_dependencies());
-        dependencies.append(&mut V::type_with_dependencies());
-        dependencies
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([K::ident(), V::ident()])
     }
 }
 
@@ -214,16 +132,19 @@ impl<T> Serializable for HashSet<T>
 where
     T: Serializable,
 {
-    fn name() -> String {
-        format!("HashSet<{}>", T::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "HashSet".to_owned(),
+            generic_args: vec![T::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::List("HashSet".to_owned(), Box::new(T::ty()))
+    fn ty() -> Type {
+        Type::List("HashSet".to_owned(), T::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([T::ident()])
     }
 }
 
@@ -231,16 +152,19 @@ impl<T> Serializable for Option<T>
 where
     T: Serializable,
 {
-    fn name() -> String {
-        format!("Option<{}>", T::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "Option".to_owned(),
+            generic_args: vec![T::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Container("Option".to_owned(), Box::new(T::ty()))
+    fn ty() -> Type {
+        Type::Container("Option".to_owned(), T::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
+    fn dependencies() -> HashSet<TypeIdent> {
+        HashSet::from([T::ident()])
     }
 }
 
@@ -248,16 +172,19 @@ impl<T> Serializable for Rc<T>
 where
     T: Serializable,
 {
-    fn name() -> String {
-        format!("Rc<{}>", T::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "Rc".to_owned(),
+            generic_args: vec![T::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Container("Rc".to_owned(), Box::new(T::ty()))
+    fn ty() -> Type {
+        Type::Container("Rc".to_owned(), T::ident())
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        T::type_with_dependencies()
+    fn dependencies() -> HashSet<TypeIdent> {
+        T::ident_with_dependencies()
     }
 }
 
@@ -266,49 +193,42 @@ where
     T: Serializable,
     E: Serializable,
 {
-    fn name() -> String {
-        format!("Result<{}, {}>", T::name(), E::name())
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "Result".to_owned(),
+            generic_args: vec![T::ident(), E::ident()],
+        }
     }
 
-    fn build_ty() -> Type {
-        Type::Enum(
-            "Result".to_owned(),
-            vec![
-                GenericArgument {
-                    name: "T".to_owned(),
-                    ty: None,
-                },
-                GenericArgument {
-                    name: "E".to_owned(),
-                    ty: None,
-                },
-            ],
-            vec![
-                " A result that can be either successful (`Ok)` or represent an error (`Err`)."
-                    .to_owned(),
-            ],
-            vec![
+    fn ty() -> Type {
+        Type::Enum(Enum {
+            ident: Self::ident(),
+            variants: vec![
                 Variant {
                     name: "Ok".to_owned(),
-                    ty: Type::Tuple(vec![Type::named_generic("T")]),
+                    ty: Type::Tuple(vec![T::ident()]),
                     doc_lines: vec![" Represents a succesful result.".to_owned()],
                     attrs: VariantAttrs::default(),
                 },
                 Variant {
                     name: "Err".to_owned(),
-                    ty: Type::Tuple(vec![Type::named_generic("E")]),
+                    ty: Type::Tuple(vec![E::ident()]),
                     doc_lines: vec![" Represents an error.".to_owned()],
                     attrs: VariantAttrs::default(),
                 },
             ],
-            EnumOptions::default(),
-        )
+            doc_lines: vec![
+                " A result that can be either successful (`Ok)` or represent an error (`Err`)."
+                    .to_owned(),
+            ],
+            options: EnumOptions::default(),
+        })
     }
 
-    fn build_dependencies() -> BTreeSet<Type> {
-        let mut dependencies = BTreeSet::new();
-        dependencies.append(&mut T::type_with_dependencies());
-        dependencies.append(&mut E::type_with_dependencies());
+    fn dependencies() -> HashSet<TypeIdent> {
+        let mut dependencies = HashSet::new();
+        dependencies.extend(&mut T::ident_with_dependencies().drain());
+        dependencies.extend(&mut E::ident_with_dependencies().drain());
         dependencies
     }
 }

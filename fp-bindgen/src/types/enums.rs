@@ -1,7 +1,6 @@
 use super::{
-    resolve_type_or_panic,
-    structs::{Field, StructOptions},
-    GenericArgument, Type,
+    structs::{Field, Struct, StructOptions},
+    Type, TypeIdent,
 };
 use crate::{casing::Casing, docs::get_doc_lines, types::FieldAttrs};
 use quote::ToTokens;
@@ -11,32 +10,31 @@ use std::{
 };
 use syn::{
     ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
-    Ident, ItemEnum, LitStr, Result, Token,
+    Ident, ItemEnum, LitStr, Result, Token, TypePath,
 };
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Enum {
-    pub name: String,
-    pub generic_args: Vec<GenericArgument>,
+    pub ident: TypeIdent,
     pub variants: Vec<Variant>,
     pub doc_lines: Vec<String>,
     pub options: EnumOptions,
 }
 
 pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Enum {
-    let name = item.ident.to_string();
-    let generic_args = item
-        .generics
-        .params
-        .iter()
-        .filter_map(|param| match param {
-            GenericParam::Type(ty) => Some(GenericArgument {
-                name: ty.ident.to_string(),
-                ty: None,
-            }),
-            _ => None,
-        })
-        .collect();
+    let ident = TypeIdent {
+        name: item.ident.to_string(),
+        generic_args: item
+            .generics
+            .params
+            .iter()
+            .filter_map(|param| match param {
+                GenericParam::Type(ty) => Some(TypeIdent::from(ty.ident.to_string())),
+                _ => None,
+            })
+            .collect(),
+    };
+    let options = EnumOptions::from_attrs(&item.attrs);
     let variants = item
         .variants
         .iter()
@@ -48,7 +46,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                 );
             }
 
-            let variant_name = variant.ident.to_string();
+            let name = variant.ident.to_string();
             let ty = if variant.fields.is_empty() {
                 Type::Unit
             } else if variant.fields.iter().any(|field| field.ident.is_some()) {
@@ -59,40 +57,55 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                         let name = field
                             .ident
                             .as_ref()
-                            .expect("Expected all enum variant fields to be named")
+                            .unwrap_or_else(|| panic!("Unnamed field in variant of enum {}", ident))
                             .to_string();
-                        let ty = resolve_type_or_panic(
-                            &field.ty,
-                            dependencies,
-                            &format!("Unresolvable variant field type in enum {}", name),
-                        );
-                        let doc_lines = get_doc_lines(&field.attrs);
-                        let attrs = FieldAttrs::from_attrs(&field.attrs);
+                        // FP-1180: Prevent unserializable variants.
+                        if options.tag_prop_name == Some(name)
+                            && options.content_prop_name.is_none()
+                        {
+                            panic!(
+                                "Enum {} has a variant that cannot be serialized, \
+                                    because one of its fields has the same name as \
+                                    the enum's `tag` attribute",
+                                ident
+                            );
+                        }
+
                         Field {
                             name,
-                            ty,
-                            doc_lines,
-                            attrs,
+                            ty: TypeIdent::try_from(&field.ty)
+                                .unwrap_or_else(|_| panic!("Invalid field type in enum {}", ident)),
+                            doc_lines: get_doc_lines(&field.attrs),
+                            attrs: FieldAttrs::from_attrs(&field.attrs),
                         }
                     })
                     .collect();
-                Type::Struct(
-                    variant_name.clone(),
-                    vec![],
-                    vec![],
+                Type::Struct(Struct {
+                    ident: TypeIdent::from(name.clone()),
                     fields,
-                    StructOptions::default(),
-                )
+                    doc_lines: Vec::new(),
+                    options: StructOptions::default(),
+                })
             } else {
                 let item_types = variant
                     .fields
                     .iter()
                     .map(|field| {
-                        resolve_type_or_panic(
-                            &field.ty,
-                            dependencies,
-                            &format!("Unresolvable variant item type in enum {}", name),
-                        )
+                        // FP-1180: Prevent unserializable variants.
+                        if options.tag_prop_name.is_some()
+                            && options.content_prop_name.is_none()
+                            && is_path_to_primitive(&field.ty)
+                        {
+                            panic!(
+                                "Enum {} has a variant that cannot be serialized, \
+                                    because its field is an unnamed primitive and \
+                                    the enum has no `content` attribute",
+                                ident
+                            );
+                        }
+
+                        TypeIdent::try_from(&field.ty)
+                            .unwrap_or_else(|_| panic!("Invalid field type in enum {}", ident))
                     })
                     .collect();
                 Type::Tuple(item_types)
@@ -101,7 +114,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
             let attrs = VariantAttrs::from_attrs(&variant.attrs);
 
             Variant {
-                name: variant_name,
+                name,
                 ty,
                 doc_lines,
                 attrs,
@@ -110,11 +123,10 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
         .collect();
 
     Enum {
-        name,
-        generic_args,
+        ident,
         variants,
         doc_lines: get_doc_lines(&item.attrs),
-        options: EnumOptions::from_attrs(&item.attrs),
+        options,
     }
 }
 
@@ -335,4 +347,16 @@ impl Parse for VariantAttrs {
 
         Ok(result)
     }
+}
+
+fn is_path_to_primitive(ty: &syn::Type) -> bool {
+    matches!(
+        ty,
+        syn::Type::Path(TypePath { path, qself })
+            if qself.is_none()
+                && path
+                    .get_ident()
+                    .map(|ident| ident.to_string().starts_with(char::is_lowercase))
+                    .unwrap_or(false)
+    )
 }

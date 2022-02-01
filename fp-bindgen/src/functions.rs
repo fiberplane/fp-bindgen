@@ -1,9 +1,9 @@
 use crate::{
     docs::get_doc_lines,
-    types::{resolve_type_or_panic, Type},
+    types::{Type, TypeIdent},
 };
 use quote::{format_ident, quote, ToTokens};
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, convert::TryFrom};
 use syn::{token::Async, FnArg, ForeignItemFn, ReturnType};
 
 /// Maps from function name to the stringified function declaration.
@@ -56,7 +56,7 @@ pub struct Function {
     pub name: String,
     pub doc_lines: Vec<String>,
     pub args: Vec<FunctionArg>,
-    pub return_type: Type,
+    pub return_type: Option<TypeIdent>,
     pub is_async: bool,
 }
 
@@ -82,20 +82,16 @@ impl Function {
                 ),
                 FnArg::Typed(arg) => FunctionArg {
                     name: arg.pat.to_token_stream().to_string(),
-                    ty: resolve_type_or_panic(
-                        arg.ty.as_ref(),
-                        serializable_types,
-                        &format!("Unresolvable argument type for function {}", name),
-                    ),
+                    ty: TypeIdent::try_from(arg.ty.as_ref())
+                        .unwrap_or_else(|_| panic!("Invalid argument type for function {}", name)),
                 },
             })
             .collect();
         let return_type = match &item.sig.output {
-            ReturnType::Default => Type::Unit,
-            ReturnType::Type(_, return_type) => resolve_type_or_panic(
-                return_type.as_ref(),
-                deserializable_types,
-                &format!("Unresolvable return type for function {}", name),
+            ReturnType::Default => None,
+            ReturnType::Type(_, return_type) => Some(
+                TypeIdent::try_from(return_type.as_ref())
+                    .unwrap_or_else(|_| panic!("Invalid return type for function {}", name)),
             ),
         };
         let is_async = item.sig.asyncness.is_some();
@@ -149,7 +145,7 @@ impl ToTokens for Function {
 #[derive(Debug, Eq, PartialEq)]
 pub struct FunctionArg {
     pub name: String,
-    pub ty: Type,
+    pub ty: TypeIdent,
 }
 
 impl ToTokens for FunctionArg {
@@ -157,24 +153,21 @@ impl ToTokens for FunctionArg {
         let Self { name, ty } = self;
         let name = format_ident!("{}", name);
 
-        (quote! {
-            #name: #ty
-        })
-        .to_tokens(tokens)
+        (quote! { #name: #ty }).to_tokens(tokens)
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::{Function, FunctionArg};
-    use crate::{primitives::Primitive, types::Type};
+    use crate::types::TypeIdent;
     use quote::ToTokens;
 
     #[test]
     fn test_function_arg_to_tokens() {
         let arg = FunctionArg {
             name: "foobar".into(),
-            ty: Type::Primitive(Primitive::I64),
+            ty: TypeIdent::from("i64".to_owned()),
         };
 
         let stringified = arg.into_token_stream().to_string();
@@ -188,10 +181,10 @@ mod test {
             name: "foobar".into(),
             is_async: false,
             doc_lines: vec![],
-            return_type: Type::String,
+            return_type: Some(TypeIdent::from("String".to_owned())),
             args: vec![FunctionArg {
                 name: "a1".into(),
-                ty: Type::Primitive(Primitive::U64),
+                ty: TypeIdent::from("u64".to_owned()),
             }],
         };
 

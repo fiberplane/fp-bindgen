@@ -1,4 +1,4 @@
-use super::{resolve_type_or_panic, GenericArgument, Type};
+use super::{Type, TypeIdent};
 use crate::{casing::Casing, docs::get_doc_lines};
 use quote::ToTokens;
 use std::{
@@ -12,55 +12,43 @@ use syn::{
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Struct {
-    pub name: String,
-    pub generic_args: Vec<GenericArgument>,
+    pub ident: TypeIdent,
     pub fields: Vec<Field>,
     pub doc_lines: Vec<String>,
     pub options: StructOptions,
 }
 
 pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Struct {
-    let name = item.ident.to_string();
-    let generic_args = item
-        .generics
-        .params
-        .into_iter()
-        .filter_map(|param| match param {
-            GenericParam::Type(ty) => Some(GenericArgument {
-                name: ty.ident.to_string(),
-                ty: None,
-            }),
-            _ => None,
-        })
-        .collect();
+    let ident = TypeIdent {
+        name: item.ident.to_string(),
+        generic_args: item
+            .generics
+            .params
+            .iter()
+            .filter_map(|param| match param {
+                GenericParam::Type(ty) => Some(TypeIdent::from(ty.ident.to_string())),
+                _ => None,
+            })
+            .collect(),
+    };
     let fields = item
         .fields
         .iter()
-        .map(|field| {
-            let field_name = field
+        .map(|field| Field {
+            name: field
                 .ident
                 .as_ref()
-                .expect("Struct fields must be named")
-                .to_string();
-            let ty = resolve_type_or_panic(
-                &field.ty,
-                dependencies,
-                &format!("Unresolvable field type in struct {}", name),
-            );
-            let doc_lines = get_doc_lines(&field.attrs);
-            let attrs = FieldAttrs::from_attrs(&field.attrs);
-            Field {
-                name: field_name,
-                ty,
-                doc_lines,
-                attrs,
-            }
+                .unwrap_or_else(|| panic!("Unnamed field in struct {}", ident))
+                .to_string(),
+            ty: TypeIdent::try_from(&field.ty)
+                .unwrap_or_else(|_| panic!("Invalid field type in struct {}", ident)),
+            doc_lines: get_doc_lines(&field.attrs),
+            attrs: FieldAttrs::from_attrs(&field.attrs),
         })
         .collect();
 
     Struct {
-        name,
-        generic_args,
+        ident,
         fields,
         doc_lines: get_doc_lines(&item.attrs),
         options: StructOptions::from_attrs(&item.attrs),
@@ -177,7 +165,7 @@ impl Parse for StructOptions {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Field {
     pub name: String,
-    pub ty: Type,
+    pub ty: TypeIdent,
     pub doc_lines: Vec<String>,
     pub attrs: FieldAttrs,
 }

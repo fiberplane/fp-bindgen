@@ -5,7 +5,6 @@ mod functions;
 mod generators;
 mod serializable;
 
-pub mod generics;
 pub mod prelude;
 pub mod primitives;
 pub mod types;
