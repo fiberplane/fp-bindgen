@@ -11,17 +11,8 @@ use syn::{token::Async, FnArg, ForeignItemFn, ReturnType};
 pub struct FunctionList(BTreeSet<Function>);
 
 impl FunctionList {
-    pub fn add_function(
-        &mut self,
-        function_decl: &str,
-        serializable_types: &BTreeSet<Type>,
-        deserializable_types: &BTreeSet<Type>,
-    ) {
-        self.0.insert(Function::new(
-            function_decl,
-            serializable_types,
-            deserializable_types,
-        ));
+    pub fn add_function(&mut self, function_decl: &str) {
+        self.0.insert(Function::new(function_decl));
     }
 
     pub fn iter(&self) -> std::collections::btree_set::Iter<'_, Function> {
@@ -61,11 +52,7 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn new(
-        decl: &str,
-        serializable_types: &BTreeSet<Type>,
-        deserializable_types: &BTreeSet<Type>,
-    ) -> Self {
+    pub fn new(decl: &str) -> Self {
         let item =
             syn::parse_str::<ForeignItemFn>(decl).expect("Cannot parse function declaration");
 

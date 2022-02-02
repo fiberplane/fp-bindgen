@@ -1,6 +1,6 @@
-use crate::utils::{extract_path_from_type, get_name_from_path, parse_type_item};
+use crate::utils::{extract_path_from_type, parse_type_item};
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use std::collections::HashSet;
 use syn::Path;
 
@@ -37,39 +37,30 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         _ => HashSet::default(),
     };
 
-    let collect_dependencies = match field_types.len() {
-        0 => quote! { std::collections::BTreeSet::new() },
-        1 => {
-            let field_type = field_types.iter().next().unwrap();
-            let name = get_name_from_path(field_type);
-            quote! {
-                #field_type::named_type_with_dependencies_and_generics(
-                    #name,
-                    generics,
-                )
-            }
-        }
-        _ => {
-            let field_types = field_types.iter();
-            let names = field_types.clone().map(get_name_from_path);
-            quote! {
-                let mut dependencies = std::collections::BTreeSet::new();
-                #( dependencies.append(&mut #field_types::named_type_with_dependencies_and_generics(
-                    #names,
-                    generics,
-                )); )*
-                dependencies
+    let collect_idents = if field_types.is_empty() {
+        quote! { idents.insert(Self::ident()); }
+    } else {
+        let field_types = field_types.iter();
+        quote! {
+            if idents.insert(Self::ident()) {
+                #( #field_types::collect_dependency_idents(idents); )*
             }
         }
     };
 
-    let generics_str = generics.to_token_stream().to_string();
-
-    let name = if generics.params.is_empty() {
+    let ident = {
         let item_name = item_name.to_string();
-        quote! { #item_name.to_owned() }
-    } else {
-        quote! { Self::ty().name() }
+        if generics.params.is_empty() {
+            quote! { fp_bindgen::prelude::TypeIdent::from(#item_name) }
+        } else {
+            let params = generics.type_params().map(|param| param.ident.to_string());
+            quote! {
+                fp_bindgen::prelude::TypeIdent {
+                    name: #item_name.to_owned(),
+                    generic_args: vec![#( TypeIdent::from(#params) ),*],
+                }
+            }
+        }
     };
 
     let where_clause = if generics.params.is_empty() {
@@ -84,17 +75,16 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
 
     let implementation = quote! {
         impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
-            fn name() -> String {
-                #name
+            fn ident() -> fp_bindgen::prelude::TypeIdent {
+                #ident
             }
 
-            fn build_ty() -> fp_bindgen::prelude::Type {
-                fp_bindgen::prelude::Type::from_item(#item_str, &Self::dependencies())
+            fn ty() -> fp_bindgen::prelude::Type {
+                fp_bindgen::prelude::Type::from_item(#item_str)
             }
 
-            fn build_dependencies() -> std::collections::BTreeSet<fp_bindgen::prelude::Type> {
-                let generics = #generics_str;
-                #collect_dependencies
+            fn collect_dependency_idents(idents: &mut std::collections::BTreeSet<fp_bindgen::prelude::TypeIdent>) {
+                #collect_idents
             }
         }
     };

@@ -241,6 +241,12 @@ valuable if you want to implement bindings for your own favorite language.
 
 If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 
+## Known Limitations
+
+ - Data types may only contain value types. References are currently unsupported.
+ - Referencing types using their full module path is prone to cause mismatches during type
+   discovery. Please import types using a `use` statement and refer to them by their name only.
+
 ## FAQ
 
 ### I added a `Serializable` derive to my type, why don't I see it included in the bindings?
@@ -265,20 +271,14 @@ Are you referencing the type and it is still not included in your bindings? Plea
 
 ### Can I use aliases?
 
-Yes, but with a few caveats. Type aliases such as these are supported:
+Yes, but because aliases cannot have a derive macro, please repeat the alias in either the
+`fp_import!` or `fp_export!` section:
 
 ```rs
-type MyType = SomeOtherType;
+fp_import! {
+  type MyType = SomeOtherType;
+}
 ```
-
-And they will also appear as aliases in the generated bindings.
-
-But do note that because aliases don't have a `Serializable` derive attached to themselves (only to
-the type they alias), they can be tricky for us to detect. One area where their usage is currently
-problematic is if you pass them as a generic argument to another type, such as `Option<MyType>`.
-
-If this (or other issues with aliases) affect you, please
-[file an issue](https://github.com/fiberplane/fp-bindgen/issues).
 
 ### What about versioning?
 

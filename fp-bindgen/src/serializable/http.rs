@@ -1,16 +1,15 @@
 use super::Serializable;
-use crate::types::{CargoDependency, CustomType, Type};
+use crate::types::{CargoDependency, CustomType, Type, TypeIdent};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for http::Method {
-    fn name() -> String {
-        "Method".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("Method".to_owned())
     }
 
-    fn build_ty() -> Type {
+    fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "Method".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "http::Method".to_owned(),
             rs_dependencies: http_dependencies(),
             serde_attrs: vec![
@@ -34,21 +33,16 @@ impl Serializable for http::Method {
             ),
         })
     }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
 }
 
 impl Serializable for http::uri::Scheme {
-    fn name() -> String {
-        "Scheme".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("Scheme".to_owned())
     }
 
-    fn build_ty() -> Type {
+    fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "Scheme".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "http::Scheme".to_owned(),
             rs_dependencies: http_dependencies(),
             serde_attrs: vec![
@@ -60,21 +54,16 @@ impl Serializable for http::uri::Scheme {
             ts_declaration: Some(r#""http" | "https""#.to_owned()),
         })
     }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
 }
 
 impl Serializable for http::uri::Uri {
-    fn name() -> String {
-        "Uri".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("Uri".to_owned())
     }
 
-    fn build_ty() -> Type {
+    fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "Uri".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "http::Uri".to_owned(),
             rs_dependencies: http_dependencies(),
             serde_attrs: vec![
@@ -84,10 +73,6 @@ impl Serializable for http::uri::Uri {
             ts_ty: "string".to_owned(),
             ts_declaration: None,
         })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
     }
 }
 

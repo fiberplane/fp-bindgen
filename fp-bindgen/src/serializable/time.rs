@@ -1,16 +1,15 @@
 use super::Serializable;
-use crate::types::{CargoDependency, CustomType, Type};
+use crate::types::{CargoDependency, CustomType, Type, TypeIdent};
 use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for time::OffsetDateTime {
-    fn name() -> String {
-        "OffsetDateTime".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("OffsetDateTime".to_owned())
     }
 
-    fn build_ty() -> Type {
+    fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "OffsetDateTime".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "time::OffsetDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
                 "time",
@@ -27,21 +26,16 @@ impl Serializable for time::OffsetDateTime {
             ts_declaration: None,
         })
     }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
-    }
 }
 
 impl Serializable for time::PrimitiveDateTime {
-    fn name() -> String {
-        "PrimitiveDateTime".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("PrimitiveDateTime".to_owned())
     }
 
-    fn build_ty() -> Type {
+    fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "PrimitiveDateTime".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "time::PrimitiveDateTime".to_owned(),
             rs_dependencies: BTreeMap::from([(
                 "time",
@@ -57,9 +51,5 @@ impl Serializable for time::PrimitiveDateTime {
             ts_ty: "string".to_owned(),
             ts_declaration: None,
         })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
     }
 }

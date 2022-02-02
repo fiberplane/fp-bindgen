@@ -1,9 +1,6 @@
 use crate::functions::FunctionList;
 use crate::prelude::Primitive;
-use crate::types::{
-    format_name_with_generics, CargoDependency, EnumOptions, Field, GenericArgument, StructOptions,
-    Type, Variant,
-};
+use crate::types::{CargoDependency, EnumOptions, Field, StructOptions, Type, Variant};
 use crate::RustPluginConfig;
 use std::{
     collections::{BTreeMap, BTreeSet},

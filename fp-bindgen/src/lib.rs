@@ -11,7 +11,6 @@ pub mod types;
 
 use fp_bindgen_macros::primitive_impls;
 use prelude::*;
-use std::collections::BTreeSet;
 
 primitive_impls!();
 

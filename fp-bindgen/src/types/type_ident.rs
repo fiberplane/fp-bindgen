@@ -3,7 +3,7 @@ use quote::{quote, ToTokens};
 use std::{convert::TryFrom, fmt::Display};
 use syn::{PathArguments, TypePath};
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq)]
 pub struct TypeIdent {
     pub name: String,
     pub generic_args: Vec<TypeIdent>,
@@ -27,12 +27,27 @@ impl Display for TypeIdent {
     }
 }
 
+impl From<&str> for TypeIdent {
+    fn from(name: &str) -> Self {
+        Self::from(name.to_owned())
+    }
+}
+
 impl From<String> for TypeIdent {
     fn from(name: String) -> Self {
         Self {
             name,
             generic_args: Vec::new(),
         }
+    }
+}
+
+impl PartialOrd for TypeIdent {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // We only compare the name so that any type is only included once in
+        // a map, regardless of how many concrete instances are used with
+        // different generic arguments.
+        self.name.partial_cmp(&other.name)
     }
 }
 

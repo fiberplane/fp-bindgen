@@ -26,20 +26,16 @@ impl Primitive {
 
         let implementation = quote! {
             impl Serializable for #ty {
-                fn name() -> String {
-                    #ty_str.to_owned()
+                fn ident() -> TypeIdent {
+                    TypeIdent::from(#ty_str.to_owned())
                 }
 
                 fn is_primitive() -> bool {
                     true
                 }
 
-                fn build_ty() -> Type {
+                fn ty() -> Type {
                     Type::Primitive(Primitive::#self)
-                }
-
-                fn build_dependencies() -> BTreeSet<Type> {
-                    BTreeSet::new()
                 }
             }
         };

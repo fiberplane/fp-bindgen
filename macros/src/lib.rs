@@ -1,7 +1,4 @@
-use crate::{
-    primitives::Primitive,
-    utils::{extract_path_from_type, get_name_from_path},
-};
+use crate::{primitives::Primitive, utils::extract_path_from_type};
 use proc_macro::{TokenStream, TokenTree};
 use proc_macro_error::{abort, proc_macro_error, ResultExt};
 use quote::{format_ident, quote, ToTokens};
@@ -27,20 +24,18 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_statements(token_stream);
-    let serializable_names = serializable_types.iter().map(get_name_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_named = deserializable_types.iter().map(get_name_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_import_types = std::collections::BTreeSet::new();
-            #( serializable_import_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
+            #( #serializable_types::collect_dependency_idents(&mut serializable_import_types); )*
 
             let mut deserializable_import_types = std::collections::BTreeSet::new();
-            #( deserializable_import_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_named)); )*
+            #( #deserializable_types::collect_dependency_idents(&mut deserializable_import_types); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
-            #( list.add_function(#functions, &serializable_import_types, &deserializable_import_types); )*
+            #( list.add_function(#functions); )*
 
             (list, serializable_import_types, deserializable_import_types)
         }
@@ -52,20 +47,18 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let (functions, serializable_types, deserializable_types) = parse_statements(token_stream);
-    let serializable_names = serializable_types.iter().map(get_name_from_path);
     let serializable_types = serializable_types.iter();
-    let deserializable_names = deserializable_types.iter().map(get_name_from_path);
     let deserializable_types = deserializable_types.iter();
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>, std::collections::BTreeSet<Type>) {
             let mut serializable_export_types = std::collections::BTreeSet::new();
-            #( serializable_export_types.append(&mut #serializable_types::named_type_with_dependencies(#serializable_names)); )*
+            #( #serializable_types::collect_dependency_idents(&mut serializable_export_types); )*
 
             let mut deserializable_export_types = std::collections::BTreeSet::new();
-            #( deserializable_export_types.append(&mut #deserializable_types::named_type_with_dependencies(#deserializable_names)); )*
+            #( #deserializable_types::collect_dependency_idents(&mut deserializable_export_types); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
-            #( list.add_function(#functions, &serializable_export_types, &deserializable_export_types); )*
+            #( list.add_function(#functions); )*
 
             (list, serializable_export_types, deserializable_export_types)
         }
