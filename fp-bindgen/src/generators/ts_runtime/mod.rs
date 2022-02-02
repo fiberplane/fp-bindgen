@@ -218,7 +218,13 @@ fn format_function_declarations(
             let args = function
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), arg.ty))
+                .map(|arg| {
+                    format!(
+                        "{}: {}",
+                        arg.name.to_camel_case(),
+                        format_ident(&arg.ty, types)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = if function.is_async {
@@ -607,7 +613,11 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
     let type_defs = types
         .values()
         .filter_map(|ty| match ty {
-            Type::Alias(name, ty) => Some(format!("export type {} = {};", name, ty)),
+            Type::Alias(name, ty) => Some(format!(
+                "export type {} = {};",
+                name,
+                format_ident(ty, types)
+            )),
             Type::Custom(CustomType {
                 ts_ty,
                 ts_declaration: Some(ts_declaration),
@@ -794,17 +804,25 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
         .iter()
         .flat_map(|field| {
             let field_decl = match types.get(&field.ty) {
-                Some(Type::Container(name, ty)) => {
+                Some(Type::Container(name, _)) => {
                     let optional = if name == "Option" { "?" } else { "" };
+                    let arg = field
+                        .ty
+                        .generic_args
+                        .first()
+                        .expect("Identifier was expected to contain a generic argument");
                     format!(
                         "{}{}: {};",
                         get_field_name(field),
                         optional,
-                        format_ident(ty, types)
+                        format_ident(arg, types)
                     )
                 }
-                Some(ty) => format!("{}: {};", get_field_name(field), format_type(ty, types)),
-                None => field.ty.to_string(), // Must be a generic.
+                _ => format!(
+                    "{}: {};",
+                    get_field_name(field),
+                    format_ident(&field.ty, types)
+                ),
             };
             if field.doc_lines.is_empty() {
                 vec![field_decl]
@@ -829,33 +847,64 @@ fn format_raw_type(ty: &TypeIdent) -> &str {
 /// Formats a type so it's valid TypeScript.
 fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
     match types.get(ident) {
-        Some(ty) => format_type(ty, types),
+        Some(ty) => format_type_with_ident(ty, ident, types),
         None => ident.to_string(), // Must be a generic.
     }
 }
 
 /// Formats a type so it's valid TypeScript.
-fn format_type(ty: &Type, types: &TypeMap) -> String {
+fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
-        Type::Container(name, ty) => {
+        Type::Container(name, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+
             if name == "Option" {
-                format!("{} | null", format_ident(ty, types))
+                format!("{} | null", format_ident(arg, types))
             } else {
-                format_ident(ty, types)
+                format_ident(arg, types)
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
-        Type::Enum(ty) => ty.ident.to_string(),
-        Type::List(_, ty) => format!("Array<{}>", format_ident(ty, types)),
-        Type::Map(_, k, v) => format!(
-            "Record<{}, {}>",
-            format_ident(k, types),
-            format_ident(v, types)
-        ),
+        Type::Enum(_) | Type::Struct(_) => {
+            let args: Vec<_> = ident
+                .generic_args
+                .iter()
+                .map(|arg| format_ident(arg, types))
+                .collect();
+            if args.is_empty() {
+                ident.name.clone()
+            } else {
+                format!("{}<{}>", ident.name, args.join(", "))
+            }
+        }
+        Type::List(_, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            format!("Array<{}>", format_ident(arg, types))
+        }
+        Type::Map(_, _, _) => {
+            let arg1 = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            let arg2 = ident
+                .generic_args
+                .get(1)
+                .expect("Identifier was expected to contain two arguments");
+            format!(
+                "Record<{}, {}>",
+                format_ident(arg1, types),
+                format_ident(arg2, types)
+            )
+        }
         Type::Primitive(primitive) => format_primitive(*primitive).to_owned(),
         Type::String => "string".to_owned(),
-        Type::Struct(ty) => ty.ident.to_string(),
         Type::Tuple(items) => format!(
             "[{}]",
             items

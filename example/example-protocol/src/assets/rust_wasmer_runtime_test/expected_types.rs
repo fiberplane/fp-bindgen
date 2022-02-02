@@ -34,6 +34,7 @@ pub struct ComplexHostToGuest {
 
     /// Raw identifiers are supported too.
     pub r#type: String,
+    pub value: Value,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -100,4 +101,14 @@ pub enum RequestError {
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
+}
+
+/// Tagged dynamic value.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde()]
+pub enum Value {
+    Integer(i64),
+    Float(f64),
+    List(Vec<Value>),
+    Map(BTreeMap<String, Value>),
 }

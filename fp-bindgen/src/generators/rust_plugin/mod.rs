@@ -1,6 +1,6 @@
 use crate::{
     functions::FunctionList,
-    types::{CargoDependency, Enum, Field, Struct, Type, TypeMap},
+    types::{CargoDependency, Enum, Field, Struct, Type, TypeIdent, TypeMap},
     RustPluginConfig,
 };
 use std::{
@@ -20,9 +20,9 @@ pub fn generate_bindings(
 
     generate_cargo_file(config, &import_functions, &types, path);
 
-    generate_type_bindings(types, &src_path, "rust_plugin");
-    generate_imported_function_bindings(import_functions, &src_path);
-    generate_exported_function_bindings(export_functions, &src_path);
+    generate_type_bindings(&types, &src_path, "rust_plugin");
+    generate_imported_function_bindings(import_functions, &types, &src_path);
+    generate_exported_function_bindings(export_functions, &types, &src_path);
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
@@ -122,7 +122,7 @@ edition = \"2018\"
     );
 }
 
-pub fn generate_type_bindings(types: TypeMap, path: &str, module_key: &str) {
+pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
     let std_types = types
         .values()
         .filter_map(collect_std_types)
@@ -160,19 +160,21 @@ pub fn generate_type_bindings(types: TypeMap, path: &str, module_key: &str) {
     let type_defs = types
         .values()
         .filter_map(|ty| match ty {
-            Type::Alias(name, ty) => Some(format!("pub type {} = {};", name, ty)),
+            Type::Alias(name, ty) => {
+                Some(format!("pub type {} = {};", name, format_ident(ty, types)))
+            }
             Type::Enum(ty) => {
                 if ty.options.native_modules.contains_key(module_key) || ty.ident.name == "Result" {
                     None
                 } else {
-                    Some(create_enum_definition(ty, &types))
+                    Some(create_enum_definition(ty, types))
                 }
             }
             Type::Struct(ty) => {
                 if ty.options.native_modules.contains_key(module_key) {
                     None
                 } else {
-                    Some(create_struct_definition(ty, &types))
+                    Some(create_struct_definition(ty, types))
                 }
             }
             _ => None,
@@ -190,7 +192,7 @@ pub fn generate_type_bindings(types: TypeMap, path: &str, module_key: &str) {
     );
 }
 
-fn format_functions(export_functions: FunctionList, macro_path: &str) -> String {
+fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path: &str) -> String {
     export_functions
         .iter()
         .map(|func| {
@@ -205,11 +207,11 @@ fn format_functions(export_functions: FunctionList, macro_path: &str) -> String 
             let args_with_types = func
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name, arg.ty))
+                .map(|arg| format!("{}: {}", arg.name, format_ident(&arg.ty, types)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &func.return_type {
-                Some(ty) => format!(" -> {}", ty),
+                Some(ty) => format!(" -> {}", format_ident(ty, types)),
                 None => "".to_owned(),
             };
             format!(
@@ -221,22 +223,92 @@ fn format_functions(export_functions: FunctionList, macro_path: &str) -> String 
         .join("\n\n")
 }
 
-fn generate_imported_function_bindings(import_functions: FunctionList, path: &str) {
+fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+    match types.get(ident) {
+        Some(ty) => format_type_with_ident(ty, ident, types),
+        None => ident.to_string(), // Must be a generic.
+    }
+}
+
+fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
+    match ty {
+        Type::Alias(name, _) => name.clone(),
+        Type::Container(name, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            format!("{}<{}>", name, format_ident(arg, types))
+        }
+        Type::Custom(custom) => custom.rs_ty.clone(),
+        Type::List(name, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            format!("{}<{}>", name, format_ident(arg, types))
+        }
+        Type::Map(name, _, _) => {
+            let arg1 = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            let arg2 = ident
+                .generic_args
+                .get(1)
+                .expect("Identifier was expected to contain two arguments");
+            format!(
+                "{}<{}, {}>",
+                name,
+                format_ident(arg1, types),
+                format_ident(arg2, types)
+            )
+        }
+        Type::Tuple(items) => format!(
+            "[{}]",
+            items
+                .iter()
+                .map(|item| format_ident(item, types))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Type::Unit => "void".to_owned(),
+        _ => ident.to_string(),
+    }
+}
+
+fn generate_imported_function_bindings(
+    import_functions: FunctionList,
+    types: &TypeMap,
+    path: &str,
+) {
     write_bindings_file(
         format!("{}/import.rs", path),
         format!(
             "use crate::types::*;\n\n{}\n",
-            format_functions(import_functions, "fp_bindgen_support::fp_import_signature")
+            format_functions(
+                import_functions,
+                types,
+                "fp_bindgen_support::fp_import_signature"
+            )
         ),
     );
 }
 
-fn generate_exported_function_bindings(export_functions: FunctionList, path: &str) {
+fn generate_exported_function_bindings(
+    export_functions: FunctionList,
+    types: &TypeMap,
+    path: &str,
+) {
     write_bindings_file(
         format!("{}/export.rs", path),
         format!(
             "use crate::types::*;\n\n{}\n",
-            format_functions(export_functions, "fp_bindgen_support::fp_export_signature")
+            format_functions(
+                export_functions,
+                types,
+                "fp_bindgen_support::fp_export_signature"
+            )
         ),
     );
 }
@@ -295,7 +367,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                 Type::Tuple(items) => {
                     let items = items
                         .iter()
-                        .map(ToString::to_string)
+                        .map(|item| format_ident(item, types))
                         .collect::<Vec<_>>()
                         .join(", ");
                     format!("{}({}),", variant.name, items)
@@ -448,7 +520,13 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
                 format!("#[serde({})]\n", serde_attrs.join(", "))
             };
 
-            format!("{}{}{}: {},", docs, annotations, field.name, field.ty)
+            format!(
+                "{}{}{}: {},",
+                docs,
+                annotations,
+                field.name,
+                format_ident(&field.ty, types)
+            )
         })
         .collect()
 }

@@ -3,7 +3,7 @@ use crate::{
     Type,
 };
 use std::{
-    collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
 };
 
@@ -51,10 +51,8 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }
 
@@ -79,11 +77,9 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            K::collect_types(types);
-            V::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        K::collect_types(types);
+        V::collect_types(types);
     }
 }
 
@@ -103,10 +99,8 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }
 
@@ -131,11 +125,9 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            K::collect_types(types);
-            V::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        K::collect_types(types);
+        V::collect_types(types);
     }
 }
 
@@ -155,10 +147,8 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }
 
@@ -178,10 +168,8 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }
 
@@ -201,10 +189,8 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }
 
@@ -246,11 +232,9 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-            E::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
+        E::collect_types(types);
     }
 }
 
@@ -280,9 +264,7 @@ where
     }
 
     fn collect_types(types: &mut TypeMap) {
-        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
-            entry.insert(Self::ty());
-            T::collect_types(types);
-        }
+        types.entry(Self::ident()).or_insert_with(Self::ty);
+        T::collect_types(types);
     }
 }

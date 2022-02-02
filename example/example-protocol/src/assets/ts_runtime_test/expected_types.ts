@@ -31,6 +31,7 @@ export type ComplexHostToGuest = {
      * Raw identifiers are supported too.
      */
     type: string;
+    value: Value;
 };
 
 export type ExplicitedlyImportedType = {
@@ -145,3 +146,12 @@ export type Simple = {
     foo: number;
     bar: string;
 };
+
+/**
+ * Tagged dynamic value.
+ */
+export type Value =
+    | { Integer: bigint }
+    | { Float: number }
+    | { List: Array<Value> }
+    | { Map: Record<string, Value> };

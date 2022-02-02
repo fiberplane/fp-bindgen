@@ -147,6 +147,10 @@ fp_import! {
     use ExplicitedlyImportedType;
     use foobar::{baz::GroupImportedType1, GroupImportedType2};
 
+    // Aliases need to be explicitly mentioned in either `fp_import!` or `fp_export!`:
+    type Body = ByteBuf;
+    type ComplexAlias = ComplexGuestToHost;
+
     /// Logs a message to the (development) console.
     fn log(message: String);
 
