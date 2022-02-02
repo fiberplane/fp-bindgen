@@ -2,12 +2,9 @@ use super::{
     structs::{Field, Struct, StructOptions},
     Type, TypeIdent,
 };
-use crate::{casing::Casing, docs::get_doc_lines, types::FieldAttrs};
+use crate::{casing::Casing, docs::get_doc_lines, primitives::Primitive, types::FieldAttrs};
 use quote::ToTokens;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-};
+use std::{collections::BTreeMap, convert::TryFrom, str::FromStr};
 use syn::{
     ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
     Ident, ItemEnum, LitStr, Result, Token, TypePath,
@@ -21,7 +18,7 @@ pub struct Enum {
     pub options: EnumOptions,
 }
 
-pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> Enum {
+pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
     let ident = TypeIdent {
         name: item.ident.to_string(),
         generic_args: item
@@ -60,7 +57,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum, dependencies: &BTreeSet<Type>) -> 
                             .unwrap_or_else(|| panic!("Unnamed field in variant of enum {}", ident))
                             .to_string();
                         // FP-1180: Prevent unserializable variants.
-                        if options.tag_prop_name == Some(name)
+                        if options.tag_prop_name.as_ref() == Some(&name)
                             && options.content_prop_name.is_none()
                         {
                             panic!(
@@ -356,7 +353,7 @@ fn is_path_to_primitive(ty: &syn::Type) -> bool {
             if qself.is_none()
                 && path
                     .get_ident()
-                    .map(|ident| ident.to_string().starts_with(char::is_lowercase))
+                    .map(|ident| Primitive::from_str(&ident.to_string()).is_ok())
                     .unwrap_or(false)
     )
 }

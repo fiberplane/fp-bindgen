@@ -1,9 +1,8 @@
-use crate::functions::FunctionList;
-use crate::prelude::Primitive;
-use crate::types::{
-    CargoDependency, Enum, EnumOptions, Field, Struct, StructOptions, Type, Variant,
+use crate::{
+    functions::FunctionList,
+    types::{CargoDependency, Enum, Field, Struct, Type, TypeMap},
+    RustPluginConfig,
 };
-use crate::RustPluginConfig;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -12,7 +11,7 @@ use std::{
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    types: BTreeSet<Type>,
+    types: TypeMap,
     config: RustPluginConfig,
     path: &str,
 ) {
@@ -46,7 +45,7 @@ pub use fp_bindgen_support::*;
 fn generate_cargo_file(
     config: RustPluginConfig,
     import_functions: &FunctionList,
-    types: &BTreeSet<Type>,
+    types: &TypeMap,
     path: &str,
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
@@ -76,7 +75,7 @@ fn generate_cargo_file(
     ]);
 
     // Inject dependencies from custom types:
-    for ty in types.iter() {
+    for ty in types.values() {
         if let Type::Custom(custom_type) = ty {
             for (name, dependency) in custom_type.rs_dependencies.iter() {
                 let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
@@ -123,9 +122,9 @@ edition = \"2018\"
     );
 }
 
-pub fn generate_type_bindings(types: BTreeSet<Type>, path: &str, module_key: &str) {
+pub fn generate_type_bindings(types: TypeMap, path: &str, module_key: &str) {
     let std_types = types
-        .iter()
+        .values()
         .filter_map(collect_std_types)
         .collect::<BTreeSet<_>>();
     let std_imports = if std_types.is_empty() {
@@ -139,8 +138,8 @@ pub fn generate_type_bindings(types: BTreeSet<Type>, path: &str, module_key: &st
         )
     };
 
-    let mut type_imports = types
-        .iter()
+    let type_imports = types
+        .values()
         .filter_map(|ty| {
             let (ident, native_modules) = match ty {
                 Type::Enum(Enum { ident, options, .. }) => (ident, &options.native_modules),
@@ -155,26 +154,25 @@ pub fn generate_type_bindings(types: BTreeSet<Type>, path: &str, module_key: &st
     let type_imports = if type_imports.is_empty() {
         "".to_owned()
     } else {
-        type_imports.dedup();
         format!("{}\n\n", type_imports.join("\n"))
     };
 
-    let mut type_defs = types
-        .into_iter()
+    let type_defs = types
+        .values()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => Some(format!("pub type {} = {};", name, ty)),
             Type::Enum(ty) => {
                 if ty.options.native_modules.contains_key(module_key) || ty.ident.name == "Result" {
                     None
                 } else {
-                    Some(create_enum_definition(ty))
+                    Some(create_enum_definition(ty, &types))
                 }
             }
             Type::Struct(ty) => {
                 if ty.options.native_modules.contains_key(module_key) {
                     None
                 } else {
-                    Some(create_struct_definition(ty))
+                    Some(create_struct_definition(ty, &types))
                 }
             }
             _ => None,
@@ -245,27 +243,27 @@ fn generate_exported_function_bindings(export_functions: FunctionList, path: &st
 
 fn collect_std_types(ty: &Type) -> Option<String> {
     match ty {
-        Type::Container(name, ty) if name == "Rc" => Some("rc::Rc".to_owned()),
-        Type::List(name, ty) if (name == "BTreeSet" || name == "HashSet") => {
+        Type::Container(name, _) if name == "Rc" => Some("rc::Rc".to_owned()),
+        Type::List(name, _) if (name == "BTreeSet" || name == "HashSet") => {
             Some(format!("collections::{}", name))
         }
-        Type::Map(name, key, value) if (name == "BTreeMap" || name == "HashMap") => {
+        Type::Map(name, _, _) if (name == "BTreeMap" || name == "HashMap") => {
             Some(format!("collections::{}", name))
         }
         _ => None,
     }
 }
 
-fn create_enum_definition(ty: Enum) -> String {
+fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
     let variants = ty
         .variants
-        .into_iter()
+        .iter()
         .flat_map(|variant| {
             let mut serde_attrs = variant.attrs.to_serde_attrs();
-            let mut variant_decl = match variant.ty {
+            let mut variant_decl = match &variant.ty {
                 Type::Unit => format!("{},", variant.name),
                 Type::Struct(variant) => {
-                    let fields = format_struct_fields(&variant.fields);
+                    let fields = format_struct_fields(&variant.fields, types);
                     let has_multiple_lines = fields.iter().any(|field| field.contains('\n'));
                     let fields = if has_multiple_lines {
                         format!(
@@ -357,8 +355,8 @@ fn create_enum_definition(ty: Enum) -> String {
     )
 }
 
-fn create_struct_definition(ty: Struct) -> String {
-    let fields = format_struct_fields(&ty.fields)
+fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
+    let fields = format_struct_fields(&ty.fields, types)
         .iter()
         .flat_map(|field| field.split('\n'))
         .map(|line| {
@@ -400,36 +398,33 @@ fn format_docs(doc_lines: &[String]) -> String {
         .join("")
 }
 
-fn format_struct_fields(fields: &[Field], types: &BTreeSet<Type>) -> Vec<String> {
+fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
     fields
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
 
-            if let Some(ty) = types.get(&field.ty) {
-                match &field.ty {
-                    Type::Container(name, _) if name == "Option" => {
-                        if !serde_attrs
-                            .iter()
-                            .any(|attr| attr == "default" || attr.starts_with("default = "))
-                        {
-                            serde_attrs.push("default".to_owned());
-                        }
-                        if !serde_attrs
-                            .iter()
-                            .any(|attr| attr.starts_with("skip_serializing_if ="))
-                        {
-                            serde_attrs
-                                .push("skip_serializing_if = \"Option::is_none\"".to_owned());
-                        }
+            match types.get(&field.ty) {
+                Some(Type::Container(name, _)) if name == "Option" => {
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr == "default" || attr.starts_with("default = "))
+                    {
+                        serde_attrs.push("default".to_owned());
                     }
-                    Type::Custom(custom_type) => {
-                        for attr in custom_type.serde_attrs.iter() {
-                            serde_attrs.push(attr.clone());
-                        }
+                    if !serde_attrs
+                        .iter()
+                        .any(|attr| attr.starts_with("skip_serializing_if ="))
+                    {
+                        serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
                     }
-                    _ => {}
                 }
+                Some(Type::Custom(custom_type)) => {
+                    for attr in custom_type.serde_attrs.iter() {
+                        serde_attrs.push(attr.clone());
+                    }
+                }
+                _ => {}
             }
 
             let docs = if field.doc_lines.is_empty() {
@@ -456,23 +451,6 @@ fn format_struct_fields(fields: &[Field], types: &BTreeSet<Type>) -> Vec<String>
             format!("{}{}{}: {},", docs, annotations, field.name, field.ty)
         })
         .collect()
-}
-
-pub fn format_primitive(primitive: Primitive) -> String {
-    let string = match primitive {
-        Primitive::Bool => "bool",
-        Primitive::F32 => "f32",
-        Primitive::F64 => "f64",
-        Primitive::I8 => "i8",
-        Primitive::I16 => "i16",
-        Primitive::I32 => "i32",
-        Primitive::I64 => "i64",
-        Primitive::U8 => "u8",
-        Primitive::U16 => "u16",
-        Primitive::U32 => "u32",
-        Primitive::U64 => "u64",
-    };
-    string.to_owned()
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

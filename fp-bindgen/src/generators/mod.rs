@@ -1,12 +1,8 @@
 use crate::{
     functions::FunctionList,
-    types::{CargoDependency, Type},
+    types::{CargoDependency, TypeMap},
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Display,
-    fs,
-};
+use std::{collections::BTreeMap, fmt::Display, fs};
 
 pub mod rust_plugin;
 pub mod rust_wasmer_runtime;
@@ -51,7 +47,7 @@ pub struct TsRuntimeConfig {
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    types: BTreeSet<Type>,
+    types: TypeMap,
     config: BindingConfig,
 ) {
     fs::create_dir_all(config.path).expect("Could not create output directory");

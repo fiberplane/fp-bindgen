@@ -1,6 +1,6 @@
 use crate::primitives::Primitive;
 use quote::{quote, ToTokens};
-use std::{collections::BTreeSet, hash::Hash};
+use std::{collections::BTreeMap, hash::Hash};
 use syn::Item;
 
 mod cargo_dependency;
@@ -14,6 +14,8 @@ pub use custom_type::CustomType;
 pub use enums::{Enum, EnumOptions, Variant, VariantAttrs};
 pub use structs::{Field, FieldAttrs, Struct, StructOptions};
 pub use type_ident::TypeIdent;
+
+pub type TypeMap = BTreeMap<TypeIdent, Type>;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {
@@ -31,11 +33,11 @@ pub enum Type {
 }
 
 impl Type {
-    pub fn from_item(item_str: &str, dependencies: &BTreeSet<Type>) -> Self {
+    pub fn from_item(item_str: &str) -> Self {
         let item = syn::parse_str::<Item>(item_str).unwrap();
         match item {
-            Item::Enum(item) => Type::Enum(enums::parse_enum_item(item, dependencies)),
-            Item::Struct(item) => Type::Struct(structs::parse_struct_item(item, dependencies)),
+            Item::Enum(item) => Type::Enum(enums::parse_enum_item(item)),
+            Item::Struct(item) => Type::Struct(structs::parse_struct_item(item)),
             item => panic!(
                 "Only struct and enum types can be constructed from an item. Found: {:?}",
                 item

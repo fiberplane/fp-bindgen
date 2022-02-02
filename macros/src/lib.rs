@@ -36,10 +36,10 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let alias_paths = aliases.values();
 
     let replacement = quote! {
-        fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>) {
-            let mut import_types = std::collections::BTreeSet::new();
-            #( #type_paths::collect_dependency_idents(&mut import_types); )*
-            #( import_types.insert(Type::Alias(#alias_keys.clone(), #alias_paths::ident())) )*
+        fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
+            let mut import_types = fp_bindgen::prelude::TypeMap::new();
+            #( #type_paths::collect_types(&mut import_types); )*
+            #( import_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.clone(), #alias_paths::ident())) )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions); )*
@@ -63,10 +63,10 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let alias_paths = aliases.values();
 
     let replacement = quote! {
-        fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, std::collections::BTreeSet<Type>) {
-            let mut export_types = std::collections::BTreeSet::new();
-            #( #type_paths::collect_dependency_idents(&mut export_types); )*
-            #( export_types.insert(Type::Alias(#alias_keys.clone(), #alias_paths::ident())) )*
+        fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
+            let mut export_types = fp_bindgen::prelude::TypeMap::new();
+            #( #type_paths::collect_types(&mut export_types); )*
+            #( export_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.clone(), #alias_paths::ident())) )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions); )*

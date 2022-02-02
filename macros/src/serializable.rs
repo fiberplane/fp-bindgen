@@ -37,13 +37,14 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         _ => HashSet::default(),
     };
 
-    let collect_idents = if field_types.is_empty() {
-        quote! { idents.insert(Self::ident()); }
+    let collect_types = if field_types.is_empty() {
+        quote! { types.entry(Self::ident()).or_insert_with(Self::ty); }
     } else {
         let field_types = field_types.iter();
         quote! {
-            if idents.insert(Self::ident()) {
-                #( #field_types::collect_dependency_idents(idents); )*
+            if let std::collections::btree_map::Entry::Vacant(entry) = types.entry(Self::ident()) {
+                entry.insert(Self::ty());
+                #( #field_types::collect_types(types); )*
             }
         }
     };
@@ -83,8 +84,8 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                 fp_bindgen::prelude::Type::from_item(#item_str)
             }
 
-            fn collect_dependency_idents(idents: &mut std::collections::BTreeSet<fp_bindgen::prelude::TypeIdent>) {
-                #collect_idents
+            fn collect_types(types: &mut fp_bindgen::prelude::TypeMap) {
+                #collect_types
             }
         }
     };

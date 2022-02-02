@@ -1,12 +1,19 @@
+use crate::primitives::Primitive;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use std::{convert::TryFrom, fmt::Display};
+use std::{convert::TryFrom, fmt::Display, str::FromStr};
 use syn::{PathArguments, TypePath};
 
-#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TypeIdent {
     pub name: String,
     pub generic_args: Vec<TypeIdent>,
+}
+
+impl TypeIdent {
+    pub fn is_primitive(&self) -> bool {
+        Primitive::from_str(&self.name).is_ok()
+    }
 }
 
 impl Display for TypeIdent {
@@ -42,6 +49,15 @@ impl From<String> for TypeIdent {
     }
 }
 
+impl Ord for TypeIdent {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // We only compare the name so that any type is only included once in
+        // a map, regardless of how many concrete instances are used with
+        // different generic arguments.
+        self.name.cmp(&other.name)
+    }
+}
+
 impl PartialOrd for TypeIdent {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         // We only compare the name so that any type is only included once in
@@ -57,7 +73,7 @@ impl ToTokens for TypeIdent {
         if self.generic_args.is_empty() {
             quote! { #name }
         } else {
-            let args = self.generic_args;
+            let args = &self.generic_args;
             quote! { #name<#(#args),*> }
         }
         .to_tokens(tokens)

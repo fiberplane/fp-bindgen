@@ -1,13 +1,10 @@
 use crate::{
-    types::{Enum, EnumOptions, TypeIdent, Variant, VariantAttrs},
+    types::{Enum, EnumOptions, TypeIdent, TypeMap, Variant, VariantAttrs},
     Type,
 };
-use once_cell::sync::Lazy;
 use std::{
-    any::TypeId,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{btree_map::Entry, BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
-    sync::RwLock,
 };
 
 #[cfg(feature = "http-compat")]
@@ -16,11 +13,6 @@ mod http;
 mod serde_bytes;
 #[cfg(feature = "time-compat")]
 mod time;
-
-static CACHED_TYPES: Lazy<RwLock<HashMap<TypeId, Type>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
-static CACHED_DEPENDENCIES: Lazy<RwLock<HashMap<TypeId, BTreeSet<Type>>>> =
-    Lazy::new(|| RwLock::new(HashMap::new()));
 
 pub trait Serializable: 'static {
     /// The identifier of the type as defined in the protocol.
@@ -34,12 +26,12 @@ pub trait Serializable: 'static {
         false
     }
 
-    /// Collects all the identifiers of the type and its dependencies.
+    /// Collects the `Type` of this type and its dependencies.
     ///
     /// The default implementation is only suitable for types without
     /// dependencies.
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        idents.insert(Self::ident());
+    fn collect_types(types: &mut TypeMap) {
+        types.entry(Self::ident()).or_insert_with(Self::ty);
     }
 }
 
@@ -58,9 +50,10 @@ where
         Type::Container("Box".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }
@@ -85,10 +78,11 @@ where
         )
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            K::collect_dependency_idents(idents);
-            V::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            K::collect_types(types);
+            V::collect_types(types);
         }
     }
 }
@@ -108,9 +102,10 @@ where
         Type::List("BTreeSet".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }
@@ -135,10 +130,11 @@ where
         )
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            K::collect_dependency_idents(idents);
-            V::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            K::collect_types(types);
+            V::collect_types(types);
         }
     }
 }
@@ -158,9 +154,10 @@ where
         Type::List("HashSet".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }
@@ -180,9 +177,10 @@ where
         Type::Container("Option".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }
@@ -202,9 +200,10 @@ where
         Type::Container("Rc".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }
@@ -246,10 +245,11 @@ where
         })
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
-            E::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
+            E::collect_types(types);
         }
     }
 }
@@ -279,9 +279,10 @@ where
         Type::List("Vec".to_owned(), TypeIdent::from("T"))
     }
 
-    fn collect_dependency_idents(idents: &mut BTreeSet<TypeIdent>) {
-        if idents.insert(Self::ident()) {
-            T::collect_dependency_idents(idents);
+    fn collect_types(types: &mut TypeMap) {
+        if let Entry::Vacant(entry) = types.entry(Self::ident()) {
+            entry.insert(Self::ty());
+            T::collect_types(types);
         }
     }
 }

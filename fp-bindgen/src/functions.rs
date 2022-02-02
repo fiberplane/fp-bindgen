@@ -1,7 +1,4 @@
-use crate::{
-    docs::get_doc_lines,
-    types::{Type, TypeIdent},
-};
+use crate::{docs::get_doc_lines, types::TypeIdent};
 use quote::{format_ident, quote, ToTokens};
 use std::{collections::BTreeSet, convert::TryFrom};
 use syn::{token::Async, FnArg, ForeignItemFn, ReturnType};

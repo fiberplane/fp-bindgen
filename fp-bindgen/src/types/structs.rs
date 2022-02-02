@@ -1,10 +1,7 @@
-use super::{Type, TypeIdent};
+use super::TypeIdent;
 use crate::{casing::Casing, docs::get_doc_lines};
 use quote::ToTokens;
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    convert::TryFrom,
-};
+use std::{collections::BTreeMap, convert::TryFrom};
 use syn::{
     ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
     Ident, ItemStruct, LitStr, Result, Token,
@@ -18,7 +15,7 @@ pub struct Struct {
     pub options: StructOptions,
 }
 
-pub(crate) fn parse_struct_item(item: ItemStruct, dependencies: &BTreeSet<Type>) -> Struct {
+pub(crate) fn parse_struct_item(item: ItemStruct) -> Struct {
     let ident = TypeIdent {
         name: item.ident.to_string(),
         generic_args: item
