@@ -58,7 +58,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
             quote! {
                 fp_bindgen::prelude::TypeIdent {
                     name: #item_name.to_owned(),
-                    generic_args: vec![#( TypeIdent::from(#params) ),*],
+                    generic_args: vec![#( fp_bindgen::prelude::TypeIdent::from(#params) ),*],
                 }
             }
         }
