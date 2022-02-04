@@ -233,7 +233,7 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
-        Type::Container(name, _) => {
+        Type::Container(name, _) | Type::List(name, _) => {
             let arg = ident
                 .generic_args
                 .first()
@@ -241,13 +241,6 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
             format!("{}<{}>", name, format_ident(arg, types))
         }
         Type::Custom(custom) => custom.rs_ty.clone(),
-        Type::List(name, _) => {
-            let arg = ident
-                .generic_args
-                .first()
-                .expect("Identifier was expected to contain a generic argument");
-            format!("{}<{}>", name, format_ident(arg, types))
-        }
         Type::Map(name, _, _) => {
             let arg1 = ident
                 .generic_args
