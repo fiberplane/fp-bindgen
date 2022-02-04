@@ -1,12 +1,8 @@
 use crate::{
     functions::FunctionList,
-    types::{CargoDependency, Type},
+    types::{CargoDependency, TypeMap},
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt::Display,
-    fs,
-};
+use std::{collections::BTreeMap, fmt::Display, fs};
 
 pub mod rust_plugin;
 pub mod rust_wasmer_runtime;
@@ -51,8 +47,7 @@ pub struct TsRuntimeConfig {
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    serializable_types: BTreeSet<Type>,
-    deserializable_types: BTreeSet<Type>,
+    types: TypeMap,
     config: BindingConfig,
 ) {
     fs::create_dir_all(config.path).expect("Could not create output directory");
@@ -61,23 +56,20 @@ pub fn generate_bindings(
         BindingsType::RustPlugin(plugin_config) => rust_plugin::generate_bindings(
             import_functions,
             export_functions,
-            serializable_types,
-            deserializable_types,
+            types,
             plugin_config,
             config.path,
         ),
         BindingsType::RustWasmerRuntime => rust_wasmer_runtime::generate_bindings(
             import_functions,
             export_functions,
-            serializable_types,
-            deserializable_types,
+            types,
             config.path,
         ),
         BindingsType::TsRuntime(runtime_config) => ts_runtime::generate_bindings(
             import_functions,
             export_functions,
-            serializable_types,
-            deserializable_types,
+            types,
             runtime_config,
             config.path,
         ),

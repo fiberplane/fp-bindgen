@@ -12,11 +12,9 @@ time-compat = ["time"]
 generators = ["rustfmt-wrapper"]
 
 [dependencies]
-dashmap = "4"
 fp-bindgen-macros = { path = "../macros" }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
-once_cell = "1"
 pretty_assertions = "1"
 proc-macro2 = "1"
 quote = "1"

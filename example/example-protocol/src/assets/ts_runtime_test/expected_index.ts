@@ -22,6 +22,7 @@ import type {
     Response,
     Result,
     Simple,
+    Value,
 } from "./types";
 
 type FatPtr = bigint;

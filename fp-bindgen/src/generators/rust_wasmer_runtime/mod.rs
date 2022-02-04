@@ -1,36 +1,33 @@
-use crate::functions::{Function, FunctionArg, FunctionList};
-use crate::generators::rust_plugin::generate_type_bindings;
-use crate::types::Type;
+use crate::{
+    functions::{Function, FunctionArg, FunctionList},
+    generators::rust_plugin::generate_type_bindings,
+    primitives::Primitive,
+    types::{TypeIdent, TypeMap},
+};
 use proc_macro2::{Punct, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use std::collections::BTreeSet;
-use std::fs;
+use std::{fs, str::FromStr};
 use syn::token::Async;
 
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    serializable_types: BTreeSet<Type>,
-    deserializable_types: BTreeSet<Type>,
+    types: TypeMap,
     path: &str,
 ) {
     fs::create_dir_all(&path).expect("Could not create output directory");
 
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:
-    generate_type_bindings(
-        deserializable_types,
-        serializable_types,
-        path,
-        "rust_wasmer_runtime",
-    );
+    generate_type_bindings(&types, path, "rust_wasmer_runtime");
 
     generate_function_bindings(import_functions, export_functions, path);
 }
 
 fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenStream {
-    //yes this is pretty ugly but fortunately *only* required here to get proper formatting with quote!
-    //since rustfmt doesn't format inside macro invocations :(
+    // Yes, this is pretty ugly but fortunately *only* required here to get
+    // proper formatting with quote!, since rustfmt doesn't format inside macro
+    // invocations :(
     let newline = Punct::new('\n', proc_macro2::Spacing::Alone);
     let space = Punct::new(' ', proc_macro2::Spacing::Joint);
     let spaces4: Vec<_> = (0..3).map(|_| &space).collect();
@@ -63,46 +60,49 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenS
     }
 }
 
-pub struct ExportSafeFunctionArg<'a>(pub &'a FunctionArg);
+pub struct WasmType<'a>(pub &'a TypeIdent);
 
-impl ToTokens for ExportSafeFunctionArg<'_> {
+impl ToTokens for WasmType<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let name = format_ident!("{}", self.0.name);
-        let ty = ExportSafeType(&self.0.ty);
-        quote!(#name: #ty).to_tokens(tokens)
-    }
-}
-
-pub struct ExportSafeType<'a>(pub &'a Type);
-
-impl ToTokens for ExportSafeType<'_> {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        match self.0 {
-            Type::Primitive(p) => quote! {#p},
-            _ => quote! {FatPtr},
+        if let Ok(p) = Primitive::from_str(&self.0.name) {
+            quote! { #p }
+        } else {
+            quote! { FatPtr }
         }
         .to_tokens(tokens)
     }
 }
 
-struct ComplexTypeToVec<'a>(&'a Type);
-impl ToTokens for ComplexTypeToVec<'_> {
+pub struct WasmArg<'a>(pub &'a FunctionArg);
+
+impl ToTokens for WasmArg<'_> {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let name = format_ident!("{}", self.0.name);
+        let ty = WasmType(&self.0.ty);
+        quote!(#name: #ty).to_tokens(tokens)
+    }
+}
+
+struct RawType<'a>(&'a TypeIdent);
+
+impl ToTokens for RawType<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        (match self.0 {
-            Type::Primitive(p) => quote! {#p},
-            _ => (quote! {Vec<u8>}),
-        })
+        if let Ok(p) = Primitive::from_str(&self.0.name) {
+            quote! { #p }
+        } else {
+            quote! { Vec<u8> }
+        }
         .to_tokens(tokens)
     }
 }
 
-struct ComplexArgsToVec<'a>(&'a FunctionArg);
+struct RawArg<'a>(&'a FunctionArg);
 
-impl ToTokens for ComplexArgsToVec<'_> {
+impl ToTokens for RawArg<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let name = format_ident!("{}", self.0.name);
-        let ty = ComplexTypeToVec(&self.0.ty);
-        (quote! {#name: #ty}).to_tokens(tokens)
+        let ty = RawType(&self.0.ty);
+        (quote! { #name: #ty }).to_tokens(tokens)
     }
 }
 
@@ -124,17 +124,31 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         let raw_name = format_ident!("{}_raw", name);
         let name = format_ident!("{}", name);
 
-        let arg_names: Vec<_> = args.iter().map(|a| format_ident!("{}", a.name)).collect();
+        let arg_names: Vec<_> = args
+            .iter()
+            .map(|arg| format_ident!("{}", arg.name))
+            .collect();
         let serialize_names: Vec<_> = args
             .iter()
-            .filter_map(|a| {
-                (!matches!(a.ty, Type::Primitive(..))).then(|| format_ident!("{}", a.name))
-            })
+            .filter(|arg| !&arg.ty.is_primitive())
+            .map(|arg| format_ident!("{}", arg.name))
             .collect();
-        let safe_arg_types = args.iter().map(|a| ExportSafeType(&a.ty));
-        let safe_return_type = ExportSafeType(return_type);
-        let raw_format_args = args.iter().map(ComplexArgsToVec);
-        let raw_format_return_type = ComplexTypeToVec(return_type);
+        let wasm_arg_types = args.iter().map(|arg| WasmType(&arg.ty));
+        let wasm_return_type = match return_type {
+            Some(ty) => {
+                let ty = WasmType(ty);
+                quote! { #ty }
+            }
+            None => quote! { () },
+        };
+        let raw_format_args = args.iter().map(RawArg);
+        let raw_format_return_type = match return_type {
+            Some(ty) => {
+                let raw = RawType(ty);
+                quote! { #raw }
+            }
+            None => quote! { () },
+        };
 
         let asyncness = is_async.then(Async::default);
 
@@ -148,7 +162,11 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                     let result = result.map(|ref data| deserialize_from_slice(data));
                 },
             )
-        } else if !matches!(return_type, Type::Primitive(..)) {
+        } else if !return_type
+            .as_ref()
+            .map(TypeIdent::is_primitive)
+            .unwrap_or(true)
+        {
             (
                 quote! {
                     let result = import_from_guest_raw(&env, result);
@@ -183,7 +201,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 let function = instance
                     .exports
-                    .get_native_function::<(#(#safe_arg_types),*), #safe_return_type>(#fp_gen_name)
+                    .get_native_function::<(#(#wasm_arg_types),*), #wasm_return_type>(#fp_gen_name)
                     .map_err(|_| InvocationError::FunctionNotExported)?;
 
                 let result = function.call(#(#arg_names),*)?;
@@ -213,24 +231,27 @@ impl ToTokens for RuntimeExportedFunction<'_> {
         } = self.0;
 
         let underscore_name = format_ident!("_{}", name);
-        let input_args = args.iter().map(ExportSafeFunctionArg);
+        let input_args = args.iter().map(WasmArg);
         let wrapper_return_type = if *is_async {
-            quote! {-> FatPtr}
-        } else if matches!(return_type, Type::Unit) {
-            TokenStream::default()
+            quote! { -> FatPtr }
         } else {
-            let est = ExportSafeType(return_type);
-            quote! {-> #est}
+            match return_type {
+                Some(ty) => {
+                    let ty = WasmType(ty);
+                    quote! { -> #ty }
+                }
+                None => TokenStream::default(),
+            }
         };
 
         let complex_args = args
             .iter()
-            .filter(|a| !matches!(a.ty, Type::Primitive(_)))
+            .filter(|arg| !arg.ty.is_primitive())
             .collect::<Vec<_>>();
         let complex_types = complex_args.iter().map(|a| &a.ty);
         let complex_idents = complex_args
             .iter()
-            .map(|a| format_ident!("{}", a.name))
+            .map(|arg| format_ident!("{}", arg.name))
             .collect::<Vec<_>>();
 
         let impl_func_name = format_ident!("{}", name);
@@ -251,9 +272,9 @@ impl ToTokens for RuntimeExportedFunction<'_> {
             }
         } else {
             match return_type {
-                Type::Primitive(_) => quote! {result},
-                Type::Unit => quote! {()},
-                _ => quote! {export_to_guest(env, &result)},
+                None => quote! { () },
+                Some(ty) if ty.is_primitive() => quote! { result },
+                _ => quote! { export_to_guest(env, &result) },
             }
         };
 
@@ -353,17 +374,17 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::ExportSafeFunctionArg;
-    use crate::{functions::FunctionArg, types::Type};
+    use super::WasmArg;
+    use crate::{functions::FunctionArg, types::TypeIdent};
     use quote::ToTokens;
 
     #[test]
     fn test_function_arg_to_tokens() {
         let arg = FunctionArg {
             name: "foobar".into(),
-            ty: Type::String,
+            ty: TypeIdent::from("String"),
         };
-        let arg = ExportSafeFunctionArg(&arg);
+        let arg = WasmArg(&arg);
 
         let stringified = arg.into_token_stream().to_string();
 

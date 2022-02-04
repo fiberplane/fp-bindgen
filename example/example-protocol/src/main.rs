@@ -37,6 +37,7 @@ pub struct ComplexHostToGuest {
     pub renamed: Option<OffsetDateTime>,
     /// Raw identifiers are supported too.
     pub r#type: String,
+    pub value: Value,
 }
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -113,6 +114,15 @@ pub enum RequestError {
     },
 }
 
+/// Tagged dynamic value.
+#[derive(Serializable)]
+pub enum Value {
+    Integer(i64),
+    Float(f64),
+    List(Vec<Value>),
+    Map(BTreeMap<String, Value>),
+}
+
 #[derive(Serializable)]
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,
@@ -136,6 +146,10 @@ mod foobar {
 fp_import! {
     use ExplicitedlyImportedType;
     use foobar::{baz::GroupImportedType1, GroupImportedType2};
+
+    // Aliases need to be explicitly mentioned in either `fp_import!` or `fp_export!`:
+    type Body = ByteBuf;
+    type ComplexAlias = ComplexGuestToHost;
 
     /// Logs a message to the (development) console.
     fn log(message: String);

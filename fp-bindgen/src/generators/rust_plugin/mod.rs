@@ -1,10 +1,8 @@
-use crate::functions::FunctionList;
-use crate::prelude::Primitive;
-use crate::types::{
-    format_name_with_generics, CargoDependency, EnumOptions, Field, GenericArgument, StructOptions,
-    Type, Variant,
+use crate::{
+    functions::FunctionList,
+    types::{CargoDependency, Enum, Field, Struct, Type, TypeIdent, TypeMap},
+    RustPluginConfig,
 };
-use crate::RustPluginConfig;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -13,30 +11,18 @@ use std::{
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    serializable_types: BTreeSet<Type>,
-    deserializable_types: BTreeSet<Type>,
+    types: TypeMap,
     config: RustPluginConfig,
     path: &str,
 ) {
     let src_path = format!("{}/src", path);
     fs::create_dir_all(&src_path).expect("Could not create output directory");
 
-    generate_cargo_file(
-        config,
-        &import_functions,
-        &serializable_types,
-        &deserializable_types,
-        path,
-    );
+    generate_cargo_file(config, &import_functions, &types, path);
 
-    generate_type_bindings(
-        serializable_types,
-        deserializable_types,
-        &src_path,
-        "rust_plugin",
-    );
-    generate_imported_function_bindings(import_functions, &src_path);
-    generate_exported_function_bindings(export_functions, &src_path);
+    generate_type_bindings(&types, &src_path, "rust_plugin");
+    generate_imported_function_bindings(import_functions, &types, &src_path);
+    generate_exported_function_bindings(export_functions, &types, &src_path);
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
@@ -59,8 +45,7 @@ pub use fp_bindgen_support::*;
 fn generate_cargo_file(
     config: RustPluginConfig,
     import_functions: &FunctionList,
-    serializable_types: &BTreeSet<Type>,
-    deserializable_types: &BTreeSet<Type>,
+    types: &TypeMap,
     path: &str,
 ) {
     let requires_async = import_functions.iter().any(|function| function.is_async);
@@ -90,7 +75,7 @@ fn generate_cargo_file(
     ]);
 
     // Inject dependencies from custom types:
-    for ty in serializable_types.iter().chain(deserializable_types.iter()) {
+    for ty in types.values() {
         if let Type::Custom(custom_type) = ty {
             for (name, dependency) in custom_type.rs_dependencies.iter() {
                 let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
@@ -137,18 +122,10 @@ edition = \"2018\"
     );
 }
 
-pub fn generate_type_bindings(
-    serializable_types: BTreeSet<Type>,
-    mut deserializable_types: BTreeSet<Type>,
-    path: &str,
-    module_key: &str,
-) {
-    let mut all_types = serializable_types;
-    all_types.append(&mut deserializable_types);
-
-    let std_types = all_types
-        .iter()
-        .flat_map(collect_std_types)
+pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
+    let std_types = types
+        .values()
+        .filter_map(collect_std_types)
         .collect::<BTreeSet<_>>();
     let std_imports = if std_types.is_empty() {
         "".to_owned()
@@ -161,62 +138,48 @@ pub fn generate_type_bindings(
         )
     };
 
-    let mut type_imports = all_types
-        .iter()
+    let type_imports = types
+        .values()
         .filter_map(|ty| {
-            let (name, native_modules) = match ty {
-                Type::Enum(name, _, _, _, opts) => (name, &opts.native_modules),
-                Type::Struct(name, _, _, _, opts) => (name, &opts.native_modules),
+            let (ident, native_modules) = match ty {
+                Type::Enum(Enum { ident, options, .. }) => (ident, &options.native_modules),
+                Type::Struct(Struct { ident, options, .. }) => (ident, &options.native_modules),
                 _ => return None,
             };
             native_modules
                 .get(module_key)
-                .map(|module| format!("pub use {}::{};", module, name))
+                .map(|module| format!("pub use {}::{};", module, ident.name))
         })
         .collect::<Vec<_>>();
     let type_imports = if type_imports.is_empty() {
         "".to_owned()
     } else {
-        type_imports.dedup();
         format!("{}\n\n", type_imports.join("\n"))
     };
 
-    let mut type_defs = all_types
-        .into_iter()
+    let type_defs = types
+        .values()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => {
-                Some(format!("pub type {} = {};", name, format_type(ty.as_ref())))
+                Some(format!("pub type {} = {};", name, format_ident(ty, types)))
             }
-            Type::Enum(name, generic_args, doc_lines, variants, opts) => {
-                if opts.native_modules.contains_key(module_key) || name == "Result" {
+            Type::Enum(ty) => {
+                if ty.options.native_modules.contains_key(module_key) || ty.ident.name == "Result" {
                     None
                 } else {
-                    Some(create_enum_definition(
-                        name,
-                        generic_args,
-                        &doc_lines,
-                        variants,
-                        opts,
-                    ))
+                    Some(create_enum_definition(ty, types))
                 }
             }
-            Type::Struct(name, generic_args, doc_lines, fields, opts) => {
-                if opts.native_modules.contains_key(module_key) {
+            Type::Struct(ty) => {
+                if ty.options.native_modules.contains_key(module_key) {
                     None
                 } else {
-                    Some(create_struct_definition(
-                        name,
-                        generic_args,
-                        &doc_lines,
-                        fields,
-                        opts,
-                    ))
+                    Some(create_struct_definition(ty, types))
                 }
             }
             _ => None,
         })
         .collect::<Vec<_>>();
-    type_defs.dedup();
 
     write_bindings_file(
         format!("{}/types.rs", path),
@@ -229,7 +192,7 @@ pub fn generate_type_bindings(
     );
 }
 
-fn format_functions(export_functions: FunctionList, macro_path: &str) -> String {
+fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path: &str) -> String {
     export_functions
         .iter()
         .map(|func| {
@@ -244,12 +207,12 @@ fn format_functions(export_functions: FunctionList, macro_path: &str) -> String 
             let args_with_types = func
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name, format_type(&arg.ty)))
+                .map(|arg| format!("{}: {}", arg.name, format_ident(&arg.ty, types)))
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = match &func.return_type {
-                Type::Unit => "".to_owned(),
-                ty => format!(" -> {}", format_type(ty)),
+                Some(ty) => format!(" -> {}", format_ident(ty, types)),
+                None => "".to_owned(),
             };
             format!(
                 "#[{}]\n{}pub {}fn {}({}){};",
@@ -260,98 +223,112 @@ fn format_functions(export_functions: FunctionList, macro_path: &str) -> String 
         .join("\n\n")
 }
 
-fn generate_imported_function_bindings(import_functions: FunctionList, path: &str) {
+fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+    match types.get(ident) {
+        Some(ty) => format_type_with_ident(ty, ident, types),
+        None => ident.to_string(), // Must be a generic.
+    }
+}
+
+fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
+    match ty {
+        Type::Alias(name, _) => name.clone(),
+        Type::Container(name, _) | Type::List(name, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            format!("{}<{}>", name, format_ident(arg, types))
+        }
+        Type::Custom(custom) => custom.rs_ty.clone(),
+        Type::Map(name, _, _) => {
+            let arg1 = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            let arg2 = ident
+                .generic_args
+                .get(1)
+                .expect("Identifier was expected to contain two arguments");
+            format!(
+                "{}<{}, {}>",
+                name,
+                format_ident(arg1, types),
+                format_ident(arg2, types)
+            )
+        }
+        Type::Tuple(items) => format!(
+            "[{}]",
+            items
+                .iter()
+                .map(|item| format_ident(item, types))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Type::Unit => "void".to_owned(),
+        _ => ident.to_string(),
+    }
+}
+
+fn generate_imported_function_bindings(
+    import_functions: FunctionList,
+    types: &TypeMap,
+    path: &str,
+) {
     write_bindings_file(
         format!("{}/import.rs", path),
         format!(
             "use crate::types::*;\n\n{}\n",
-            format_functions(import_functions, "fp_bindgen_support::fp_import_signature")
+            format_functions(
+                import_functions,
+                types,
+                "fp_bindgen_support::fp_import_signature"
+            )
         ),
     );
 }
 
-fn generate_exported_function_bindings(export_functions: FunctionList, path: &str) {
+fn generate_exported_function_bindings(
+    export_functions: FunctionList,
+    types: &TypeMap,
+    path: &str,
+) {
     write_bindings_file(
         format!("{}/export.rs", path),
         format!(
             "use crate::types::*;\n\n{}\n",
-            format_functions(export_functions, "fp_bindgen_support::fp_export_signature")
+            format_functions(
+                export_functions,
+                types,
+                "fp_bindgen_support::fp_export_signature"
+            )
         ),
     );
 }
 
-fn collect_std_types(ty: &Type) -> BTreeSet<String> {
+fn collect_std_types(ty: &Type) -> Option<String> {
     match ty {
-        Type::Alias(_, ty) => collect_std_types(ty),
-        Type::Container(name, ty) => {
-            let mut types = collect_std_types(ty);
-            if name == "Rc" {
-                types.insert("rc::Rc".to_owned());
-            }
-            types
+        Type::Container(name, _) if name == "Rc" => Some("rc::Rc".to_owned()),
+        Type::List(name, _) if (name == "BTreeSet" || name == "HashSet") => {
+            Some(format!("collections::{}", name))
         }
-        Type::Custom(_) => BTreeSet::new(),
-        Type::Enum(_, _, _, variants, _) => {
-            let mut types = BTreeSet::new();
-            for variant in variants {
-                types.append(&mut collect_std_types(&variant.ty));
-            }
-            types
+        Type::Map(name, _, _) if (name == "BTreeMap" || name == "HashMap") => {
+            Some(format!("collections::{}", name))
         }
-        Type::GenericArgument(arg) => match &arg.ty {
-            Some(ty) => collect_std_types(ty),
-            None => BTreeSet::new(),
-        },
-        Type::List(name, ty) => {
-            let mut types = collect_std_types(ty);
-            if name == "BTreeSet" || name == "HashSet" {
-                types.insert(format!("collections::{}", name));
-            }
-            types
-        }
-        Type::Map(name, key, value) => {
-            let mut types = collect_std_types(key);
-            types.append(&mut collect_std_types(value));
-            if name == "BTreeMap" || name == "HashMap" {
-                types.insert(format!("collections::{}", name));
-            }
-            types
-        }
-        Type::Primitive(_) => BTreeSet::new(),
-        Type::String => BTreeSet::new(),
-        Type::Struct(_, _, _, fields, _) => {
-            let mut types = BTreeSet::new();
-            for field in fields {
-                types.append(&mut collect_std_types(&field.ty));
-            }
-            types
-        }
-        Type::Tuple(items) => {
-            let mut types = BTreeSet::new();
-            for item in items {
-                types.append(&mut collect_std_types(item));
-            }
-            types
-        }
-        Type::Unit => BTreeSet::new(),
+        _ => None,
     }
 }
 
-fn create_enum_definition(
-    name: String,
-    generic_args: Vec<GenericArgument>,
-    doc_lines: &[String],
-    variants: Vec<Variant>,
-    opts: EnumOptions,
-) -> String {
-    let variants = variants
-        .into_iter()
+fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
+    let variants = ty
+        .variants
+        .iter()
         .flat_map(|variant| {
             let mut serde_attrs = variant.attrs.to_serde_attrs();
-            let mut variant_decl = match variant.ty {
+            let mut variant_decl = match &variant.ty {
                 Type::Unit => format!("{},", variant.name),
-                Type::Struct(_, _, _, fields, _) => {
-                    let fields = format_struct_fields(&fields);
+                Type::Struct(variant) => {
+                    let fields = format_struct_fields(&variant.fields, types);
                     let has_multiple_lines = fields.iter().any(|field| field.contains('\n'));
                     let fields = if has_multiple_lines {
                         format!(
@@ -378,10 +355,14 @@ fn create_enum_definition(
                     {
                         serde_attrs.push("rename_all = \"camelCase\"".to_owned());
                     }
-                    format!("{} {{{}}},", variant.name, fields)
+                    format!("{} {{{}}},", variant.ident.name, fields)
                 }
                 Type::Tuple(items) => {
-                    let items = items.iter().map(format_type).collect::<Vec<_>>().join(", ");
+                    let items = items
+                        .iter()
+                        .map(|item| format_ident(item, types))
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     format!("{}({}),", variant.name, items)
                 }
                 other => panic!("Unsupported type for enum variant: {:?}", other),
@@ -432,21 +413,15 @@ fn create_enum_definition(
         pub enum {} {{\n\
             {}\n\
         }}",
-        format_docs(doc_lines),
-        opts.to_serde_attrs().join(", "),
-        format_name_with_generics(&name, &generic_args),
+        format_docs(&ty.doc_lines),
+        ty.options.to_serde_attrs().join(", "),
+        ty.ident,
         variants
     )
 }
 
-fn create_struct_definition(
-    name: String,
-    generic_args: Vec<GenericArgument>,
-    doc_lines: &[String],
-    fields: Vec<Field>,
-    opts: StructOptions,
-) -> String {
-    let fields = format_struct_fields(&fields)
+fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
+    let fields = format_struct_fields(&ty.fields, types)
         .iter()
         .flat_map(|field| field.split('\n'))
         .map(|line| {
@@ -473,9 +448,9 @@ fn create_struct_definition(
         pub struct {} {{\n\
             {}\n\
         }}",
-        format_docs(doc_lines),
-        opts.to_serde_attrs().join(", "),
-        format_name_with_generics(&name, &generic_args),
+        format_docs(&ty.doc_lines),
+        ty.options.to_serde_attrs().join(", "),
+        ty.ident,
         fields.trim_start_matches('\n')
     )
 }
@@ -488,32 +463,14 @@ fn format_docs(doc_lines: &[String]) -> String {
         .join("")
 }
 
-fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
-    if generic_args.is_empty() {
-        name.to_owned()
-    } else {
-        format!(
-            "{}<{}>",
-            name,
-            generic_args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Some(ty) => format_type(ty),
-                    None => arg.name.clone(),
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-}
-
-fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
     fields
         .iter()
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
-            match &field.ty {
-                Type::Container(name, _) if name == "Option" => {
+
+            match types.get(&field.ty) {
+                Some(Type::Container(name, _)) if name == "Option" => {
                     if !serde_attrs
                         .iter()
                         .any(|attr| attr == "default" || attr.starts_with("default = "))
@@ -527,7 +484,7 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                         serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
                     }
                 }
-                Type::Custom(custom_type) => {
+                Some(Type::Custom(custom_type)) => {
                     for attr in custom_type.serde_attrs.iter() {
                         serde_attrs.push(attr.clone());
                     }
@@ -561,48 +518,10 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
                 docs,
                 annotations,
                 field.name,
-                format_type(&field.ty)
+                format_ident(&field.ty, types)
             )
         })
         .collect()
-}
-
-/// Formats a type so it's valid Rust again.
-pub fn format_type(ty: &Type) -> String {
-    match ty {
-        Type::Alias(name, _) => name.clone(),
-        Type::Container(name, ty) => format!("{}<{}>", name, format_type(ty)),
-        Type::Custom(custom) => custom.rs_ty.clone(),
-        Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
-        Type::GenericArgument(arg) => arg.name.clone(),
-        Type::List(name, ty) => format!("{}<{}>", name, format_type(ty)),
-        Type::Map(name, k, v) => format!("{}<{}, {}>", name, format_type(k), format_type(v)),
-        Type::Primitive(primitive) => format_primitive(*primitive),
-        Type::String => "String".to_owned(),
-        Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
-        Type::Tuple(items) => format!(
-            "({})",
-            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
-        ),
-        Type::Unit => "()".to_owned(),
-    }
-}
-
-pub fn format_primitive(primitive: Primitive) -> String {
-    let string = match primitive {
-        Primitive::Bool => "bool",
-        Primitive::F32 => "f32",
-        Primitive::F64 => "f64",
-        Primitive::I8 => "i8",
-        Primitive::I16 => "i16",
-        Primitive::I32 => "i32",
-        Primitive::I64 => "i64",
-        Primitive::U8 => "u8",
-        Primitive::U16 => "u16",
-        Primitive::U32 => "u32",
-        Primitive::U64 => "u64",
-    };
-    string.to_owned()
 }
 
 fn write_bindings_file<C>(file_path: String, contents: C)

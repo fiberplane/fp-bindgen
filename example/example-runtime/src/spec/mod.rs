@@ -37,6 +37,7 @@ fn make_host_to_guest() -> ComplexHostToGuest {
         timestamp: OffsetDateTime::now_utc(),
         renamed: None,
         r#type: "Foobar".to_owned(),
+        value: Value::Integer(1),
     }
 }
 

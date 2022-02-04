@@ -255,16 +255,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dashmap"
-version = "4.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e77a43b28d0668df09411cb0bc9a8c2adc40f9a048afe863e05fd43251e8e39c"
-dependencies = [
- "cfg-if",
- "num_cpus",
-]
-
-[[package]]
 name = "diff"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -326,10 +316,8 @@ name = "fp-bindgen"
 version = "0.1.0"
 dependencies = [
  "Inflector",
- "dashmap",
  "fp-bindgen-macros",
  "http",
- "once_cell",
  "pretty_assertions 1.0.0",
  "proc-macro2",
  "quote",
@@ -343,7 +331,6 @@ dependencies = [
 name = "fp-bindgen-macros"
 version = "0.1.0"
 dependencies = [
- "once_cell",
  "proc-macro-error",
  "proc-macro2",
  "quote",
@@ -598,9 +585,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.8.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
+checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
 
 [[package]]
 name = "output_vt100"

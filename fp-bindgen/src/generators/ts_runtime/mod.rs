@@ -1,29 +1,25 @@
-use crate::functions::{Function, FunctionList};
-use crate::prelude::Primitive;
-use crate::serializable::Serializable;
-use crate::types::{
-    format_name_with_generics, CustomType, EnumOptions, Field, GenericArgument, StructOptions,
-    Type, Variant,
+use crate::{
+    functions::{Function, FunctionList},
+    prelude::Primitive,
+    types::{CustomType, Enum, EnumOptions, Field, Struct, Type, TypeIdent, TypeMap, Variant},
+    TsRuntimeConfig,
 };
-use crate::TsRuntimeConfig;
 use inflector::Inflector;
-use std::{collections::BTreeSet, fs};
+use std::{fs, str::FromStr};
 
 pub fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
-    serializable_types: BTreeSet<Type>,
-    mut deserializable_types: BTreeSet<Type>,
+    types: TypeMap,
     config: TsRuntimeConfig,
     path: &str,
 ) {
-    let mut all_types = serializable_types;
-    all_types.append(&mut deserializable_types);
+    generate_type_bindings(&types, path);
 
-    generate_type_bindings(&all_types, path);
-
-    let import_decls = format_function_declarations(&import_functions, FunctionType::Import);
-    let export_decls = format_function_declarations(&export_functions, FunctionType::Export);
+    let import_decls =
+        format_function_declarations(&import_functions, &types, FunctionType::Import);
+    let export_decls =
+        format_function_declarations(&export_functions, &types, FunctionType::Export);
     let raw_export_decls = if config.generate_raw_export_wrappers {
         format_raw_function_declarations(&export_functions, FunctionType::Export)
     } else {
@@ -33,28 +29,27 @@ pub fn generate_bindings(
     let has_async_import_functions = import_functions.iter().any(|function| function.is_async);
     let has_async_export_functions = export_functions.iter().any(|function| function.is_async);
 
-    let mut type_names = all_types
-        .into_iter()
-        .filter_map(|ty| match ty {
-            Type::Alias(name, _) => Some(name),
-            Type::Enum(name, _, _, _, _) => Some(name),
-            Type::Struct(name, _, _, _, _) => Some(name),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    type_names.dedup();
-
-    let mut import_wrappers = format_import_wrappers(&import_functions);
+    let mut import_wrappers = format_import_wrappers(&import_functions, &types);
     if has_async_export_functions {
         import_wrappers.push("__fp_host_resolve_async_value: resolvePromise,".to_owned());
     }
 
-    let export_wrappers = format_export_wrappers(&export_functions);
+    let export_wrappers = format_export_wrappers(&export_functions, &types);
     let raw_export_wrappers = if config.generate_raw_export_wrappers {
         format_raw_export_wrappers(&export_functions)
     } else {
         Vec::new()
     };
+
+    let type_names = types
+        .into_iter()
+        .filter_map(|(_, ty)| match ty {
+            Type::Alias(name, _) => Some(name),
+            Type::Enum(ty) => Some(ty.ident.name),
+            Type::Struct(ty) => Some(ty.ident.name),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
 
     let contents = format!(
         "// ============================================= //
@@ -208,6 +203,7 @@ enum FunctionType {
 
 fn format_function_declarations(
     functions: &FunctionList,
+    types: &TypeMap,
     function_type: FunctionType,
 ) -> Vec<String> {
     // Plugins can always omit exports, while runtimes are always expected to provide all imports:
@@ -222,13 +218,31 @@ fn format_function_declarations(
             let args = function
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_type(&arg.ty)))
+                .map(|arg| {
+                    format!(
+                        "{}: {}",
+                        arg.name.to_camel_case(),
+                        format_ident(&arg.ty, types)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = if function.is_async {
-                format!(" => Promise<{}>", format_type(&function.return_type))
+                format!(
+                    " => Promise<{}>",
+                    match &function.return_type {
+                        Some(ty) => format_ident(ty, types),
+                        None => "void".to_owned(),
+                    }
+                )
             } else {
-                format!(" => {}", format_type(&function.return_type))
+                format!(
+                    " => {}",
+                    match &function.return_type {
+                        Some(ty) => format_ident(ty, types),
+                        None => "void".to_owned(),
+                    }
+                )
             };
             format!(
                 "{}{}: ({}){}",
@@ -262,9 +276,23 @@ fn format_raw_function_declarations(
                 .collect::<Vec<_>>()
                 .join(", ");
             let return_type = if function.is_async {
-                format!(" => Promise<{}>", format_raw_type(&function.return_type))
+                format!(
+                    " => Promise<{}>",
+                    function
+                        .return_type
+                        .as_ref()
+                        .map(format_raw_type)
+                        .unwrap_or("void")
+                )
             } else {
-                format!(" => {}", format_raw_type(&function.return_type))
+                format!(
+                    " => {}",
+                    function
+                        .return_type
+                        .as_ref()
+                        .map(format_raw_type)
+                        .unwrap_or("void")
+                )
             };
             format!(
                 "{}Raw{}: ({}){}",
@@ -277,7 +305,7 @@ fn format_raw_function_declarations(
         .collect()
 }
 
-fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
+fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> Vec<String> {
     import_functions
         .into_iter()
         .flat_map(|function| {
@@ -285,32 +313,42 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
             let args_with_ptr_types = function
                 .args
                 .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(primitive) => format!(
-                        "{}: {}",
-                        arg.name.to_camel_case(),
-                        format_primitive(*primitive)
-                    ),
-                    _ => format!("{}_ptr: FatPtr", arg.name),
+                .map(|arg| {
+                    if let Ok(primitive) = Primitive::from_str(&arg.ty.name) {
+                        format!(
+                            "{}: {}",
+                            arg.name.to_camel_case(),
+                            format_primitive(primitive)
+                        )
+                    } else {
+                        format!("{}_ptr: FatPtr", arg.name)
+                    }
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            let return_type = match &function.return_type {
-                Type::Unit => "".to_owned(),
-                Type::Primitive(primitive) => format!(": {}", format_primitive(*primitive)),
-                _ => ": FatPtr".to_owned(),
+            let return_type = match &function
+                .return_type
+                .as_ref()
+                .map(|ty| Primitive::from_str(&ty.name))
+            {
+                None => "".to_owned(),
+                Some(Ok(primitive)) => format!(": {}", format_primitive(*primitive)),
+                Some(_) => ": FatPtr".to_owned(),
             };
             let import_args = function
                 .args
                 .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    ty => Some(format!(
-                        "const {} = parseObject<{}>({}_ptr);",
-                        arg.name.to_camel_case(),
-                        format_type(ty),
-                        arg.name
-                    )),
+                .filter_map(|arg| {
+                    if arg.ty.is_primitive() {
+                        None
+                    } else {
+                        Some(format!(
+                            "const {} = parseObject<{}>({}_ptr);",
+                            arg.name.to_camel_case(),
+                            format_ident(&arg.ty, types),
+                            arg.name
+                        ))
+                    }
                 })
                 .collect::<Vec<_>>();
             let args = function
@@ -321,8 +359,8 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .join(", ");
             if function.is_async {
                 let async_result = match &function.return_type {
-                    Type::Unit => "0",
-                    _ => "serializeObject(result)",
+                    Some(_) => "serializeObject(result)",
+                    None => "0",
                 };
 
                 format!(
@@ -358,8 +396,8 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
             } else {
                 let fn_call = match &function.return_type {
-                    Type::Unit => format!("importFunctions.{}({});", name.to_camel_case(), args),
-                    Type::Primitive(_) => {
+                    None => format!("importFunctions.{}({});", name.to_camel_case(), args),
+                    Some(ty) if ty.is_primitive() => {
                         format!("return importFunctions.{}({});", name.to_camel_case(), args)
                     }
                     _ => format!(
@@ -389,7 +427,7 @@ fn format_import_wrappers(import_functions: &FunctionList) -> Vec<String> {
         .collect()
 }
 
-fn format_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
+fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> Vec<String> {
     export_functions
         .into_iter()
         .flat_map(|function| {
@@ -407,28 +445,37 @@ fn format_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
             let args = function
                 .args
                 .iter()
-                .map(|arg| format!("{}: {}", arg.name.to_camel_case(), format_type(&arg.ty)))
+                .map(|arg| {
+                    format!(
+                        "{}: {}",
+                        arg.name.to_camel_case(),
+                        format_ident(&arg.ty, types)
+                    )
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             let export_args = function
                 .args
                 .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    _ => Some(format!(
+                .filter(|arg| !arg.ty.is_primitive())
+                .map(|arg| {
+                    format!(
                         "const {}_ptr = serializeObject({});",
                         arg.name,
                         arg.name.to_camel_case()
-                    )),
+                    )
                 })
                 .collect::<Vec<_>>();
 
             let call_args = function
                 .args
                 .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(_) => arg.name.to_camel_case(),
-                    _ => format!("{}_ptr", arg.name),
+                .map(|arg| {
+                    if arg.ty.is_primitive() {
+                        arg.name.to_camel_case()
+                    } else {
+                        format!("{}_ptr", arg.name)
+                    }
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -436,17 +483,21 @@ fn format_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 format!(
                     "return promiseFromPtr(export_fn({})).then((ptr) => parseObject<{}>(ptr));",
                     call_args,
-                    format_type(&function.return_type),
+                    function
+                        .return_type
+                        .as_ref()
+                        .map(|ty| format_ident(ty, types))
+                        .unwrap_or_else(|| "void".to_owned()),
                 )
             } else {
                 match &function.return_type {
-                    Type::Unit => format!("export_fn({});", call_args),
-                    Type::Primitive(_) => {
+                    None => format!("export_fn({});", call_args),
+                    Some(ty) if ty.is_primitive() => {
                         format!("return export_fn({});", call_args)
                     }
-                    ty => format!(
+                    Some(ty) => format!(
                         "return parseObject<{}>(export_fn({}));",
-                        format_type(ty),
+                        format_ident(ty, types),
                         call_args
                     ),
                 }
@@ -494,22 +545,25 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
             let export_args = function
                 .args
                 .iter()
-                .filter_map(|arg| match &arg.ty {
-                    Type::Primitive(_) => None,
-                    _ => Some(format!(
+                .filter(|arg| !arg.ty.is_primitive())
+                .map(|arg| {
+                    format!(
                         "const {}_ptr = exportToMemory({});",
                         arg.name,
                         arg.name.to_camel_case()
-                    )),
+                    )
                 })
                 .collect::<Vec<_>>();
 
             let call_args = function
                 .args
                 .iter()
-                .map(|arg| match &arg.ty {
-                    Type::Primitive(_) => arg.name.to_camel_case(),
-                    _ => format!("{}_ptr", arg.name),
+                .map(|arg| {
+                    if arg.ty.is_primitive() {
+                        arg.name.to_camel_case()
+                    } else {
+                        format!("{}_ptr", arg.name)
+                    }
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -520,8 +574,8 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 )
             } else {
                 match &function.return_type {
-                    Type::Unit => format!("export_fn({});", call_args),
-                    Type::Primitive(_) => {
+                    None => format!("export_fn({});", call_args),
+                    Some(ty) if ty.is_primitive() => {
                         format!("return export_fn({});", call_args)
                     }
                     _ => format!("return importFromMemory(export_fn({}));", call_args),
@@ -555,50 +609,22 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
         .collect()
 }
 
-fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
-    let types = types
-        .iter()
-        .filter_map(|ty| match ty {
-            Type::Enum(name, generic_args, _, _, _) => {
-                if name == "Result" {
-                    // Just make sure we get an unspecialized version of the type...
-                    Some(Result::<u8, u8>::ty())
-                } else if generic_args.iter().all(|arg| arg.ty.is_none()) {
-                    Some(ty.clone())
-                } else {
-                    None // We don't generate definitions for specialized types.
-                }
-            }
-            Type::Struct(_, generic_args, _, _, _) => {
-                if generic_args.iter().all(|arg| arg.ty.is_none()) {
-                    Some(ty.clone())
-                } else {
-                    None // We don't generate definitions for specialized types.
-                }
-            }
-            other => Some(other.clone()),
-        })
-        .collect::<BTreeSet<_>>();
-
+fn generate_type_bindings(types: &TypeMap, path: &str) {
     let type_defs = types
-        .iter()
+        .values()
         .filter_map(|ty| match ty {
             Type::Alias(name, ty) => Some(format!(
                 "export type {} = {};",
                 name,
-                format_type(ty.as_ref())
+                format_ident(ty, types)
             )),
             Type::Custom(CustomType {
                 ts_ty,
                 ts_declaration: Some(ts_declaration),
                 ..
-            }) => Some(format!("export type {} = {};", ts_ty, ts_declaration,)),
-            Type::Enum(name, generic_args, doc_lines, variants, opts) => Some(
-                create_enum_definition(name, generic_args, doc_lines, variants, opts.clone()),
-            ),
-            Type::Struct(name, generic_args, doc_lines, fields, opts) => Some(
-                create_struct_definition(name, generic_args, doc_lines, fields, opts.clone()),
-            ),
+            }) => Some(format!("export type {} = {};", ts_ty, ts_declaration)),
+            Type::Enum(ty) => Some(create_enum_definition(ty, types)),
+            Type::Struct(ty) => Some(create_struct_definition(ty, types)),
             _ => None,
         })
         .collect::<Vec<_>>();
@@ -619,39 +645,38 @@ fn generate_type_bindings(types: &BTreeSet<Type>, path: &str) {
 }
 
 fn is_primitive_function(function: &Function) -> bool {
-    function
-        .args
-        .iter()
-        .all(|arg| matches!(arg.ty, Type::Primitive(_)))
+    function.args.iter().all(|arg| arg.ty.is_primitive())
         && !function.is_async
-        && matches!(function.return_type, Type::Unit | Type::Primitive(_))
+        && function
+            .return_type
+            .as_ref()
+            .map(TypeIdent::is_primitive)
+            .unwrap_or(true)
 }
 
-fn create_enum_definition(
-    name: &str,
-    generic_args: &[GenericArgument],
-    doc_lines: &[String],
-    variants: &[Variant],
-    opts: EnumOptions,
-) -> String {
-    let variants = variants
+fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
+    let variants = ty
+        .variants
         .iter()
         .map(|variant| {
-            let variant_name = get_variant_name(variant, &opts);
+            let variant_name = get_variant_name(variant, &ty.options);
             let variant_decl = match &variant.ty {
                 Type::Unit => {
-                    if let Some(tag) = &opts.tag_prop_name {
+                    if let Some(tag) = &ty.options.tag_prop_name {
                         format!("| {{ {}: \"{}\" }}", tag, variant_name)
                     } else {
                         format!("| \"{}\"", variant_name)
                     }
                 }
-                Type::Struct(_, _, _, fields, _) => {
-                    if opts.untagged {
-                        format!("| {{ {} }}", format_struct_fields(fields).join(" "))
+                Type::Struct(variant) => {
+                    if ty.options.untagged {
+                        format!(
+                            "| {{ {} }}",
+                            format_struct_fields(&variant.fields, types).join(" ")
+                        )
                     } else {
-                        let field_lines = format_struct_fields(fields);
-                        let formatted_fields = if field_lines.len() > fields.len() {
+                        let field_lines = format_struct_fields(&variant.fields, types);
+                        let formatted_fields = if field_lines.len() > variant.fields.len() {
                             format!(
                                 "\n{}",
                                 join_lines(&field_lines, |line| format!("    {}", line))
@@ -660,7 +685,7 @@ fn create_enum_definition(
                             format!(" {} ", field_lines.join("").trim_end_matches(';'))
                         };
 
-                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                        match (&ty.options.tag_prop_name, &ty.options.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
                                     "| {{ {}: \"{}\"; {}: {{{}}} }}",
@@ -685,17 +710,18 @@ fn create_enum_definition(
                     }
                 }
                 Type::Tuple(items) if items.len() == 1 => {
-                    if opts.untagged {
-                        format!("| {}", format_type(items.first().unwrap()))
+                    let item = items.first().unwrap();
+                    if ty.options.untagged {
+                        format!("| {}", format_ident(item, types))
                     } else {
-                        match (&opts.tag_prop_name, &opts.content_prop_name) {
+                        match (&ty.options.tag_prop_name, &ty.options.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
                                     "| {{ {}: \"{}\"; {}: {} }}",
                                     tag,
                                     variant_name,
                                     content,
-                                    format_type(items.first().unwrap())
+                                    format_ident(item, types)
                                 )
                             }
                             (Some(tag), None) => {
@@ -703,15 +729,11 @@ fn create_enum_definition(
                                     "| {{ {}: \"{}\" }} & {}",
                                     tag,
                                     variant_name,
-                                    format_type(items.first().unwrap())
+                                    format_ident(item, types)
                                 )
                             }
                             (None, _) => {
-                                format!(
-                                    "| {{ {}: {} }}",
-                                    variant_name,
-                                    format_type(items.first().unwrap())
-                                )
+                                format!("| {{ {}: {} }}", variant_name, format_ident(item, types))
                             }
                         }
                     }
@@ -742,24 +764,18 @@ fn create_enum_definition(
 
     format!(
         "{}export type {} =\n{};",
-        join_lines(&format_docs(doc_lines), String::to_owned),
-        format_name_with_generics(name, generic_args),
+        join_lines(&format_docs(&ty.doc_lines), String::to_owned),
+        ty.ident,
         variants.trim_end()
     )
 }
 
-fn create_struct_definition(
-    name: &str,
-    generic_args: &[GenericArgument],
-    doc_lines: &[String],
-    fields: &[Field],
-    _: StructOptions,
-) -> String {
+fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
     format!(
         "{}export type {} = {{\n{}}};",
-        join_lines(&format_docs(doc_lines), String::to_owned),
-        format_name_with_generics(name, generic_args),
-        join_lines(&format_struct_fields(fields), |line| format!(
+        join_lines(&format_docs(&ty.doc_lines), String::to_owned),
+        ty.ident,
+        join_lines(&format_struct_fields(&ty.fields, types), |line| format!(
             "    {}",
             line
         ))
@@ -783,40 +799,30 @@ fn format_docs(doc_lines: &[String]) -> Vec<String> {
     }
 }
 
-fn format_name_with_types(name: &str, generic_args: &[GenericArgument]) -> String {
-    if generic_args.is_empty() {
-        name.to_owned()
-    } else {
-        format!(
-            "{}<{}>",
-            name,
-            generic_args
-                .iter()
-                .map(|arg| match &arg.ty {
-                    Some(ty) => format_type(ty),
-                    None => arg.name.clone(),
-                })
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
-    }
-}
-
-fn format_struct_fields(fields: &[Field]) -> Vec<String> {
+fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
     fields
         .iter()
         .flat_map(|field| {
-            let field_decl = match &field.ty {
-                Type::Container(name, ty) => {
+            let field_decl = match types.get(&field.ty) {
+                Some(Type::Container(name, _)) => {
                     let optional = if name == "Option" { "?" } else { "" };
+                    let arg = field
+                        .ty
+                        .generic_args
+                        .first()
+                        .expect("Identifier was expected to contain a generic argument");
                     format!(
                         "{}{}: {};",
                         get_field_name(field),
                         optional,
-                        format_type(ty)
+                        format_ident(arg, types)
                     )
                 }
-                ty => format!("{}: {};", get_field_name(field), format_type(ty)),
+                _ => format!(
+                    "{}: {};",
+                    get_field_name(field),
+                    format_ident(&field.ty, types)
+                ),
             };
             if field.doc_lines.is_empty() {
                 vec![field_decl]
@@ -830,43 +836,89 @@ fn format_struct_fields(fields: &[Field]) -> Vec<String> {
         .collect()
 }
 
-fn format_raw_type(ty: &Type) -> String {
-    match ty {
-        Type::Primitive(primitive) => format_primitive(*primitive),
-        Type::Unit => "void".to_owned(),
-        _ => "Uint8Array".to_owned(),
+fn format_raw_type(ty: &TypeIdent) -> &str {
+    if let Ok(primitive) = Primitive::from_str(&ty.name) {
+        format_primitive(primitive)
+    } else {
+        "Uint8Array"
     }
 }
 
 /// Formats a type so it's valid TypeScript.
-fn format_type(ty: &Type) -> String {
+fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+    match types.get(ident) {
+        Some(ty) => format_type_with_ident(ty, ident, types),
+        None => ident.to_string(), // Must be a generic.
+    }
+}
+
+/// Formats a type so it's valid TypeScript.
+fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
     match ty {
         Type::Alias(name, _) => name.clone(),
-        Type::Container(name, ty) => {
+        Type::Container(name, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+
             if name == "Option" {
-                format!("{} | null", format_type(ty))
+                format!("{} | null", format_ident(arg, types))
             } else {
-                format_type(ty)
+                format_ident(arg, types)
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
-        Type::Enum(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
-        Type::GenericArgument(arg) => arg.name.clone(),
-        Type::List(_, ty) => format!("Array<{}>", format_type(ty)),
-        Type::Map(_, k, v) => format!("Record<{}, {}>", format_type(k), format_type(v)),
-        Type::Primitive(primitive) => format_primitive(*primitive),
+        Type::Enum(_) | Type::Struct(_) => {
+            let args: Vec<_> = ident
+                .generic_args
+                .iter()
+                .map(|arg| format_ident(arg, types))
+                .collect();
+            if args.is_empty() {
+                ident.name.clone()
+            } else {
+                format!("{}<{}>", ident.name, args.join(", "))
+            }
+        }
+        Type::List(_, _) => {
+            let arg = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            format!("Array<{}>", format_ident(arg, types))
+        }
+        Type::Map(_, _, _) => {
+            let arg1 = ident
+                .generic_args
+                .first()
+                .expect("Identifier was expected to contain a generic argument");
+            let arg2 = ident
+                .generic_args
+                .get(1)
+                .expect("Identifier was expected to contain two arguments");
+            format!(
+                "Record<{}, {}>",
+                format_ident(arg1, types),
+                format_ident(arg2, types)
+            )
+        }
+        Type::Primitive(primitive) => format_primitive(*primitive).to_owned(),
         Type::String => "string".to_owned(),
-        Type::Struct(name, generic_args, _, _, _) => format_name_with_types(name, generic_args),
         Type::Tuple(items) => format!(
             "[{}]",
-            items.iter().map(format_type).collect::<Vec<_>>().join(", ")
+            items
+                .iter()
+                .map(|item| format_ident(item, types))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
         Type::Unit => "void".to_owned(),
     }
 }
 
-fn format_primitive(primitive: Primitive) -> String {
-    let string = match primitive {
+fn format_primitive(primitive: Primitive) -> &'static str {
+    match primitive {
         Primitive::Bool => "boolean",
         Primitive::F32 => "number",
         Primitive::F64 => "number",
@@ -878,8 +930,7 @@ fn format_primitive(primitive: Primitive) -> String {
         Primitive::U16 => "number",
         Primitive::U32 => "number",
         Primitive::U64 => "bigint",
-    };
-    string.to_owned()
+    }
 }
 
 fn get_field_name(field: &Field) -> String {
