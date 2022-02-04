@@ -41,11 +41,14 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         quote! { types.entry(Self::ident()).or_insert_with(Self::ty); }
     } else {
         let field_types = field_types.iter();
+        let generic_params = generics.type_params();
         quote! {
             if let std::collections::btree_map::Entry::Vacant(entry) = types.entry(Self::ident()) {
                 entry.insert(Self::ty());
                 #( #field_types::collect_types(types); )*
             }
+
+            #( #generic_params::collect_types(types); )*
         }
     };
 
