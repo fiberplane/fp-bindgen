@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for time::OffsetDateTime {
     fn ident() -> TypeIdent {
-        TypeIdent::from("OffsetDateTime".to_owned())
+        TypeIdent::from("OffsetDateTime")
     }
 
     fn ty() -> Type {
@@ -30,7 +30,7 @@ impl Serializable for time::OffsetDateTime {
 
 impl Serializable for time::PrimitiveDateTime {
     fn ident() -> TypeIdent {
-        TypeIdent::from("PrimitiveDateTime".to_owned())
+        TypeIdent::from("PrimitiveDateTime")
     }
 
     fn ty() -> Type {

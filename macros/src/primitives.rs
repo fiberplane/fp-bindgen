@@ -27,7 +27,7 @@ impl Primitive {
         let implementation = quote! {
             impl Serializable for #ty {
                 fn ident() -> TypeIdent {
-                    TypeIdent::from(#ty_str.to_owned())
+                    TypeIdent::from(#ty_str)
                 }
 
                 fn is_primitive() -> bool {

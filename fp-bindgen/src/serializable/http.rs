@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 impl Serializable for http::Method {
     fn ident() -> TypeIdent {
-        TypeIdent::from("Method".to_owned())
+        TypeIdent::from("Method")
     }
 
     fn ty() -> Type {
@@ -37,7 +37,7 @@ impl Serializable for http::Method {
 
 impl Serializable for http::uri::Scheme {
     fn ident() -> TypeIdent {
-        TypeIdent::from("Scheme".to_owned())
+        TypeIdent::from("Scheme")
     }
 
     fn ty() -> Type {
@@ -58,7 +58,7 @@ impl Serializable for http::uri::Scheme {
 
 impl Serializable for http::uri::Uri {
     fn ident() -> TypeIdent {
-        TypeIdent::from("Uri".to_owned())
+        TypeIdent::from("Uri")
     }
 
     fn ty() -> Type {

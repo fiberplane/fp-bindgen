@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 impl Serializable for serde_bytes::ByteBuf {
     fn ident() -> TypeIdent {
-        TypeIdent::from("ByteBuf".to_owned())
+        TypeIdent::from("ByteBuf")
     }
 
     fn ty() -> Type {

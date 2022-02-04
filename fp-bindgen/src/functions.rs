@@ -151,7 +151,7 @@ mod test {
     fn test_function_arg_to_tokens() {
         let arg = FunctionArg {
             name: "foobar".into(),
-            ty: TypeIdent::from("i64".to_owned()),
+            ty: TypeIdent::from("i64"),
         };
 
         let stringified = arg.into_token_stream().to_string();
@@ -165,10 +165,10 @@ mod test {
             name: "foobar".into(),
             is_async: false,
             doc_lines: vec![],
-            return_type: Some(TypeIdent::from("String".to_owned())),
+            return_type: Some(TypeIdent::from("String")),
             args: vec![FunctionArg {
                 name: "a1".into(),
-                ty: TypeIdent::from("u64".to_owned()),
+                ty: TypeIdent::from("u64"),
             }],
         };
 
