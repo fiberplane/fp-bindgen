@@ -43,6 +43,10 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                 );
             }
 
+            // Variants with inline tags may result in unserializable types.
+            let has_inline_tag =
+                options.tag_prop_name.is_some() && options.content_prop_name.is_none();
+
             let name = variant.ident.to_string();
             let ty = if variant.fields.is_empty() {
                 Type::Unit
@@ -56,10 +60,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                             .as_ref()
                             .unwrap_or_else(|| panic!("Unnamed field in variant of enum {}", ident))
                             .to_string();
-                        // FP-1180: Prevent unserializable variants.
-                        if options.tag_prop_name.as_ref() == Some(&name)
-                            && options.content_prop_name.is_none()
-                        {
+                        if has_inline_tag && options.tag_prop_name.as_ref() == Some(&name) {
                             panic!(
                                 "Enum {} has a variant that cannot be serialized, \
                                     because one of its fields has the same name as \
@@ -84,15 +85,11 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                     options: StructOptions::default(),
                 })
             } else {
-                let item_types = variant
+                let item_types: Vec<_> = variant
                     .fields
                     .iter()
                     .map(|field| {
-                        // FP-1180: Prevent unserializable variants.
-                        if options.tag_prop_name.is_some()
-                            && options.content_prop_name.is_none()
-                            && is_path_to_primitive(&field.ty)
-                        {
+                        if has_inline_tag && is_path_to_primitive(&field.ty) {
                             panic!(
                                 "Enum {} has a variant that cannot be serialized, \
                                     because its field is an unnamed primitive and \
@@ -105,6 +102,16 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                             .unwrap_or_else(|_| panic!("Invalid field type in enum {}", ident))
                     })
                     .collect();
+
+                if has_inline_tag && item_types.len() > 1 {
+                    panic!(
+                        "Enum {} has a variant that cannot be serialized, \
+                            because it contains multiple unnamed fields and \
+                            the enum has no `content` attribute",
+                        ident
+                    );
+                }
+
                 Type::Tuple(item_types)
             };
             let doc_lines = get_doc_lines(&variant.attrs);
