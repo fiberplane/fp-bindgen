@@ -15,5 +15,8 @@ pub enum InvocationError {
     UnexpectedReturnType,
 
     #[error(transparent)]
+    GuestError(#[from] crate::common::errors::GuestError),
+
+    #[error(transparent)]
     WasmerRuntimeError(#[from] wasmer::RuntimeError),
 }

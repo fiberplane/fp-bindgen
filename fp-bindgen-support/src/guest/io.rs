@@ -1,4 +1,4 @@
-use crate::common::mem::*;
+use crate::common::{errors::GuestError, mem::*};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::alloc::Layout;
@@ -46,19 +46,21 @@ pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
 /// This function is only safe if passed a valid pointer given to us by the
 /// host. After this call, the pointer is no longer valid.
 #[doc(hidden)]
-pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(fat_ptr: FatPtr) -> T {
+pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(
+    fat_ptr: FatPtr,
+) -> Result<T, GuestError> {
     let (ptr, len) = from_fat_ptr(fat_ptr);
     if len & 0xff000000 != 0 {
         panic!("Unknown extension bits");
     }
 
     let slice = std::slice::from_raw_parts(ptr, len as usize);
-    let mut deserializer = Deserializer::new(slice).with_human_readable();
-    let value = T::deserialize(&mut deserializer).unwrap();
+    let value =
+        serde_path_to_error::deserialize(&mut Deserializer::new(slice).with_human_readable())?;
 
     __fp_free(fat_ptr);
 
-    value
+    Ok(value)
 }
 
 const MALLOC_ALIGNMENT: usize = 16;

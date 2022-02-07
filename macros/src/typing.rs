@@ -63,6 +63,13 @@ pub(crate) fn replace_complex_type(ty: &mut Type, crate_path: &str) {
 
 /// Replaces complex types in the input and output of a function signature and makes it non-async
 pub(crate) fn morph_signature(sig: &mut Signature, crate_path: &str) {
+    if let ReturnType::Type(_, ref mut ty) = sig.output {
+        if let Some(_) = sig.asyncness {
+        } else {
+            replace_complex_type(ty.as_mut(), crate_path);
+        }
+    }
+
     sig.asyncness = None;
     sig.inputs = sig
         .inputs
@@ -74,10 +81,6 @@ pub(crate) fn morph_signature(sig: &mut Signature, crate_path: &str) {
             arg
         })
         .collect();
-
-    if let ReturnType::Type(_, ref mut ty) = sig.output {
-        replace_complex_type(ty.as_mut(), crate_path);
-    }
 }
 
 //Extracts the arguments of a function signature and checks if it's complex

@@ -8,7 +8,7 @@ use std::{
 };
 use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemType, ItemUse, Pat, PatPath,
-    Path, PathArguments, PathSegment, ReturnType,
+    Path, PathArguments, PathSegment, ReturnType, Type,
 };
 use utils::flatten_using_statement;
 
@@ -225,6 +225,8 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let func = syn::parse_macro_input::parse::<ForeignItemFn>(input.clone()).unwrap_or_abort();
     let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
 
+    let any_complex_args = args.iter().any(|(_, _, is_complex)| *is_complex);
+
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
     {
@@ -245,13 +247,24 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
                     .unwrap_or_abort()
             }))
             .collect();
+
+        let output_type = typing::get_output_type(&func.sig.output);
+        let output_type = if any_complex_args {
+            syn::parse::<Type>(
+                (quote! {Result<#output_type, fp_bindgen_support::common::errros::GuestError>})
+                    .into(),
+            )
+            .unwrap_or_abort()
+        } else {
+            output_type.clone()
+        };
+
         sig.generics.params.clear();
         if func.sig.asyncness.is_some() {
-            let output = typing::get_output_type(&func.sig.output);
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
                     //the 'static life time is ok since we give it a box::pin
-                    (quote! {FUT: std::future::Future<Output=#output> + 'static}).into(),
+                    (quote! {FUT: std::future::Future<Output=#output_type> + 'static}).into(),
                 )
                 .unwrap_or_abort(),
             )
@@ -294,9 +307,9 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_support::guest::io::import_value_from_host::<#complex_types>(#complex_names) };)*
+            #(let #complex_names = unsafe { fp_bindgen_support::guest::io::import_value_from_host::<#complex_types>(#complex_names)? };)*
             #func_wrapper
-            ret
+            Ok(ret)
         }
     })
     .into()
