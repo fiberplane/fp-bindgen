@@ -37,7 +37,7 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
-            let mut import_types = fp_bindgen::prelude::TypeMap::new();
+            let mut import_types = fp_bindgen::prelude::create_default_type_map();
             #( #type_paths::collect_types(&mut import_types); )*
             #( import_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), #alias_paths::ident())); )*
 
@@ -226,6 +226,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let args = typing::extract_args(&func.sig).collect::<Vec<_>>();
 
     let any_complex_args = args.iter().any(|(_, _, is_complex)| *is_complex);
+    let is_async = func.sig.asyncness.is_some();
 
     let mut sig = func.sig.clone();
     //Massage the signature into what we wish to export
@@ -237,7 +238,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             //append a function ptr to the end which signature matches the original exported function
             .chain(once({
                 let input_types = args.iter().map(|(_, pt, _)| pt.ty.as_ref());
-                let output = if func.sig.asyncness.is_some() {
+                let output = if is_async {
                     syn::parse::<ReturnType>((quote! {-> FUT}).into()).unwrap_or_abort()
                 } else {
                     func.sig.output.clone()
@@ -248,23 +249,14 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             }))
             .collect();
 
-        let output_type = typing::get_output_type(&func.sig.output);
-        let output_type = if any_complex_args {
-            syn::parse::<Type>(
-                (quote! {Result<#output_type, fp_bindgen_support::common::errros::GuestError>})
-                    .into(),
-            )
-            .unwrap_or_abort()
-        } else {
-            output_type.clone()
-        };
-
         sig.generics.params.clear();
-        if func.sig.asyncness.is_some() {
+        if is_async {
+            let original_output_type = typing::get_output_type(&func.sig.output);
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
                     //the 'static life time is ok since we give it a box::pin
-                    (quote! {FUT: std::future::Future<Output=#output_type> + 'static}).into(),
+                    (quote! {FUT: std::future::Future<Output=#original_output_type> + 'static})
+                        .into(),
                 )
                 .unwrap_or_abort(),
             )
@@ -283,22 +275,49 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         .unzip();
 
     let names = args.iter().map(|(_, pt, _)| pt.pat.as_ref());
-    let func_call = quote! {(fptr)(#(#names),*)};
 
-    let func_wrapper = if func.sig.asyncness.is_some() {
+    let func_call = quote! {let ret = (fptr)(#(#names),*);};
+    let async_func_wrapper = is_async.then(|| {
         quote! {
-            let ret = fp_bindgen_support::guest::r#async::task::Task::alloc_and_spawn(#func_call);
+            let ret = fp_bindgen_support::guest::r#async::task::Task::alloc_and_spawn(ret);
         }
-    } else {
-        // Check the output type and replace complex ones with FatPtr
-        let return_wrapper = if typing::is_ret_type_complex(&func.sig.output) {
-            quote! {let ret = fp_bindgen_support::guest::io::export_value_to_host(&ret);}
-        } else {
-            Default::default()
-        };
-        quote! {
-            let ret = #func_call;
-            #return_wrapper
+    });
+
+    let deserialize_args = quote! {
+        #(let #complex_names = unsafe { fp_bindgen_support::guest::io::import_value_from_host::<#complex_types>(#complex_names)? };)*
+    };
+
+    let body = quote! {
+        #deserialize_args
+        #func_call
+        #async_func_wrapper
+    };
+
+    //wrap in Ok with complex args to handle deserialization errors
+    let result_wrapper = match (
+        is_async,
+        any_complex_args,
+        typing::is_ret_type_complex(&func.sig.output),
+    ) {
+        (false, false, false) | (true, false, _) => body,
+        (true, _, _) => {
+            let output = typing::get_output_type(&sig.output);
+            quote! {
+                let ret : Result<#output, fp_bindgen_support::FPGuestError> = (move || {
+                    #body
+                    Ok(ret)
+                })();
+                let ret = fp_bindgen_support::guest::io::export_value_to_host(&ret);
+            }
+        }
+        _ => {
+            quote! {
+                let ret : Result<serde_bytes::ByteBuf, fp_bindgen_support::FPGuestError> = (move || {
+                    #body
+                    Ok(fp_bindgen_support::guest::io::serialize_to_byte_buf(&ret))
+                })();
+                let ret = fp_bindgen_support::guest::io::export_value_to_host(&ret);
+            }
         }
     };
 
@@ -307,9 +326,8 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         /// This is a implementation detail an should not be called directly
         #[inline(always)]
         pub #sig {
-            #(let #complex_names = unsafe { fp_bindgen_support::guest::io::import_value_from_host::<#complex_types>(#complex_names)? };)*
-            #func_wrapper
-            Ok(ret)
+            #result_wrapper
+            ret
         }
     })
     .into()
@@ -422,14 +440,14 @@ pub fn fp_import_signature(_attributes: TokenStream, input: TokenStream) -> Toke
     let ret_wrapper = if func.sig.asyncness.is_some() {
         quote! {
             let ret = unsafe {
-                fp_bindgen_support::guest::io::import_value_from_host(fp_bindgen_support::guest::r#async::HostFuture::new(ret).await)
+                fp_bindgen_support::guest::io::import_value_from_host(fp_bindgen_support::guest::r#async::HostFuture::new(ret).await).unwrap()
             };
         }
     } else {
         // Check the output type and replace complex ones with FatPtr
         if typing::is_ret_type_complex(&func.sig.output) {
             quote! {
-                let ret = unsafe { fp_bindgen_support::guest::io::import_value_from_host(ret) };
+                let ret = unsafe { fp_bindgen_support::guest::io::import_value_from_host(ret).unwrap() };
             }
         } else {
             Default::default()

@@ -14,8 +14,8 @@ pub enum InvocationError {
     #[error("returned data did not match expected type")]
     UnexpectedReturnType,
 
-    #[error(transparent)]
-    GuestError(#[from] crate::common::errors::GuestError),
+    #[error("guest returned an error: {0}")]
+    GuestError(#[from] crate::common::errors::FPGuestError),
 
     #[error(transparent)]
     WasmerRuntimeError(#[from] wasmer::RuntimeError),

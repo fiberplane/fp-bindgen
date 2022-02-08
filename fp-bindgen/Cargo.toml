@@ -13,6 +13,7 @@ generators = ["rustfmt-wrapper"]
 
 [dependencies]
 fp-bindgen-macros = { path = "../macros" }
+fp-bindgen-support = { path = "../fp-bindgen-support" }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
 pretty_assertions = "1"

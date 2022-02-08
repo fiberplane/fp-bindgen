@@ -124,6 +124,12 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         let raw_name = format_ident!("{}_raw", name);
         let name = format_ident!("{}", name);
 
+        let any_complex_args = args.iter().any(|arg| !arg.ty.is_primitive());
+        let is_complex_return_type = !return_type
+            .as_ref()
+            .map(TypeIdent::is_primitive)
+            .unwrap_or(true);
+
         let arg_names: Vec<_> = args
             .iter()
             .map(|arg| format_ident!("{}", arg.name))
@@ -150,34 +156,31 @@ impl ToTokens for RuntimeImportedFunction<'_> {
             None => quote! { () },
         };
 
-        let asyncness = is_async.then(Async::default);
-
-        let (raw_return_wrapper, return_wrapper) = if *is_async {
-            (
-                quote! {
-                    let result = ModuleRawFuture::new(env.clone(), result).await;
-                },
-                quote! {
-                    let result = result.await;
-                    let result = result.map(|ref data| deserialize_from_slice(data));
-                },
-            )
-        } else if !return_type
-            .as_ref()
-            .map(TypeIdent::is_primitive)
-            .unwrap_or(true)
-        {
-            (
-                quote! {
-                    let result = import_from_guest_raw(&env, result);
-                },
-                quote! {
-                    let result = result.map(|ref data| deserialize_from_slice(data));
-                },
-            )
-        } else {
-            (TokenStream::default(), TokenStream::default())
+        let import_wrapper = match (*is_async, any_complex_args, is_complex_return_type) {
+            (false, false, false) => None,
+            (true, _, _) => Some(quote! {
+                let result = result.await.map(|ref data| deserialize_from_slice(data));
+            }),
+            _ => Some(quote! {
+                let result = result.map(|ref data| deserialize_from_slice(data));
+            }),
         };
+        let raw_import_wrapper = match (*is_async, any_complex_args, is_complex_return_type) {
+            (false, false, false) => None,
+            (true, false, _) => {
+                Some(quote! {let result = ModuleRawFuture::new(env.clone(), result).await;})
+            }
+            (true, _, _) => Some(quote! {
+                let result = import_from_guest::<Result<FatPtr, FPGuestError>>(&env, result)?;
+                let result = ModuleRawFuture::new(env.clone(), result).await;
+            }),
+            _ => Some(quote! {
+                let result = import_from_guest::<Result<serde_bytes::ByteBuf, FPGuestError>>(&env, result)?;
+                let result = result.into_vec();
+            }),
+        };
+
+        let asyncness = is_async.then(Async::default);
 
         (quote! {
             #(#[doc = #doc_lines])*
@@ -186,7 +189,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 let result = self.#raw_name(#(#arg_names),*);
 
-                #return_wrapper
+                #import_wrapper
 
                 result
             }
@@ -206,7 +209,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 let result = function.call(#(#arg_names),*)?;
 
-                #raw_return_wrapper
+                #raw_import_wrapper
 
                 Ok(result)
             }
@@ -307,7 +310,7 @@ pub fn generate_function_bindings(
     let full = rustfmt_wrapper::rustfmt(quote! {
         use super::types::*;
         use fp_bindgen_support::{
-            common::mem::FatPtr,
+            common::{mem::FatPtr, errors::FPGuestError},
             host::{
                 errors::{InvocationError, RuntimeError},
                 mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw, deserialize_from_slice, serialize_to_vec},

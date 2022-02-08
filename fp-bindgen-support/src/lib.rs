@@ -6,4 +6,5 @@ pub mod host;
 #[cfg(feature = "http")]
 pub mod http;
 
+pub use common::errors::FPGuestError;
 pub use fp_bindgen_macros::{fp_export_impl, fp_export_signature, fp_import_signature};

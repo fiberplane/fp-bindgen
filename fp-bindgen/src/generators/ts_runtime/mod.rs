@@ -80,6 +80,17 @@ export class FPRuntimeError extends Error {{
     constructor(message: string) {{
         super(message);
     }}
+
+    static fromGuestError(guest_error: FPGuestError) {{
+        switch (guest_error.type) {{
+            case 'serde_error':
+                new FPRuntimeError(`Deserialization error in field '${{guest_error.path}}': ${{guest_error.message}}`);
+                break;
+            case 'invalid_fat_ptr':
+                new FPRuntimeError(`FatPtr error`);
+                break;
+        }}
+    }}
 }}
 
 /**
@@ -110,6 +121,15 @@ export async function createRuntime(
         const object = decode<T>(buffer) as T;
         free(fatPtr);
         return object;
+    }}
+
+    function parseResultObject<T>(ptr: FatPtr): T {{
+        const res = parseObject<Result<T, FPGuestError>>(ptr);
+        if ('Err' in res) {{
+            throw FPRuntimeError.fromGuestError(res.Err)
+        }}
+
+        return res.Ok
     }}
 
     function promiseFromPtr(ptr: FatPtr): Promise<FatPtr> {{
@@ -479,37 +499,31 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            let fn_call = if function.is_async {
-                format!(
-                    "return promiseFromPtr(export_fn({})).then((ptr) => parseObject<{}>(ptr));",
-                    call_args,
-                    function
-                        .return_type
-                        .as_ref()
-                        .map(|ty| format_ident(ty, types))
-                        .unwrap_or_else(|| "void".to_owned()),
-                )
-            } else {
-                match &function.return_type {
-                    None => format!("export_fn({});", call_args),
-                    Some(ty) if ty.is_primitive() => {
-                        format!("return export_fn({});", call_args)
-                    }
-                    Some(ty) => format!(
-                        "return parseObject<{}>(export_fn({}));",
-                        format_ident(ty, types),
-                        call_args
-                    ),
-                }
-            };
+            let any_complex_args = function.args.iter().any(|a| !a.ty.is_primitive());
+            let is_complex_return_type = !export_args.is_empty();
+            let fn_call = format!("export_fn({})", call_args);
+            let return_type = function
+                .return_type
+                .as_ref()
+                .map(|ty| format_ident(ty, types))
+                .unwrap_or_else(|| "void".to_owned());
+            let wrapped_fn_call =
+                match (function.is_async, any_complex_args, is_complex_return_type) {
+                    (false, false, false) => format!("return {};", fn_call),
+                    (false, false, true) => format!("return parseObject<{}>({});", return_type, fn_call),
+                    (true, false, _) => format!("return promiseFromPtr({}).then((ptr) => parseObject<{}>(ptr));", fn_call, return_type),
+                    (true, _, _) => format!("return promiseFromPtr(parseResultObject<FatPtr>({})).then((ptr) => parseObject<{}>(ptr));", fn_call, return_type),
+                    _ => format!("return decode<{}>(parseResultObject<ArrayBuffer>({}));", return_type, fn_call),
+                };
+
             let return_fn = if export_args.is_empty() {
-                format!("return ({}) => {}", args, fn_call.replace("return ", ""))
+                format!("return ({}) => {}", args, wrapped_fn_call.replace("return ", ""))
             } else {
                 format!(
                     "return ({}) => {{\n{}        {}\n    }};",
                     args,
                     join_lines(&export_args, |line| format!("        {}", line)),
-                    fn_call
+                    wrapped_fn_call
                 )
             };
             format!(

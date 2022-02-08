@@ -317,6 +317,7 @@ version = "0.1.0"
 dependencies = [
  "Inflector",
  "fp-bindgen-macros",
+ "fp-bindgen-support",
  "http",
  "pretty_assertions 1.0.0",
  "proc-macro2",

@@ -1,4 +1,5 @@
-use crate::primitives::Primitive;
+use crate::{primitives::Primitive, serializable::Serializable};
+use fp_bindgen_support::common::errors::FPGuestError;
 use quote::{quote, ToTokens};
 use std::{collections::BTreeMap, hash::Hash};
 use syn::Item;
@@ -16,6 +17,10 @@ pub use structs::{Field, FieldAttrs, Struct, StructOptions};
 pub use type_ident::TypeIdent;
 
 pub type TypeMap = BTreeMap<TypeIdent, Type>;
+
+pub fn create_default_type_map() -> TypeMap {
+    TypeMap::from([(FPGuestError::ident(), FPGuestError::ty())])
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {

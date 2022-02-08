@@ -1,7 +1,19 @@
-use crate::common::{errors::GuestError, mem::*};
+use crate::common::{errors::FPGuestError, mem::*};
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
+use serde_bytes::ByteBuf;
 use std::alloc::Layout;
+
+/// Serialize the given value to MessagePack bytes
+pub fn serialize_to_byte_buf<T: Serialize>(value: &T) -> serde_bytes::ByteBuf {
+    let mut buffer = Vec::new();
+    let mut serializer = Serializer::new(&mut buffer)
+        .with_struct_map()
+        .with_human_readable();
+    value.serialize(&mut serializer).unwrap();
+
+    ByteBuf::from(buffer)
+}
 
 #[doc(hidden)]
 pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
@@ -48,10 +60,10 @@ pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
 #[doc(hidden)]
 pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(
     fat_ptr: FatPtr,
-) -> Result<T, GuestError> {
+) -> Result<T, FPGuestError> {
     let (ptr, len) = from_fat_ptr(fat_ptr);
     if len & 0xff000000 != 0 {
-        panic!("Unknown extension bits");
+        return Err(FPGuestError::InvalidFatPtr);
     }
 
     let slice = std::slice::from_raw_parts(ptr, len as usize);

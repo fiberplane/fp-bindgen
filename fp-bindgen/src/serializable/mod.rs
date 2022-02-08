@@ -1,7 +1,9 @@
 use crate::{
-    types::{Enum, EnumOptions, TypeIdent, TypeMap, Variant, VariantAttrs},
+    casing::Casing,
+    types::{Enum, EnumOptions, Field, Struct, TypeIdent, TypeMap, Variant, VariantAttrs},
     Type,
 };
+use fp_bindgen_support::common::errors::FPGuestError;
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     rc::Rc,
@@ -266,5 +268,60 @@ where
     fn collect_types(types: &mut TypeMap) {
         types.entry(Self::ident()).or_insert_with(Self::ty);
         T::collect_types(types);
+    }
+}
+
+impl Serializable for FPGuestError {
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "FPGuestError".to_owned(),
+            generic_args: vec![],
+        }
+    }
+
+    fn ty() -> Type {
+        Type::Enum(Enum {
+            ident: Self::ident(),
+            variants: vec![
+                Variant {
+                    name: "SerdeError".to_owned(),
+                    ty: Type::Struct(Struct {
+                        ident: TypeIdent::from("SerdeError"),
+                        fields: vec![
+                            Field {
+                                name: "path".to_owned(),
+                                ty: String::ident(),
+                                doc_lines: vec!["Path to the failed field that failed to serde".to_owned()],
+                                attrs: Default::default(),
+                            },
+                            Field {
+                                name: "message".to_owned(),
+                                ty: String::ident(),
+                                doc_lines: vec![],
+                                attrs: Default::default(),
+                            }
+                        ],
+                        doc_lines: Default::default(),
+                        options: Default::default(),
+                    }),
+                    doc_lines: vec!["Deserialization of data failed, possible mismatch between guest and runtime protocol version".to_owned()],
+                    attrs: Default::default(),
+                },
+                Variant {
+                    name: "InvalidFatPtr".to_owned(),
+                    ty: Type::Unit,
+                    doc_lines: vec!["Received an invalid `FatPtr`".to_owned()],
+                    attrs: Default::default(),
+                }
+            ],
+            doc_lines: Default::default(),
+            options: EnumOptions {
+                variant_casing: Casing::SnakeCase,
+                content_prop_name: None,
+                tag_prop_name: Some("type".to_owned()),
+                untagged: false,
+                native_modules: Default::default()
+            },
+        })
     }
 }
