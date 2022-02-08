@@ -106,7 +106,7 @@ export type RequestError =
         /**
          * HTTP status code.
          */
-        statusCode: number;
+        status_code: number;
 
         /**
          * Response body.

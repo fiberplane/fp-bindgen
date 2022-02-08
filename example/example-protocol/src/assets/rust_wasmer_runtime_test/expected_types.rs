@@ -97,7 +97,7 @@ pub enum RequestError {
     NoRoute,
     ConnectionRefused,
     Timeout,
-    #[serde(rename_all = "camelCase")]
+    #[serde(rename_all = "snake_case")]
     ServerError {
         /// HTTP status code.
         status_code: u16,
