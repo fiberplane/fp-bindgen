@@ -325,7 +325,10 @@ impl Serializable for FPGuestError {
                 content_prop_name: None,
                 tag_prop_name: Some("type".to_owned()),
                 untagged: false,
-                native_modules: Default::default()
+                native_modules: BTreeMap::from([
+                    ("rust_wasmer_runtime".to_owned(), "fp_bindgen_support::common::errors".to_owned()),
+                    ("rust_plugin".to_owned(), "fp_bindgen_support::common::errors".to_owned())
+                ])
             },
         })
     }

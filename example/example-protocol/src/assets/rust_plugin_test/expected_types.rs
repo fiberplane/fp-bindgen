@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap};
 
+pub use fp_bindgen_support::common::errors::FPGuestError;
+
 pub type Body = serde_bytes::ByteBuf;
 
 pub type ComplexAlias = ComplexGuestToHost;
@@ -37,20 +39,6 @@ pub struct ComplexHostToGuest {
 #[serde(rename_all = "camelCase")]
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum FPGuestError {
-    ///Deserialization of data failed, possible mismatch between guest and runtime protocol version
-    #[serde(rename_all = "camelCase")]
-    SerdeError {
-        ///Path to the failed field that failed to serde
-        path: String,
-        message: String,
-    },
-    ///Received an invalid `FatPtr`
-    InvalidFatPtr,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
