@@ -202,17 +202,15 @@ impl EnumOptions {
         let mut serde_attrs = vec![];
         if self.untagged {
             serde_attrs.push("untagged".to_owned());
-        } else {
-            if let Some(prop_name) = &self.tag_prop_name {
-                serde_attrs.push(format!("tag = \"{}\"", prop_name));
+        } else if let Some(prop_name) = &self.tag_prop_name {
+            serde_attrs.push(format!("tag = \"{}\"", prop_name));
 
-                if let Some(prop_name) = &self.content_prop_name {
-                    serde_attrs.push(format!("content = \"{}\"", prop_name));
-                }
+            if let Some(prop_name) = &self.content_prop_name {
+                serde_attrs.push(format!("content = \"{}\"", prop_name));
             }
-            if let Some(casing) = &self.variant_casing.as_maybe_str() {
-                serde_attrs.push(format!("rename_all = \"{}\"", casing));
-            }
+        }
+        if let Some(casing) = &self.variant_casing.as_maybe_str() {
+            serde_attrs.push(format!("rename_all = \"{}\"", casing));
         }
         serde_attrs
     }
@@ -278,6 +276,8 @@ pub struct Variant {
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VariantAttrs {
+    pub field_casing: Casing,
+
     /// Optional name to use in the serialized format
     /// (only used if different than the variant name itself).
     ///
@@ -300,6 +300,9 @@ impl VariantAttrs {
     }
 
     fn merge_with(&mut self, other: &Self) {
+        if other.field_casing != Casing::default() {
+            self.field_casing = other.field_casing;
+        }
         if other.rename.is_some() {
             self.rename = other.rename.clone();
         }
@@ -309,6 +312,9 @@ impl VariantAttrs {
         let mut serde_attrs = vec![];
         if let Some(rename) = self.rename.as_ref() {
             serde_attrs.push(format!("rename = \"{}\"", rename));
+        }
+        if let Some(casing) = &self.field_casing.as_maybe_str() {
+            serde_attrs.push(format!("rename_all = \"{}\"", casing));
         }
         serde_attrs
     }
@@ -334,6 +340,10 @@ impl Parse for VariantAttrs {
             let key: Ident = content.call(IdentExt::parse_any)?;
             match key.to_string().as_ref() {
                 "rename" => result.rename = Some(parse_value()?),
+                "rename_all" => {
+                    result.field_casing = Casing::try_from(parse_value()?.as_ref())
+                        .map_err(|err| Error::new(content.span(), err))?
+                }
                 other => {
                     return Err(Error::new(
                         content.span(),
