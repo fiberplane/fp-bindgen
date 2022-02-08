@@ -8,7 +8,7 @@ use std::{
 };
 use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemType, ItemUse, Pat, PatPath,
-    Path, PathArguments, PathSegment, ReturnType, Type,
+    Path, PathArguments, PathSegment, ReturnType,
 };
 use utils::flatten_using_statement;
 
