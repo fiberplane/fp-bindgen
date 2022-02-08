@@ -1,6 +1,8 @@
 use crate::{
     casing::Casing,
-    types::{Enum, EnumOptions, Field, Struct, TypeIdent, TypeMap, Variant, VariantAttrs},
+    types::{
+        Enum, EnumOptions, Field, Struct, StructOptions, TypeIdent, TypeMap, Variant, VariantAttrs,
+    },
     Type,
 };
 use fp_bindgen_support::common::errors::FPGuestError;
@@ -302,7 +304,10 @@ impl Serializable for FPGuestError {
                             }
                         ],
                         doc_lines: Default::default(),
-                        options: Default::default(),
+                        options: StructOptions {
+                            field_casing: Casing::SnakeCase,
+                            ..Default::default()
+                        },
                     }),
                     doc_lines: vec!["Deserialization of data failed, possible mismatch between guest and runtime protocol version".to_owned()],
                     attrs: Default::default(),

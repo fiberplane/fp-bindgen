@@ -9,7 +9,7 @@ use thiserror::Error;
 pub enum FPGuestError {
     /// Deserialization of data failed, possible mismatch between guest and runtime protocol version
     #[error("Failed to serde field: {path}")]
-    #[serde(rename_all = "camelCase")]
+    #[serde(rename_all = "snake_case")]
     SerdeError {
         /// Path to the failed field that failed to serde
         path: String,
