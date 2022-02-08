@@ -38,6 +38,24 @@ export type ExplicitedlyImportedType = {
     youWillSeeThis: boolean;
 };
 
+export type FPGuestError =
+    /**
+     *Deserialization of data failed, possible mismatch between guest and runtime protocol version
+     */
+    | {
+        type: "serde_error";
+
+        /**
+         *Path to the failed field that failed to serde
+         */
+        path: string;
+        message: string;
+    }
+    /**
+     *Received an invalid `FatPtr`
+     */
+    | { type: "invalid_fat_ptr" };
+
 export type GroupImportedType1 = {
     youWillSeeThis: boolean;
 };

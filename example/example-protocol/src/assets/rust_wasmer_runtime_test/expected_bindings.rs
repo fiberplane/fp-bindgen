@@ -1,6 +1,6 @@
 use super::types::*;
 use fp_bindgen_support::{
-    common::mem::FatPtr,
+    common::{errors::FPGuestError, mem::FatPtr},
     host::{
         errors::{InvocationError, RuntimeError},
         mem::{
@@ -41,8 +41,7 @@ impl Runtime {
     pub async fn fetch_data(&self, url: String) -> Result<String, InvocationError> {
         let url = serialize_to_vec(&url);
         let result = self.fetch_data_raw(url);
-        let result = result.await;
-        let result = result.map(|ref data| deserialize_from_slice(data));
+        let result = result.await.map(|ref data| deserialize_from_slice(data));
         result
     }
     pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
@@ -56,14 +55,14 @@ impl Runtime {
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(url)?;
+        let result = import_from_guest::<Result<FatPtr, FPGuestError>>(&env, result)?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
         Ok(result)
     }
 
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
         let result = self.my_async_exported_function_raw();
-        let result = result.await;
-        let result = result.map(|ref data| deserialize_from_slice(data));
+        let result = result.await.map(|ref data| deserialize_from_slice(data));
         result
     }
     pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
@@ -100,7 +99,8 @@ impl Runtime {
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_my_complex_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(a)?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest::<Result<serde_bytes::ByteBuf, FPGuestError>>(&env, result)?;
+        let result = result.into_vec();
         Ok(result)
     }
 

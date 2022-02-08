@@ -12,6 +12,7 @@ import type {
     ComplexGuestToHost,
     ComplexHostToGuest,
     ExplicitedlyImportedType,
+    FPGuestError,
     GroupImportedType1,
     GroupImportedType2,
     HttpRequestOptions,
@@ -55,6 +56,17 @@ export class FPRuntimeError extends Error {
     constructor(message: string) {
         super(message);
     }
+
+    static fromGuestError(guest_error: FPGuestError) {
+        switch (guest_error.type) {
+            case 'serde_error':
+                new FPRuntimeError(`Deserialization error in field '${guest_error.path}': ${guest_error.message}`);
+                break;
+            case 'invalid_fat_ptr':
+                new FPRuntimeError(`FatPtr error`);
+                break;
+        }
+    }
 }
 
 /**
@@ -85,6 +97,15 @@ export async function createRuntime(
         const object = decode<T>(buffer) as T;
         free(fatPtr);
         return object;
+    }
+
+    function parseResultObject<T>(ptr: FatPtr): T {
+        const res = parseObject<Result<T, FPGuestError>>(ptr);
+        if ('Err' in res) {
+            throw FPRuntimeError.fromGuestError(res.Err)
+        }
+
+        return res.Ok
     }
 
     function promiseFromPtr(ptr: FatPtr): Promise<FatPtr> {
@@ -193,7 +214,7 @@ export async function createRuntime(
 
             return (url: string) => {
                 const url_ptr = serializeObject(url);
-                return promiseFromPtr(export_fn(url_ptr)).then((ptr) => parseObject<string>(ptr));
+                return promiseFromPtr(parseResultObject<FatPtr>(export_fn(url_ptr))).then((ptr) => parseObject<string>(ptr));
             };
         })(),
         myAsyncExportedFunction: (() => {
@@ -208,7 +229,7 @@ export async function createRuntime(
 
             return (a: ComplexHostToGuest) => {
                 const a_ptr = serializeObject(a);
-                return parseObject<ComplexAlias>(export_fn(a_ptr));
+                return decode<ComplexAlias>(parseResultObject<ArrayBuffer>(export_fn(a_ptr)));
             };
         })(),
         myPlainExportedFunction: instance.exports.__fp_gen_my_plain_exported_function as any,
