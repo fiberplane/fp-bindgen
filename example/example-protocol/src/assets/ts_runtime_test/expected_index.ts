@@ -239,7 +239,7 @@ export async function createRuntime(
 
             return (url: Uint8Array) => {
                 const url_ptr = exportToMemory(url);
-                return promiseFromPtr(export_fn(url_ptr)).then(importFromMemory);
+                return promiseFromPtr(parseResultObject<FatPtr>(export_fn(url_ptr))).then(importFromMemory);
             };
         })(),
         myAsyncExportedFunctionRaw: (() => {
@@ -254,7 +254,7 @@ export async function createRuntime(
 
             return (a: Uint8Array) => {
                 const a_ptr = exportToMemory(a);
-                return importFromMemory(export_fn(a_ptr));
+                return parseResultObject<Uint8Array>(export_fn(a_ptr));
             };
         })(),
     };

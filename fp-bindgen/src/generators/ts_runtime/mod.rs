@@ -582,28 +582,36 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            let fn_call = if function.is_async {
-                format!(
-                    "return promiseFromPtr(export_fn({})).then(importFromMemory);",
-                    call_args
-                )
-            } else {
-                match &function.return_type {
-                    None => format!("export_fn({});", call_args),
-                    Some(ty) if ty.is_primitive() => {
-                        format!("return export_fn({});", call_args)
+            let any_complex_args = function.args.iter().any(|a| !a.ty.is_primitive());
+            let is_complex_return_type = !export_args.is_empty();
+            let fn_call = format!("export_fn({})", call_args);
+
+            let wrapped_fn_call =
+                match (function.is_async, any_complex_args, is_complex_return_type) {
+                    (false, false, false) => format!("return {};", fn_call),
+                    (false, false, true) => format!("return importFromMemory({});", fn_call),
+                    (true, false, _) => {
+                        format!("return promiseFromPtr({}).then(importFromMemory);", fn_call)
                     }
-                    _ => format!("return importFromMemory(export_fn({}));", call_args),
-                }
-            };
+                    (true, _, _) => format!(
+                    "return promiseFromPtr(parseResultObject<FatPtr>({})).then(importFromMemory);",
+                    fn_call
+                ),
+                    _ => format!("return parseResultObject<Uint8Array>({});", fn_call),
+                };
+
             let return_fn = if export_args.is_empty() {
-                format!("return ({}) => {}", args, fn_call.replace("return ", ""))
+                format!(
+                    "return ({}) => {}",
+                    args,
+                    wrapped_fn_call.replace("return ", "")
+                )
             } else {
                 format!(
                     "return ({}) => {{\n{}        {}\n    }};",
                     args,
                     join_lines(&export_args, |line| format!("        {}", line)),
-                    fn_call
+                    wrapped_fn_call
                 )
             };
             format!(
