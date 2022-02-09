@@ -95,7 +95,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                                     attribute",
                                 ident,
                                 variant.ident,
-                                field.ty.to_token_stream().to_string()
+                                field.ty.to_token_stream()
                             );
                         }
 
