@@ -62,10 +62,9 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                             .to_string();
                         if has_inline_tag && options.tag_prop_name.as_ref() == Some(&name) {
                             panic!(
-                                "Enum {} has a variant that cannot be serialized, \
-                                    because one of its fields has the same name as \
-                                    the enum's `tag` attribute",
-                                ident
+                                "Enum {} cannot be serialized, because the variant `{}` has a \
+                                    field with the same name as the enum's `tag` attribute",
+                                ident, variant.ident
                             );
                         }
 
@@ -91,10 +90,12 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                     .map(|field| {
                         if has_inline_tag && is_path_to_primitive(&field.ty) {
                             panic!(
-                                "Enum {} has a variant that cannot be serialized, \
-                                    because its field is an unnamed primitive and \
-                                    the enum has no `content` attribute",
-                                ident
+                                "Enum {} cannot be serialized, because the variant `{}` has a \
+                                    primitive unnamed field ({}) and the enum has no `content` \
+                                    attribute",
+                                ident,
+                                variant.ident,
+                                field.ty.to_token_stream().to_string()
                             );
                         }
 
@@ -105,10 +106,9 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
 
                 if has_inline_tag && item_types.len() > 1 {
                     panic!(
-                        "Enum {} has a variant that cannot be serialized, \
-                            because it contains multiple unnamed fields and \
-                            the enum has no `content` attribute",
-                        ident
+                        "Enum {} cannot be serialized, because the variant `{}` contains multiple \
+                            unnamed fields and the enum has no `content` attribute",
+                        ident, variant.ident,
                     );
                 }
 
@@ -370,7 +370,8 @@ fn is_path_to_primitive(ty: &syn::Type) -> bool {
             if qself.is_none()
                 && path
                     .get_ident()
-                    .map(|ident| Primitive::from_str(&ident.to_string()).is_ok())
+                    .map(ToString::to_string)
+                    .map(|ident| ident == "String" || Primitive::from_str(&ident).is_ok())
                     .unwrap_or(false)
     )
 }
