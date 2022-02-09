@@ -13,6 +13,7 @@ pub struct DeadCode {
 }
 
 #[derive(Serializable)]
+#[fp(rename_all = "PascalCase")]
 pub struct Point<T> {
     pub value: T,
 }
@@ -26,6 +27,7 @@ pub struct Simple {
 /// Multi-line doc comment with complex characters
 /// & " , \ ! '
 #[derive(Serializable)]
+#[fp(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
     pub simple: Simple,
     pub list: Vec<f64>,
@@ -73,6 +75,7 @@ pub struct RequestOptions {
 
 /// Similar to the `RequestOptions` struct, but using types from the `http` crate.
 #[derive(Clone, Debug, Serializable)]
+#[fp(rename_all = "camelCase")]
 pub struct HttpRequestOptions {
     pub url: Uri,
     pub method: Method,

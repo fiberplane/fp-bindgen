@@ -349,12 +349,6 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                         let fields = fields.join(" ");
                         format!(" {} ", &fields.trim_end_matches(','))
                     };
-                    if !serde_attrs
-                        .iter()
-                        .any(|attr| attr.starts_with("rename_all ="))
-                    {
-                        serde_attrs.push("rename_all = \"camelCase\"".to_owned());
-                    }
                     format!("{} {{{}}},", variant.ident.name, fields)
                 }
                 Type::Tuple(items) => {
@@ -407,14 +401,22 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let serde_annotation = {
+        let attrs = ty.options.to_serde_attrs();
+        if attrs.is_empty() {
+            "".to_owned()
+        } else {
+            format!("#[serde({})]\n", attrs.join(", "))
+        }
+    };
+
     format!(
-        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
-        #[serde({})]\n\
+        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n{}\
         pub enum {} {{\n\
             {}\n\
         }}",
         format_docs(&ty.doc_lines),
-        ty.options.to_serde_attrs().join(", "),
+        serde_annotation,
         ty.ident,
         variants
     )
@@ -442,14 +444,22 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
         .collect::<Vec<_>>()
         .join("\n");
 
+    let serde_annotation = {
+        let attrs = ty.options.to_serde_attrs();
+        if attrs.is_empty() {
+            "".to_owned()
+        } else {
+            format!("#[serde({})]\n", attrs.join(", "))
+        }
+    };
+
     format!(
-        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n\
-        #[serde({})]\n\
+        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n{}\
         pub struct {} {{\n\
             {}\n\
         }}",
         format_docs(&ty.doc_lines),
-        ty.options.to_serde_attrs().join(", "),
+        serde_annotation,
         ty.ident,
         fields.trim_start_matches('\n')
     )

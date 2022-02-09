@@ -88,9 +88,6 @@ impl StructOptions {
                 );
             }
         }
-        if opts.native_modules.is_empty() && opts.field_casing == Casing::default() {
-            opts.field_casing = Casing::CamelCase;
-        }
         opts
     }
 
