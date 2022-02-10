@@ -293,7 +293,7 @@ impl Serializable for FPGuestError {
                             Field {
                                 name: "path".to_owned(),
                                 ty: String::ident(),
-                                doc_lines: vec!["Path to the failed field that failed to serde".to_owned()],
+                                doc_lines: vec![" Path to the failed field that failed to serde".to_owned()],
                                 attrs: Default::default(),
                             },
                             Field {
@@ -309,13 +309,13 @@ impl Serializable for FPGuestError {
                             ..Default::default()
                         },
                     }),
-                    doc_lines: vec!["Deserialization of data failed, possible mismatch between guest and runtime protocol version".to_owned()],
+                    doc_lines: vec![" Deserialization of data failed, possible mismatch between guest and runtime protocol version".to_owned()],
                     attrs: Default::default(),
                 },
                 Variant {
                     name: "InvalidFatPtr".to_owned(),
                     ty: Type::Unit,
-                    doc_lines: vec!["Received an invalid `FatPtr`".to_owned()],
+                    doc_lines: vec![" Received an invalid `FatPtr`".to_owned()],
                     attrs: Default::default(),
                 }
             ],
