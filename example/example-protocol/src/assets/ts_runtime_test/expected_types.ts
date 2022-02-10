@@ -35,15 +35,15 @@ export type ComplexHostToGuest = {
 };
 
 export type ExplicitedlyImportedType = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
 export type GroupImportedType1 = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
 export type GroupImportedType2 = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
 /**
@@ -68,7 +68,7 @@ export type Method =
     | "TRACE";
 
 export type Point<T> = {
-    value: T;
+    Value: T;
 };
 
 /**
