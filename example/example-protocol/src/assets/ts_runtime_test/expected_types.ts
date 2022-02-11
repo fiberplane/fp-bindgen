@@ -40,19 +40,19 @@ export type ExplicitedlyImportedType = {
 
 export type FPGuestError =
     /**
-     *Deserialization of data failed, possible mismatch between guest and runtime protocol version
+     * Deserialization of data failed, possible mismatch between guest and runtime protocol version
      */
     | {
         type: "serde_error";
 
         /**
-         *Path to the failed field that failed to serde
+         * Path to the failed field that failed to serde
          */
         path: string;
         message: string;
     }
     /**
-     *Received an invalid `FatPtr`
+     * Received an invalid `FatPtr`
      */
     | { type: "invalid_fat_ptr" };
 
