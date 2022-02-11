@@ -122,9 +122,14 @@ export async function createRuntime(
         return object;
     }}
 
+    function isErr<T, E>(result: Result<T, E>): result is {{ Err: E }} {{
+        // @ts-ignore
+        return result.Err !== undefined;
+    }}
+  
     function parseResultObject<T>(ptr: FatPtr): T {{
         const res = parseObject<Result<T, FPGuestError>>(ptr);
-        if ('Err' in res) {{
+        if (isErr(res)) {{
             throw FPRuntimeError.fromGuestError(res.Err)
         }}
 

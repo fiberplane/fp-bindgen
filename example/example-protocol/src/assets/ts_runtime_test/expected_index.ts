@@ -57,14 +57,12 @@ export class FPRuntimeError extends Error {
         super(message);
     }
 
-    static fromGuestError(guest_error: FPGuestError) {
-        switch (guest_error.type) {
+    static fromGuestError(guestError: FPGuestError): FPRuntimeError {
+        switch (guestError.type) {
             case 'serde_error':
-                new FPRuntimeError(`Deserialization error in field '${guest_error.path}': ${guest_error.message}`);
-                break;
+                return new FPRuntimeError(`Deserialization error in field '${guestError.path}': ${guestError.message}`);
             case 'invalid_fat_ptr':
-                new FPRuntimeError(`FatPtr error`);
-                break;
+                return new FPRuntimeError(`FatPtr error`);
         }
     }
 }
@@ -99,9 +97,14 @@ export async function createRuntime(
         return object;
     }
 
+    function isErr<T, E>(result: Result<T, E>): result is { Err: E } {
+        // @ts-ignore
+        return result.Err !== undefined;
+    }
+  
     function parseResultObject<T>(ptr: FatPtr): T {
         const res = parseObject<Result<T, FPGuestError>>(ptr);
-        if ('Err' in res) {
+        if (isErr(res)) {
             throw FPRuntimeError.fromGuestError(res.Err)
         }
 

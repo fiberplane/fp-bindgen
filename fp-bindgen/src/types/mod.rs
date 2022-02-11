@@ -19,7 +19,13 @@ pub use type_ident::TypeIdent;
 pub type TypeMap = BTreeMap<TypeIdent, Type>;
 
 pub fn create_default_type_map() -> TypeMap {
-    TypeMap::from([(FPGuestError::ident(), FPGuestError::ty())])
+    TypeMap::from([
+        //Always add Result and GuestError types to the generated types
+        //since they are relied on for ferrying errors out of wasm land
+        (FPGuestError::ident(), FPGuestError::ty()),
+        //The actual T and E of Result doesn't matter here
+        (Result::<i32, i32>::ident(), Result::<i32, i32>::ty())
+    ])
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
