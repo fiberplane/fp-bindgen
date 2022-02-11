@@ -11,7 +11,6 @@ pub type Body = serde_bytes::ByteBuf;
 pub type ComplexAlias = ComplexGuestToHost;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
@@ -39,19 +38,16 @@ pub struct ComplexHostToGuest {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GroupImportedType1 {
     pub you_will_see_this: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GroupImportedType2 {
     pub you_will_see_this: bool,
 }
@@ -70,7 +66,7 @@ pub struct HttpRequestOptions {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Point<T> {
     pub value: T,
 }
@@ -93,12 +89,11 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
-    #[serde(rename = "other/misc", rename_all = "camelCase")]
+    #[serde(rename = "other/misc")]
     Other { reason: String },
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
@@ -106,7 +101,6 @@ pub struct Simple {
 
 /// Tagged dynamic value.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde()]
 pub enum Value {
     Integer(i64),
     Float(f64),
