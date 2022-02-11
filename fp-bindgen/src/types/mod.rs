@@ -24,7 +24,7 @@ pub fn create_default_type_map() -> TypeMap {
         //since they are relied on for ferrying errors out of wasm land
         (FPGuestError::ident(), FPGuestError::ty()),
         //The actual T and E of Result doesn't matter here
-        (Result::<i32, i32>::ident(), Result::<i32, i32>::ty())
+        (Result::<i32, i32>::ident(), Result::<i32, i32>::ty()),
     ])
 }
 
