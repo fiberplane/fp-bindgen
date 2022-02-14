@@ -17,5 +17,5 @@ serde_path_to_error = "0.1"
 [features]
 default = []
 async = []
-host = ["wasmer"]
+host = ["wasmer", "thiserror"]
 guest = []
