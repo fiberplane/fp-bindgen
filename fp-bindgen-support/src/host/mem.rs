@@ -2,7 +2,7 @@ use super::{io::to_wasm_ptr, runtime::RuntimeInstanceData};
 use crate::common::mem::FatPtr;
 use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use std::cell::Cell;
+use wasmer::WasmCell;
 
 /// Serialize the given value to MessagePack
 pub fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
@@ -52,7 +52,7 @@ pub fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<
 
     let value: Vec<u8> = {
         let view = ptr.deref(memory, 0, len).unwrap();
-        view.iter().map(Cell::get).collect()
+        view.iter().map(WasmCell::get).collect()
     };
 
     env.free(fat_ptr);
