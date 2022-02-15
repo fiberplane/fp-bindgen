@@ -159,10 +159,10 @@ impl ToTokens for RuntimeImportedFunction<'_> {
         let import_wrapper = match (*is_async, any_complex_args, is_complex_return_type) {
             (false, false, false) => None,
             (true, _, _) => Some(quote! {
-                let result = result.await.map(|ref data| deserialize_from_slice(data));
+                let result = result.await.and_then(|ref data| deserialize_from_slice(data).map_err(Into::into));
             }),
             _ => Some(quote! {
-                let result = result.map(|ref data| deserialize_from_slice(data));
+                let result = result.and_then(|ref data| deserialize_from_slice(data).map_err(Into::into));
             }),
         };
         let raw_import_wrapper = match (*is_async, any_complex_args, is_complex_return_type) {
@@ -175,8 +175,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 let result = ModuleRawFuture::new(env.clone(), result).await;
             }),
             _ => Some(quote! {
-                let result = import_from_guest::<Result<serde_bytes::ByteBuf, FPGuestError>>(&env, result)?;
-                let result = result.into_vec();
+                let result = import_from_guest::<Result<Vec<u8>, FPGuestError>>(&env, result)?;
             }),
         };
 
@@ -310,10 +309,10 @@ pub fn generate_function_bindings(
     let full = rustfmt_wrapper::rustfmt(quote! {
         use super::types::*;
         use fp_bindgen_support::{
-            common::{mem::FatPtr, errors::FPGuestError},
+            common::{mem::FatPtr, errors::FPGuestError, io::{deserialize_from_slice, serialize_to_vec}},
             host::{
                 errors::{InvocationError, RuntimeError},
-                mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw, deserialize_from_slice, serialize_to_vec},
+                mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
                 r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
                 runtime::RuntimeInstanceData,
             },

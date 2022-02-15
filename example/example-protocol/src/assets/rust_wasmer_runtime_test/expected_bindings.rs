@@ -1,12 +1,13 @@
 use super::types::*;
 use fp_bindgen_support::{
-    common::{errors::FPGuestError, mem::FatPtr},
+    common::{
+        errors::FPGuestError,
+        io::{deserialize_from_slice, serialize_to_vec},
+        mem::FatPtr,
+    },
     host::{
         errors::{InvocationError, RuntimeError},
-        mem::{
-            deserialize_from_slice, export_to_guest, export_to_guest_raw, import_from_guest,
-            import_from_guest_raw, serialize_to_vec,
-        },
+        mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw},
         r#async::{create_future_value, future::ModuleRawFuture, resolve_async_value},
         runtime::RuntimeInstanceData,
     },
@@ -41,7 +42,9 @@ impl Runtime {
     pub async fn fetch_data(&self, url: String) -> Result<String, InvocationError> {
         let url = serialize_to_vec(&url);
         let result = self.fetch_data_raw(url);
-        let result = result.await.map(|ref data| deserialize_from_slice(data));
+        let result = result
+            .await
+            .and_then(|ref data| deserialize_from_slice(data).map_err(Into::into));
         result
     }
     pub async fn fetch_data_raw(&self, url: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
@@ -62,7 +65,9 @@ impl Runtime {
 
     pub async fn my_async_exported_function(&self) -> Result<ComplexGuestToHost, InvocationError> {
         let result = self.my_async_exported_function_raw();
-        let result = result.await.map(|ref data| deserialize_from_slice(data));
+        let result = result
+            .await
+            .and_then(|ref data| deserialize_from_slice(data).map_err(Into::into));
         result
     }
     pub async fn my_async_exported_function_raw(&self) -> Result<Vec<u8>, InvocationError> {
@@ -85,7 +90,7 @@ impl Runtime {
     ) -> Result<ComplexAlias, InvocationError> {
         let a = serialize_to_vec(&a);
         let result = self.my_complex_exported_function_raw(a);
-        let result = result.map(|ref data| deserialize_from_slice(data));
+        let result = result.and_then(|ref data| deserialize_from_slice(data).map_err(Into::into));
         result
     }
     pub fn my_complex_exported_function_raw(&self, a: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
@@ -99,8 +104,7 @@ impl Runtime {
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_my_complex_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(a)?;
-        let result = import_from_guest::<Result<serde_bytes::ByteBuf, FPGuestError>>(&env, result)?;
-        let result = result.into_vec();
+        let result = import_from_guest::<Result<Vec<u8>, FPGuestError>>(&env, result)?;
         Ok(result)
     }
 

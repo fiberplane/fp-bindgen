@@ -17,6 +17,9 @@ pub enum InvocationError {
     #[error("guest returned an error: {0}")]
     GuestError(#[from] crate::common::errors::FPGuestError),
 
+    #[error("serde error: {0}")]
+    SerdeError(#[from] serde_path_to_error::Error<rmp_serde::decode::Error>),
+
     #[error(transparent)]
     WasmerRuntimeError(#[from] wasmer::RuntimeError),
 }

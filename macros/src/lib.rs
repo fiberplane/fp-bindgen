@@ -312,9 +312,9 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
         }
         _ => {
             quote! {
-                let ret : Result<serde_bytes::ByteBuf, fp_bindgen_support::FPGuestError> = (move || {
+                let ret : Result<Vec<u8>, fp_bindgen_support::FPGuestError> = (move || {
                     #body
-                    Ok(fp_bindgen_support::guest::io::serialize_to_byte_buf(&ret))
+                    Ok(fp_bindgen_support::common::io::serialize_to_vec(&ret))
                 })();
                 let ret = fp_bindgen_support::guest::io::export_value_to_host(&ret);
             }

@@ -1,31 +1,14 @@
-use crate::common::{errors::FPGuestError, mem::*};
-use rmp_serde::{Deserializer, Serializer};
-use serde::{Deserialize, Serialize};
-use serde_bytes::ByteBuf;
+use crate::common::{
+    errors::FPGuestError,
+    io::{deserialize_from_slice, serialize_to_vec},
+    mem::*,
+};
+use serde::{de::DeserializeOwned, Serialize};
 use std::alloc::Layout;
-
-/// Serialize the given value to MessagePack bytes
-pub fn serialize_to_byte_buf<T: Serialize>(value: &T) -> serde_bytes::ByteBuf {
-    let mut buffer = Vec::new();
-    let mut serializer = Serializer::new(&mut buffer)
-        .with_struct_map()
-        .with_human_readable();
-    value.serialize(&mut serializer).unwrap();
-    buffer.shrink_to_fit();
-
-    ByteBuf::from(buffer)
-}
 
 #[doc(hidden)]
 pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
-    let mut buffer = Vec::new();
-    value
-        .serialize(
-            &mut Serializer::new(&mut buffer)
-                .with_struct_map()
-                .with_human_readable(),
-        )
-        .expect("Serialization error");
+    let mut buffer = serialize_to_vec(value);
 
     let len = buffer.len();
 
@@ -59,7 +42,7 @@ pub fn export_value_to_host<T: Serialize>(value: &T) -> FatPtr {
 /// This function is only safe if passed a valid pointer given to us by the
 /// host. After this call, the pointer is no longer valid.
 #[doc(hidden)]
-pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(
+pub unsafe fn import_value_from_host<T: DeserializeOwned>(
     fat_ptr: FatPtr,
 ) -> Result<T, FPGuestError> {
     let (ptr, len) = from_fat_ptr(fat_ptr);
@@ -68,8 +51,7 @@ pub unsafe fn import_value_from_host<'de, T: Deserialize<'de>>(
     }
 
     let slice = std::slice::from_raw_parts(ptr, len as usize);
-    let value =
-        serde_path_to_error::deserialize(&mut Deserializer::new(slice).with_human_readable())?;
+    let value = deserialize_from_slice(slice)?;
 
     __fp_free(fat_ptr);
 
