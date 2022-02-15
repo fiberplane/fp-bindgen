@@ -175,7 +175,8 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 let result = ModuleRawFuture::new(env.clone(), result).await;
             }),
             _ => Some(quote! {
-                let result = import_from_guest::<Result<Vec<u8>, FPGuestError>>(&env, result)?;
+                let result = import_from_guest::<Result<ByteBuf, FPGuestError>>(&env, result)?;
+                let result = result.to_vec();
             }),
         };
 
@@ -317,6 +318,7 @@ pub fn generate_function_bindings(
                 runtime::RuntimeInstanceData,
             },
         };
+        use serde_bytes::ByteBuf;
         use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
         #newline
         #newline

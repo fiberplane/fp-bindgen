@@ -1,5 +1,6 @@
 use rmp_serde::Serializer;
 use serde::{de::DeserializeOwned, Serialize};
+use serde_bytes::ByteBuf;
 
 /// Serialize the given value to MessagePack
 pub fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
@@ -17,4 +18,8 @@ pub fn deserialize_from_slice<T: DeserializeOwned>(
 ) -> Result<T, serde_path_to_error::Error<rmp_serde::decode::Error>> {
     let mut deserializer = rmp_serde::Deserializer::new(slice).with_human_readable();
     serde_path_to_error::deserialize(&mut deserializer)
+}
+
+pub fn serialize_to_byte_buf<T: Serialize>(value: &T) -> ByteBuf {
+    ByteBuf::from(serialize_to_vec(value))
 }

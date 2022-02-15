@@ -12,6 +12,7 @@ use fp_bindgen_support::{
         runtime::RuntimeInstanceData,
     },
 };
+use serde_bytes::ByteBuf;
 use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
 
 pub struct Runtime {
@@ -104,7 +105,8 @@ impl Runtime {
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_my_complex_exported_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(a)?;
-        let result = import_from_guest::<Result<Vec<u8>, FPGuestError>>(&env, result)?;
+        let result = import_from_guest::<Result<ByteBuf, FPGuestError>>(&env, result)?;
+        let result = result.to_vec();
         Ok(result)
     }
 
