@@ -101,7 +101,7 @@ export async function createRuntime(
         // @ts-ignore
         return result.Err !== undefined;
     }
-  
+
     function parseResultObject<T>(ptr: FatPtr): T {
         const res = parseObject<Result<T, FPGuestError>>(ptr);
         if (isErr(res)) {
@@ -232,7 +232,7 @@ export async function createRuntime(
 
             return (a: ComplexHostToGuest) => {
                 const a_ptr = serializeObject(a);
-                return decode<ComplexAlias>(parseResultObject<ArrayBuffer>(export_fn(a_ptr)));
+                return decode<ComplexAlias>(parseResultObject<ArrayBuffer>(export_fn(a_ptr))) as ComplexAlias;
             };
         })(),
         myPlainExportedFunction: instance.exports.__fp_gen_my_plain_exported_function as any,
