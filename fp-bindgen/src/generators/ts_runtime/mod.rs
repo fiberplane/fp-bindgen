@@ -126,7 +126,7 @@ export async function createRuntime(
         // @ts-ignore
         return result.Err !== undefined;
     }}
-  
+
     function parseResultObject<T>(ptr: FatPtr): T {{
         const res = parseObject<Result<T, FPGuestError>>(ptr);
         if (isErr(res)) {{
@@ -517,7 +517,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                     (false, false, true) => format!("return parseObject<{}>({});", return_type, fn_call),
                     (true, false, _) => format!("return promiseFromPtr({}).then((ptr) => parseObject<{}>(ptr));", fn_call, return_type),
                     (true, _, _) => format!("return promiseFromPtr(parseResultObject<FatPtr>({})).then((ptr) => parseObject<{}>(ptr));", fn_call, return_type),
-                    _ => format!("return decode<{}>(parseResultObject<ArrayBuffer>({}));", return_type, fn_call),
+                    _ => format!("return decode<{}>(parseResultObject<ArrayBuffer>({})) as {0};", return_type, fn_call),
                 };
 
             let return_fn = if export_args.is_empty() {

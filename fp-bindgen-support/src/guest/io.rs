@@ -11,6 +11,7 @@ pub fn serialize_to_byte_buf<T: Serialize>(value: &T) -> serde_bytes::ByteBuf {
         .with_struct_map()
         .with_human_readable();
     value.serialize(&mut serializer).unwrap();
+    buffer.shrink_to_fit();
 
     ByteBuf::from(buffer)
 }
