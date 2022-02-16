@@ -17,6 +17,7 @@ pub struct ComplexGuestToHost {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
+    #[serde(flatten)]
     pub simple: Simple,
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
