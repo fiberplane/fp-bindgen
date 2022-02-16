@@ -160,14 +160,9 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
     let type_defs = types
         .values()
         .filter_map(|ty| match ty {
-            Type::Alias(name, ident) => match types.get(ident) {
-                Some(ty) => Some(format!(
-                    "pub type {} = {};",
-                    name,
-                    format_type_with_ident(ty, ident, types)
-                )),
-                None => panic!("Alias {} references unknown type {}", name, ident),
-            },
+            Type::Alias(name, ty) => {
+                Some(format!("pub type {} = {};", name, format_ident(ty, types)))
+            }
             Type::Enum(ty) => {
                 if ty.options.native_modules.contains_key(module_key) || ty.ident.name == "Result" {
                     None
