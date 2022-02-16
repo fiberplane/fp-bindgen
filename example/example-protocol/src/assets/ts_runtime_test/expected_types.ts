@@ -19,7 +19,6 @@ export type ComplexGuestToHost = {
  * & " , \ ! '
  */
 export type ComplexHostToGuest = {
-    simple: Simple;
     list: Array<number>;
     points: Array<Point<number>>;
     recursive: Array<Point<Point<number>>>;
@@ -32,7 +31,7 @@ export type ComplexHostToGuest = {
      */
     type: string;
     value: Value;
-};
+} & Simple;
 
 export type ExplicitedlyImportedType = {
     you_will_see_this: boolean;

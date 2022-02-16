@@ -31,6 +31,7 @@ pub struct Simple {
 #[derive(Serializable)]
 #[fp(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
+    #[fp(flatten)]
     pub simple: Simple,
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,

@@ -781,15 +781,27 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
 }
 
 fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
+    let (flattened_fields, fields): (Vec<_>, Vec<_>) =
+        ty.fields.iter().partition(|field| field.attrs.flatten);
+
     format!(
-        "{}export type {} = {{\n{}}};",
+        "{}export type {} = {{\n{}}}{};",
         join_lines(&format_docs(&ty.doc_lines), String::to_owned),
         ty.ident,
         join_lines(
-            &format_struct_fields(&ty.fields, types, ty.options.field_casing),
+            &format_struct_fields(
+                &fields.into_iter().cloned().collect::<Vec<_>>(),
+                types,
+                ty.options.field_casing
+            ),
             |line| format!("    {}", line)
         )
-        .trim_start_matches('\n')
+        .trim_start_matches('\n'),
+        flattened_fields
+            .iter()
+            .map(|field| format!(" & {}", field.ty))
+            .collect::<Vec<_>>()
+            .join("")
     )
 }
 
