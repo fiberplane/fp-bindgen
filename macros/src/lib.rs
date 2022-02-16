@@ -33,13 +33,15 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     } = parse_statements(token_stream);
     let type_paths = type_paths.iter();
     let alias_keys = aliases.keys();
-    let alias_paths = aliases.values();
+    let alias_paths = aliases
+        .values()
+        .map(|path| path.to_token_stream().to_string());
 
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
             let mut import_types = fp_bindgen::prelude::TypeMap::new();
             #( #type_paths::collect_types(&mut import_types); )*
-            #( import_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), #alias_paths::ident())); )*
+            #( import_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), std::str::FromStr::from_str(#alias_paths).unwrap())); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions); )*
@@ -60,13 +62,15 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     } = parse_statements(token_stream);
     let type_paths = type_paths.iter();
     let alias_keys = aliases.keys();
-    let alias_paths = aliases.values();
+    let alias_paths = aliases
+        .values()
+        .map(|path| path.to_token_stream().to_string());
 
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
             let mut export_types = fp_bindgen::prelude::TypeMap::new();
             #( #type_paths::collect_types(&mut export_types); )*
-            #( export_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), #alias_paths::ident())); )*
+            #( export_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), std::str::FromStr::from_str(#alias_paths).unwrap())); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
             #( list.add_function(#functions); )*

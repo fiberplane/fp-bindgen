@@ -7,6 +7,8 @@ use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
 
+pub type FloatingPoint = Point<f64>;
+
 #[derive(Serializable)]
 pub struct DeadCode {
     pub you_wont_see_this: bool,
@@ -34,7 +36,7 @@ pub struct ComplexHostToGuest {
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
-    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
+    pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
     pub timestamp: OffsetDateTime,
     #[fp(rename = "optional_timestamp")]
     pub renamed: Option<OffsetDateTime>,
@@ -155,6 +157,7 @@ fp_import! {
     // Aliases need to be explicitly mentioned in either `fp_import!` or `fp_export!`:
     type Body = ByteBuf;
     type ComplexAlias = ComplexGuestToHost;
+    type FloatingPoint = Point<f64>;
 
     /// Logs a message to the (development) console.
     fn log(message: String);

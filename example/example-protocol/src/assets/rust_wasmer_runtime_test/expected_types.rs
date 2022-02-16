@@ -27,7 +27,7 @@ pub struct ComplexHostToGuest {
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
+    pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
     pub timestamp: time::OffsetDateTime,
     #[serde(default, rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
     pub renamed: Option<time::OffsetDateTime>,
@@ -41,6 +41,8 @@ pub struct ComplexHostToGuest {
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,
 }
+
+pub type FloatingPoint = Point<f64>;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct GroupImportedType1 {

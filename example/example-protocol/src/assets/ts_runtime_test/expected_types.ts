@@ -22,7 +22,7 @@ export type ComplexHostToGuest = {
     list: Array<number>;
     points: Array<Point<number>>;
     recursive: Array<Point<Point<number>>>;
-    complexNested?: Record<string, Array<Point<number>>>;
+    complexNested?: Record<string, Array<FloatingPoint>>;
     timestamp: string;
     optional_timestamp?: string;
 
@@ -36,6 +36,8 @@ export type ComplexHostToGuest = {
 export type ExplicitedlyImportedType = {
     you_will_see_this: boolean;
 };
+
+export type FloatingPoint = Point<number>;
 
 export type GroupImportedType1 = {
     you_will_see_this: boolean;
