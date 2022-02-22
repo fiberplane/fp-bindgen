@@ -1,27 +1,29 @@
 use super::Serializable;
-use crate::types::{CustomType, Type};
+use crate::types::{CargoDependency, CustomType, Type, TypeIdent};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[cfg(feature = "rmpv-compat")]
 impl Serializable for rmpv::Value {
-    fn name() -> String {
-        "Value".to_owned()
+    fn ident() -> TypeIdent {
+        TypeIdent::from("Value")
     }
 
     fn ty() -> Type {
         Type::Custom(CustomType {
-            name: "Value".to_owned(),
-            type_args: vec![],
+            ident: Self::ident(),
             rs_ty: "rmpv::Value".to_owned(),
             rs_dependencies: BTreeMap::from([(
-                "rmpv".to_owned(),
-                r#"{ version = "1.0.0", features = ["with-serde"] }"#.to_owned(),
+                "rmpv",
+                CargoDependency {
+                    version: Some("1.0.0"),
+                    features: BTreeSet::from(["with-serde"]),
+                    git: None,
+                    branch: None,
+                    path: None,
+                },
             )]),
+            serde_attrs: Vec::new(),
             ts_ty: "string".to_owned(),
+            ts_declaration: None,
         })
-    }
-
-    fn build_dependencies() -> BTreeSet<Type> {
-        BTreeSet::new()
     }
 }
