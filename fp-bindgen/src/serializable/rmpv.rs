@@ -1,4 +1,6 @@
 use super::Serializable;
+use crate::types::{CustomType, Type};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[cfg(feature = "rmpv-compat")]
 impl Serializable for rmpv::Value {
