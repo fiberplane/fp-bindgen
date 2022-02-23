@@ -5,8 +5,9 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [features]
-default = ["http-compat", "time-compat", "serde-bytes-compat"]
+default = ["http-compat", "rmpv-compat", "time-compat", "serde-bytes-compat"]
 http-compat = ["http"]
+rmpv-compat = ["rmpv"]
 serde-bytes-compat = ["serde_bytes"]
 time-compat = ["time"]
 generators = ["rustfmt-wrapper"]
@@ -18,6 +19,7 @@ Inflector = "0.11"
 pretty_assertions = "1"
 proc-macro2 = "1"
 quote = "1"
+rmpv = { version = "1.0.0", features = ["with-serde"], optional = true }
 serde_bytes = { version = "0.11", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", features = ["serde-human-readable"], optional = true }
