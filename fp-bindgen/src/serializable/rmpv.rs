@@ -14,7 +14,7 @@ impl Serializable for rmpv::Value {
             rs_dependencies: BTreeMap::from([(
                 "rmpv",
                 CargoDependency {
-                    version: Some("1.0.0"),
+                    version: Some("1.0"),
                     features: BTreeSet::from(["with-serde"]),
                     git: None,
                     branch: None,
