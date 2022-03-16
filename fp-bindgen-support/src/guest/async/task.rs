@@ -10,7 +10,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, RawWaker, RawWakerVTable, Waker};
 
-use crate::common::mem::{to_fat_ptr, FatPtr};
+use crate::common::mem::FatPtr;
 use crate::common::r#async::AsyncValue;
 use crate::guest::io::export_value_to_host;
 
@@ -46,15 +46,11 @@ impl Task {
         Task::wake_by_ref(&this);
     }
 
-    pub fn alloc_and_spawn<FUT, RET>(future: FUT) -> FatPtr
+    pub fn alloc_and_spawn<RET>(future: Pin<Box<dyn Future<Output = RET> + 'static>>) -> FatPtr
     where
-        FUT: Future<Output = RET> + 'static,
-        RET: Serialize,
+        RET: Serialize + 'static,
     {
-        let layout = std::alloc::Layout::new::<AsyncValue>();
-        let len = layout.size() as u32;
-        let ptr = unsafe { std::alloc::alloc_zeroed(layout) };
-        let fat_ptr = to_fat_ptr(ptr, len);
+        let fat_ptr = AsyncValue::alloc();
 
         Task::spawn(Box::pin(async move {
             let ret = future.await;

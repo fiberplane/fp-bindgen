@@ -21,6 +21,13 @@ impl AsyncValue {
         }
     }
 
+    pub fn alloc() -> FatPtr {
+        let layout = std::alloc::Layout::new::<AsyncValue>();
+        let len = layout.size() as u32;
+        let ptr = unsafe { std::alloc::alloc_zeroed(layout) };
+        to_fat_ptr(ptr, len)
+    }
+
     pub fn buffer_ptr(&self) -> FatPtr {
         to_fat_ptr(self.ptr as *const u8, self.len)
     }

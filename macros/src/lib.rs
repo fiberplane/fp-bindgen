@@ -278,7 +278,7 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
 
     let func_wrapper = if func.sig.asyncness.is_some() {
         quote! {
-            let ret = fp_bindgen_support::guest::r#async::task::Task::alloc_and_spawn(#func_call);
+            let ret = fp_bindgen_support::guest::r#async::task::Task::alloc_and_spawn(Box::pin(#func_call));
         }
     } else {
         // Check the output type and replace complex ones with FatPtr
