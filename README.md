@@ -243,9 +243,9 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Known Limitations
 
- - Data types may only contain value types. References are currently unsupported.
- - Referencing types using their full module path is prone to cause mismatches during type
-   discovery. Please import types using a `use` statement and refer to them by their name only.
+- Data types may only contain value types. References are currently unsupported.
+- Referencing types using their full module path is prone to cause mismatches during type
+  discovery. Please import types using a `use` statement and refer to them by their name only.
 
 ## FAQ
 
@@ -303,6 +303,11 @@ As for what constitutes a breaking change, we offer the following guidelines:
 Note that, because of the above guidelines, you should never need to define a versioning function in
 your first iteration. Because plugin exports are optional, the absense of a versioning function can
 simply be interpreted as meaning the plugin is at version 1.
+
+## Contributing
+
+Please following our [Contributing Guidelines](CONTRIBUTING.md) to learn how best to contribute to
+this project.
 
 ## License
 
