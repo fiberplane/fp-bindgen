@@ -61,7 +61,8 @@ Please follow the [Rust Coding Conventions](https://rustc-dev-guide.rust-lang.or
 
 We run `cargo fmt -- --check` to verify pull requests confirm to the expected
 style and you can use this command locally to verify your changes before
-pushing.
+pushing. In addition, we use `cargo clippy` to detect common issues with the
+code itself.
 
 ## References
 
