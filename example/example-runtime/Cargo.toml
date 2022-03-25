@@ -21,13 +21,13 @@ rmp-serde = "1.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_bytes = "0.11"
 time = { version = "0.3", features = ["serde"] }
-wasmer = { version = "2.0", default-features = false }
-wasmer-engine-universal = { version = "2.0", features = ["compiler"] }
+wasmer = { version = "2.1", default-features = false }
+wasmer-engine-universal = { version = "2.1", features = ["compiler"] }
 tokio = { version = "1.9.0", features = ["rt"] }
 
 
 [target.'cfg(any(target_arch = "arm", target_arch = "aarch64"))'.dependencies]
-wasmer-compiler-cranelift = { version = "2.0" }
+wasmer-compiler-cranelift = { version = "2.1" }
 
 [target.'cfg(not(any(target_arch = "arm", target_arch = "aarch64")))'.dependencies]
-wasmer-compiler-singlepass = { version = "2.0" }
+wasmer-compiler-singlepass = { version = "2.1" }

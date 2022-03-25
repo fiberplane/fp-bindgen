@@ -1,7 +1,11 @@
 use crate::primitives::Primitive;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use std::{convert::TryFrom, fmt::Display, str::FromStr};
+use std::{
+    convert::{Infallible, TryFrom},
+    fmt::Display,
+    str::FromStr,
+};
 use syn::{PathArguments, TypePath};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -37,6 +41,28 @@ impl Display for TypeIdent {
 impl From<&str> for TypeIdent {
     fn from(name: &str) -> Self {
         Self::from(name.to_owned())
+    }
+}
+
+impl FromStr for TypeIdent {
+    type Err = Infallible;
+
+    fn from_str(string: &str) -> Result<Self, Self::Err> {
+        if let Some(start_index) = string.find('<') {
+            let end_index = string.rfind('>').unwrap_or_else(|| string.len());
+            Ok(Self {
+                name: string[0..start_index]
+                    .trim_end_matches(|c: char| c.is_whitespace() || c == ':')
+                    .to_owned(),
+                generic_args: string[start_index + 1..end_index]
+                    .split(',')
+                    .into_iter()
+                    .map(|arg| Self::from_str(arg.trim()))
+                    .collect::<Result<Vec<Self>, Self::Err>>()?,
+            })
+        } else {
+            Ok(Self::from(string))
+        }
     }
 }
 

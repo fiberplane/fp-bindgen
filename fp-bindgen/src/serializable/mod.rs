@@ -9,6 +9,8 @@ use std::{
 
 #[cfg(feature = "http-compat")]
 mod http;
+#[cfg(feature = "rmpv-compat")]
+mod rmpv;
 #[cfg(feature = "serde-bytes-compat")]
 mod serde_bytes;
 #[cfg(feature = "time-compat")]

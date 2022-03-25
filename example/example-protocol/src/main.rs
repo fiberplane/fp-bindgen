@@ -7,12 +7,15 @@ use time::OffsetDateTime;
 
 pub type Body = ByteBuf;
 
+pub type FloatingPoint = Point<f64>;
+
 #[derive(Serializable)]
 pub struct DeadCode {
     pub you_wont_see_this: bool,
 }
 
 #[derive(Serializable)]
+#[fp(rename_all = "PascalCase")]
 pub struct Point<T> {
     pub value: T,
 }
@@ -26,12 +29,14 @@ pub struct Simple {
 /// Multi-line doc comment with complex characters
 /// & " , \ ! '
 #[derive(Serializable)]
+#[fp(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
+    #[fp(flatten)]
     pub simple: Simple,
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
-    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
+    pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
     pub timestamp: OffsetDateTime,
     #[fp(rename = "optional_timestamp")]
     pub renamed: Option<OffsetDateTime>,
@@ -73,6 +78,7 @@ pub struct RequestOptions {
 
 /// Similar to the `RequestOptions` struct, but using types from the `http` crate.
 #[derive(Clone, Debug, Serializable)]
+#[fp(rename_all = "camelCase")]
 pub struct HttpRequestOptions {
     pub url: Uri,
     pub method: Method,
@@ -101,6 +107,7 @@ pub enum RequestError {
     NoRoute,
     ConnectionRefused,
     Timeout,
+    #[fp(rename_all = "snake_case")]
     ServerError {
         /// HTTP status code.
         status_code: u16,
@@ -150,6 +157,7 @@ fp_import! {
     // Aliases need to be explicitly mentioned in either `fp_import!` or `fp_export!`:
     type Body = ByteBuf;
     type ComplexAlias = ComplexGuestToHost;
+    type FloatingPoint = Point<f64>;
 
     /// Logs a message to the (development) console.
     fn log(message: String);

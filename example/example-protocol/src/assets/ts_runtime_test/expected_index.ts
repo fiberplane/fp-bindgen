@@ -12,6 +12,7 @@ import type {
     ComplexGuestToHost,
     ComplexHostToGuest,
     ExplicitedlyImportedType,
+    FloatingPoint,
     GroupImportedType1,
     GroupImportedType2,
     HttpRequestOptions,

@@ -1,4 +1,5 @@
 use crate::{
+    casing::Casing,
     functions::{Function, FunctionList},
     prelude::Primitive,
     types::{CustomType, Enum, EnumOptions, Field, Struct, Type, TypeIdent, TypeMap, Variant},
@@ -668,15 +669,24 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                         format!("| \"{}\"", variant_name)
                     }
                 }
-                Type::Struct(variant) => {
+                Type::Struct(struct_variant) => {
                     if ty.options.untagged {
                         format!(
                             "| {{ {} }}",
-                            format_struct_fields(&variant.fields, types).join(" ")
+                            format_struct_fields(
+                                &struct_variant.fields,
+                                types,
+                                variant.attrs.field_casing
+                            )
+                            .join(" ")
                         )
                     } else {
-                        let field_lines = format_struct_fields(&variant.fields, types);
-                        let formatted_fields = if field_lines.len() > variant.fields.len() {
+                        let field_lines = format_struct_fields(
+                            &struct_variant.fields,
+                            types,
+                            variant.attrs.field_casing,
+                        );
+                        let formatted_fields = if field_lines.len() > struct_variant.fields.len() {
                             format!(
                                 "\n{}",
                                 join_lines(&field_lines, |line| format!("    {}", line))
@@ -771,15 +781,27 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
 }
 
 fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
+    let (flattened_fields, fields): (Vec<_>, Vec<_>) =
+        ty.fields.iter().partition(|field| field.attrs.flatten);
+
     format!(
-        "{}export type {} = {{\n{}}};",
+        "{}export type {} = {{\n{}}}{};",
         join_lines(&format_docs(&ty.doc_lines), String::to_owned),
         ty.ident,
-        join_lines(&format_struct_fields(&ty.fields, types), |line| format!(
-            "    {}",
-            line
-        ))
-        .trim_start_matches('\n')
+        join_lines(
+            &format_struct_fields(
+                &fields.into_iter().cloned().collect::<Vec<_>>(),
+                types,
+                ty.options.field_casing
+            ),
+            |line| format!("    {}", line)
+        )
+        .trim_start_matches('\n'),
+        flattened_fields
+            .iter()
+            .map(|field| format!(" & {}", field.ty))
+            .collect::<Vec<_>>()
+            .join("")
     )
 }
 
@@ -799,7 +821,7 @@ fn format_docs(doc_lines: &[String]) -> Vec<String> {
     }
 }
 
-fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
+fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Vec<String> {
     fields
         .iter()
         .flat_map(|field| {
@@ -813,14 +835,14 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
                         .expect("Identifier was expected to contain a generic argument");
                     format!(
                         "{}{}: {};",
-                        get_field_name(field),
+                        get_field_name(field, casing),
                         optional,
                         format_ident(arg, types)
                     )
                 }
                 _ => format!(
                     "{}: {};",
-                    get_field_name(field),
+                    get_field_name(field, casing),
                     format_ident(&field.ty, types)
                 ),
             };
@@ -933,13 +955,15 @@ fn format_primitive(primitive: Primitive) -> &'static str {
     }
 }
 
-fn get_field_name(field: &Field) -> String {
+fn get_field_name(field: &Field, casing: Casing) -> String {
     if let Some(rename) = field.attrs.rename.as_ref() {
         rename.to_owned()
-    } else if field.name.starts_with("r#") {
-        field.name[2..].to_camel_case()
     } else {
-        field.name.to_camel_case()
+        casing.format_string(if field.name.starts_with("r#") {
+            &field.name[2..]
+        } else {
+            &field.name
+        })
     }
 }
 

@@ -62,10 +62,9 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                             .to_string();
                         if has_inline_tag && options.tag_prop_name.as_ref() == Some(&name) {
                             panic!(
-                                "Enum {} has a variant that cannot be serialized, \
-                                    because one of its fields has the same name as \
-                                    the enum's `tag` attribute",
-                                ident
+                                "Enum {} cannot be serialized, because the variant `{}` has a \
+                                    field with the same name as the enum's `tag` attribute",
+                                ident, variant.ident
                             );
                         }
 
@@ -91,10 +90,12 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                     .map(|field| {
                         if has_inline_tag && is_path_to_primitive(&field.ty) {
                             panic!(
-                                "Enum {} has a variant that cannot be serialized, \
-                                    because its field is an unnamed primitive and \
-                                    the enum has no `content` attribute",
-                                ident
+                                "Enum {} cannot be serialized, because the variant `{}` has a \
+                                    primitive unnamed field ({}) and the enum has no `content` \
+                                    attribute",
+                                ident,
+                                variant.ident,
+                                field.ty.to_token_stream()
                             );
                         }
 
@@ -105,10 +106,9 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
 
                 if has_inline_tag && item_types.len() > 1 {
                     panic!(
-                        "Enum {} has a variant that cannot be serialized, \
-                            because it contains multiple unnamed fields and \
-                            the enum has no `content` attribute",
-                        ident
+                        "Enum {} cannot be serialized, because the variant `{}` contains multiple \
+                            unnamed fields and the enum has no `content` attribute",
+                        ident, variant.ident,
                     );
                 }
 
@@ -202,17 +202,15 @@ impl EnumOptions {
         let mut serde_attrs = vec![];
         if self.untagged {
             serde_attrs.push("untagged".to_owned());
-        } else {
-            if let Some(prop_name) = &self.tag_prop_name {
-                serde_attrs.push(format!("tag = \"{}\"", prop_name));
+        } else if let Some(prop_name) = &self.tag_prop_name {
+            serde_attrs.push(format!("tag = \"{}\"", prop_name));
 
-                if let Some(prop_name) = &self.content_prop_name {
-                    serde_attrs.push(format!("content = \"{}\"", prop_name));
-                }
+            if let Some(prop_name) = &self.content_prop_name {
+                serde_attrs.push(format!("content = \"{}\"", prop_name));
             }
-            if let Some(casing) = &self.variant_casing.as_maybe_str() {
-                serde_attrs.push(format!("rename_all = \"{}\"", casing));
-            }
+        }
+        if let Some(casing) = &self.variant_casing.as_maybe_str() {
+            serde_attrs.push(format!("rename_all = \"{}\"", casing));
         }
         serde_attrs
     }
@@ -278,6 +276,8 @@ pub struct Variant {
 
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct VariantAttrs {
+    pub field_casing: Casing,
+
     /// Optional name to use in the serialized format
     /// (only used if different than the variant name itself).
     ///
@@ -300,6 +300,9 @@ impl VariantAttrs {
     }
 
     fn merge_with(&mut self, other: &Self) {
+        if other.field_casing != Casing::default() {
+            self.field_casing = other.field_casing;
+        }
         if other.rename.is_some() {
             self.rename = other.rename.clone();
         }
@@ -309,6 +312,9 @@ impl VariantAttrs {
         let mut serde_attrs = vec![];
         if let Some(rename) = self.rename.as_ref() {
             serde_attrs.push(format!("rename = \"{}\"", rename));
+        }
+        if let Some(casing) = &self.field_casing.as_maybe_str() {
+            serde_attrs.push(format!("rename_all = \"{}\"", casing));
         }
         serde_attrs
     }
@@ -334,6 +340,10 @@ impl Parse for VariantAttrs {
             let key: Ident = content.call(IdentExt::parse_any)?;
             match key.to_string().as_ref() {
                 "rename" => result.rename = Some(parse_value()?),
+                "rename_all" => {
+                    result.field_casing = Casing::try_from(parse_value()?.as_ref())
+                        .map_err(|err| Error::new(content.span(), err))?
+                }
                 other => {
                     return Err(Error::new(
                         content.span(),
@@ -360,7 +370,8 @@ fn is_path_to_primitive(ty: &syn::Type) -> bool {
             if qself.is_none()
                 && path
                     .get_ident()
-                    .map(|ident| Primitive::from_str(&ident.to_string()).is_ok())
+                    .map(ToString::to_string)
+                    .map(|ident| ident == "String" || Primitive::from_str(&ident).is_ok())
                     .unwrap_or(false)
     )
 }

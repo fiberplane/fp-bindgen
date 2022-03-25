@@ -88,9 +88,6 @@ impl StructOptions {
                 );
             }
         }
-        if opts.native_modules.is_empty() && opts.field_casing == Casing::default() {
-            opts.field_casing = Casing::CamelCase;
-        }
         opts
     }
 
@@ -183,6 +180,11 @@ pub struct FieldAttrs {
     /// See: https://serde.rs/field-attrs.html#deserialize_with
     pub deserialize_with: Option<String>,
 
+    /// Determines whether the field should be flattened into the parent struct.
+    ///
+    /// See: https://serde.rs/attr-flatten.html
+    pub flatten: bool,
+
     /// Optional name to use in the serialized format
     /// (only used if different than the field name itself).
     ///
@@ -225,6 +227,9 @@ impl FieldAttrs {
         if other.deserialize_with.is_some() {
             self.deserialize_with = other.deserialize_with.clone();
         }
+        if other.flatten {
+            self.flatten = other.flatten;
+        }
         if other.rename.is_some() {
             self.rename = other.rename.clone();
         }
@@ -262,6 +267,9 @@ impl FieldAttrs {
                 serde_attrs.push(format!("serialize_with = \"{}\"", serialize_with));
             }
             (None, None) => {}
+        }
+        if self.flatten {
+            serde_attrs.push("flatten".to_owned());
         }
         if let Some(rename) = self.rename.as_ref() {
             serde_attrs.push(format!("rename = \"{}\"", rename));
@@ -302,6 +310,7 @@ impl Parse for FieldAttrs {
             match key.to_string().as_ref() {
                 "default" => result.default = Some(parse_optional_value()?),
                 "deserialize_with" => result.deserialize_with = Some(parse_value()?),
+                "flatten" => result.flatten = true,
                 "rename" => result.rename = Some(parse_value()?),
                 "serialize_with" => result.serialize_with = Some(parse_value()?),
                 "skip_serializing_if" => result.skip_serializing_if = Some(parse_value()?),

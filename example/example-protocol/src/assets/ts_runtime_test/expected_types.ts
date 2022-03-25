@@ -19,11 +19,10 @@ export type ComplexGuestToHost = {
  * & " , \ ! '
  */
 export type ComplexHostToGuest = {
-    simple: Simple;
     list: Array<number>;
     points: Array<Point<number>>;
     recursive: Array<Point<Point<number>>>;
-    complexNested?: Record<string, Array<Point<number>>>;
+    complexNested?: Record<string, Array<FloatingPoint>>;
     timestamp: string;
     optional_timestamp?: string;
 
@@ -32,18 +31,20 @@ export type ComplexHostToGuest = {
      */
     type: string;
     value: Value;
-};
+} & Simple;
 
 export type ExplicitedlyImportedType = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
+export type FloatingPoint = Point<number>;
+
 export type GroupImportedType1 = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
 export type GroupImportedType2 = {
-    youWillSeeThis: boolean;
+    you_will_see_this: boolean;
 };
 
 /**
@@ -68,7 +69,7 @@ export type Method =
     | "TRACE";
 
 export type Point<T> = {
-    value: T;
+    Value: T;
 };
 
 /**
@@ -88,7 +89,7 @@ export type RequestError =
         /**
          * HTTP status code.
          */
-        statusCode: number;
+        status_code: number;
 
         /**
          * Response body.

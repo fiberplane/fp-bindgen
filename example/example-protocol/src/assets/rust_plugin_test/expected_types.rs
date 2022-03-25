@@ -6,7 +6,6 @@ pub type Body = serde_bytes::ByteBuf;
 pub type ComplexAlias = ComplexGuestToHost;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ComplexGuestToHost {
     pub simple: Simple,
     pub map: BTreeMap<String, Simple>,
@@ -18,12 +17,13 @@ pub struct ComplexGuestToHost {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ComplexHostToGuest {
+    #[serde(flatten)]
     pub simple: Simple,
     pub list: Vec<f64>,
     pub points: Vec<Point<f64>>,
     pub recursive: Vec<Point<Point<f64>>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub complex_nested: Option<BTreeMap<String, Vec<Point<f64>>>>,
+    pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
     pub timestamp: time::OffsetDateTime,
     #[serde(default, rename = "optional_timestamp", skip_serializing_if = "Option::is_none")]
     pub renamed: Option<time::OffsetDateTime>,
@@ -34,19 +34,18 @@ pub struct ComplexHostToGuest {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,
 }
 
+pub type FloatingPoint = Point<f64>;
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GroupImportedType1 {
     pub you_will_see_this: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GroupImportedType2 {
     pub you_will_see_this: bool,
 }
@@ -65,7 +64,7 @@ pub struct HttpRequestOptions {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Point<T> {
     pub value: T,
 }
@@ -79,7 +78,7 @@ pub enum RequestError {
     NoRoute,
     ConnectionRefused,
     Timeout,
-    #[serde(rename_all = "camelCase")]
+    #[serde(rename_all = "snake_case")]
     ServerError {
         /// HTTP status code.
         status_code: u16,
@@ -88,7 +87,7 @@ pub enum RequestError {
         response: Body,
     },
     /// Misc.
-    #[serde(rename = "other/misc", rename_all = "camelCase")]
+    #[serde(rename = "other/misc")]
     Other { reason: String },
 }
 
@@ -124,7 +123,6 @@ pub struct Response {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Simple {
     pub foo: i32,
     pub bar: String,
@@ -132,7 +130,6 @@ pub struct Simple {
 
 /// Tagged dynamic value.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde()]
 pub enum Value {
     Integer(i64),
     Float(f64),
