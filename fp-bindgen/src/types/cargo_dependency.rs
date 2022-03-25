@@ -95,5 +95,5 @@ impl fmt::Display for CargoDependency {
 }
 
 fn quote_value(val: &str) -> String {
-    format!("\"{}\"", val.replace("\\", "\\\\").replace("\"", "\\\""))
+    format!("\"{}\"", val.replace('\\', "\\\\").replace('\"', "\\\""))
 }
