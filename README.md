@@ -304,9 +304,15 @@ Note that, because of the above guidelines, you should never need to define a ve
 your first iteration. Because plugin exports are optional, the absense of a versioning function can
 simply be interpreted as meaning the plugin is at version 1.
 
+## Community
+
+Do you want help using `fp-bindgen`? Want to discuss new features?
+
+Please come visit us in the `#fp-bindgen` channel on our [Discord](https://discord.gg/59ZANEFm).
+
 ## Contributing
 
-Please following our [Contributing Guidelines](CONTRIBUTING.md) to learn how best to contribute to
+Please follow our [Contributing Guidelines](CONTRIBUTING.md) to learn how best to contribute to
 this project.
 
 ## License
