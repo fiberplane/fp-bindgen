@@ -2,6 +2,8 @@
 
 Bindings generator for full-stack WASM plugins.
 
+![Latest Version](https://crates.io/crates/fp-bindgen) ![Discord Shield](https://discordapp.com/api/guilds/950489382626951178/widget.png?style=shield)
+
 ## Comparison to other "bindgen" tools
 
 `fp-bindgen` is not the only tool for generating Wasm bindings. The most well-known tool for this
