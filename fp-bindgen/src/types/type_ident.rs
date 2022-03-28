@@ -49,7 +49,7 @@ impl FromStr for TypeIdent {
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         if let Some(start_index) = string.find('<') {
-            let end_index = string.rfind('>').unwrap_or_else(|| string.len());
+            let end_index = string.rfind('>').unwrap_or(string.len());
             Ok(Self {
                 name: string[0..start_index]
                     .trim_end_matches(|c: char| c.is_whitespace() || c == ':')
@@ -133,7 +133,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                         ),
                         _ => None,
                     })
-                    .unwrap_or_else(Vec::new),
+                    .unwrap_or_default(),
             }),
             ty => Err(format!("Unsupported type: {:?}", ty)),
         }
