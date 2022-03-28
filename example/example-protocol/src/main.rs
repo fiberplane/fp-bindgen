@@ -204,9 +204,7 @@ fn main() {
                 CargoDependency {
                     path: Some("../../../../fp-bindgen-support"),
                     features: BTreeSet::from(["async", "guest"]),
-                    git: None,
-                    branch: None,
-                    version: None,
+                    ..CargoDependency::default()
                 },
             )]),
         }),
