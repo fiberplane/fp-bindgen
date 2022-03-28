@@ -62,7 +62,7 @@ fn generate_cargo_file(
                 git: Some("ssh://git@github.com/fiberplane/fp-bindgen.git"),
                 branch: Some("main"),
                 path: None,
-                version: Some("1.0.0-rc.1"),
+                version: Some(env!("CARGO_PKG_VERSION")),
                 features: support_features,
             },
         ),
