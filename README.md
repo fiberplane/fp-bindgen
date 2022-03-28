@@ -1,5 +1,8 @@
 # fp-bindgen
 
+[![Crates.io](https://img.shields.io/crates/v/fp-bindgen.svg)](https://crates.io/crates/fp-bindgen)
+[![Discord Shield](https://discordapp.com/api/guilds/950489382626951178/widget.png?style=shield)](https://discord.gg/59ZANEFm)
+
 Bindings generator for full-stack WASM plugins.
 
 ## Comparison to other "bindgen" tools

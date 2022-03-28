@@ -1,8 +1,13 @@
 [package]
 name = "fp-bindgen-macros"
-version = "0.1.0"
+description = "Macros for fp-bindgen"
+homepage = "https://github.com/fiberplane/fp-bindgen/"
+repository = "https://github.com/fiberplane/fp-bindgen/"
+readme = "README.md"
+version = "1.0.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
+license = "Apache-2.0"
 
 [lib]
 proc-macro = true

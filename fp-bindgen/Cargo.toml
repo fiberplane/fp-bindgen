@@ -1,8 +1,15 @@
 [package]
 name = "fp-bindgen"
-version = "0.1.0"
+description = "Bindings generator for full-stack WASM plugins"
+homepage = "https://github.com/fiberplane/fp-bindgen/"
+repository = "https://github.com/fiberplane/fp-bindgen/"
+readme = "README.md"
+keywords = ["WebAssembly", "WASM", "bindgen"]
+categories = ["development-tools::ffi", "wasm"]
+version = "1.0.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
+license = "Apache-2.0"
 
 [features]
 default = ["http-compat", "rmpv-compat", "time-compat", "serde-bytes-compat"]
@@ -13,7 +20,7 @@ time-compat = ["time"]
 generators = ["rustfmt-wrapper"]
 
 [dependencies]
-fp-bindgen-macros = { path = "../macros" }
+fp-bindgen-macros = { version = "1.0.0", path = "../macros" }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
 pretty_assertions = "1"

@@ -59,15 +59,13 @@ fn generate_cargo_file(
         (
             "fp-bindgen-support",
             CargoDependency {
-                git: Some("ssh://git@github.com/fiberplane/fp-bindgen.git"),
-                branch: Some("main"),
-                path: None,
-                version: None,
+                version: Some(env!("CARGO_PKG_VERSION")),
                 features: support_features,
+                ..CargoDependency::default()
             },
         ),
-        ("once_cell", CargoDependency::with_version("1")),
-        ("rmp-serde", CargoDependency::with_version("1.0.0")),
+        ("once_cell", CargoDependency::with_version("1.4")),
+        ("rmp-serde", CargoDependency::with_version("1.0")),
         (
             "serde",
             CargoDependency::with_version_and_features("1.0", BTreeSet::from(["derive"])),
