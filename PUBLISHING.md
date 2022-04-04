@@ -3,7 +3,7 @@
 If you need to publish a new version of `fp-bindgen`, please follow the next
 steps:
 
-0. Make sure you are logged in with your `Crates.io` on the Cargo command line:
+0. Make sure you are logged in with your `Crates.io` account to the Cargo CLI:
    https://doc.rust-lang.org/cargo/reference/publishing.html#before-your-first-publish
 1. Update all references to the version number in the project. At the time of
    writing, these are the files containing the version number:
