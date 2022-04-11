@@ -37,6 +37,9 @@ pub struct ComplexHostToGuest {
     pub value: Value,
 }
 
+/// This struct is also not referenced by any function or data structure, but
+/// it will show up because there is an explicit `use` statement for it in the
+/// `fp_import!` macro.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct ExplicitedlyImportedType {
     pub you_will_see_this: bool,

@@ -1,192 +1,160 @@
+#![allow(dead_code)]
+
 use fp_bindgen::{prelude::*, types::CargoDependency};
-use http::{Method, Uri};
-use serde::{Deserialize, Serialize};
-use serde_bytes::ByteBuf;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
-pub type Body = ByteBuf;
-
-pub type FloatingPoint = Point<f64>;
-
-#[derive(Serializable)]
-pub struct DeadCode {
-    pub you_wont_see_this: bool,
-}
-
-#[derive(Serializable)]
-#[fp(rename_all = "PascalCase")]
-pub struct Point<T> {
-    pub value: T,
-}
-
-#[derive(Serializable)]
-pub struct Simple {
-    pub foo: i32,
-    pub bar: String,
-}
-
-/// Multi-line doc comment with complex characters
-/// & " , \ ! '
-#[derive(Serializable)]
-#[fp(rename_all = "camelCase")]
-pub struct ComplexHostToGuest {
-    #[fp(flatten)]
-    pub simple: Simple,
-    pub list: Vec<f64>,
-    pub points: Vec<Point<f64>>,
-    pub recursive: Vec<Point<Point<f64>>>,
-    pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
-    pub timestamp: OffsetDateTime,
-    #[fp(rename = "optional_timestamp")]
-    pub renamed: Option<OffsetDateTime>,
-    /// Raw identifiers are supported too.
-    pub r#type: String,
-    pub value: Value,
-}
-
-pub type ComplexAlias = ComplexGuestToHost;
-
-#[derive(Serializable)]
-pub struct ComplexGuestToHost {
-    pub simple: Simple,
-    pub map: BTreeMap<String, Simple>,
-    pub timestamp: OffsetDateTime,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "example_bindings")]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum RequestMethod {
-    Delete,
-    Get,
-    Options,
-    Post,
-    Put,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "example_bindings")]
-#[serde(rename_all = "camelCase")]
-pub struct RequestOptions {
-    pub url: String,
-    pub method: RequestMethod,
-    pub headers: HashMap<String, String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub body: Option<ByteBuf>,
-}
-
-/// Similar to the `RequestOptions` struct, but using types from the `http` crate.
-#[derive(Clone, Debug, Serializable)]
-#[fp(rename_all = "camelCase")]
-pub struct HttpRequestOptions {
-    pub url: Uri,
-    pub method: Method,
-    pub headers: HashMap<String, String>,
-    #[fp(skip_serializing_if = "Option::is_none")]
-    pub body: Option<ByteBuf>,
-}
-
-/// A response to a request.
-#[derive(Clone, Debug, Deserialize, Serialize, Serializable)]
-#[fp(rust_wasmer_runtime_module = "example_bindings")]
-#[serde(rename_all = "camelCase")]
-pub struct Response {
-    /// Response headers, by name.
-    pub headers: HashMap<String, String>,
-    /// Response body.
-    pub body: Body,
-}
-
-/// Represents an error with the request.
-#[derive(Serializable)]
-#[fp(tag = "type", rename_all = "snake_case")]
-pub enum RequestError {
-    /// Used when we know we don't have an active network connection.
-    Offline,
-    NoRoute,
-    ConnectionRefused,
-    Timeout,
-    #[fp(rename_all = "snake_case")]
-    ServerError {
-        /// HTTP status code.
-        status_code: u16,
-        /// Response body.
-        response: Body,
-    },
-    /// Misc.
-    #[fp(rename = "other/misc")]
-    Other {
-        reason: String,
-    },
-}
-
-/// Tagged dynamic value.
-#[derive(Serializable)]
-pub enum Value {
-    Integer(i64),
-    Float(f64),
-    List(Vec<Value>),
-    Map(BTreeMap<String, Value>),
-}
-
-#[derive(Serializable)]
-pub struct ExplicitedlyImportedType {
-    pub you_will_see_this: bool,
-}
-
-mod foobar {
-    use fp_bindgen::prelude::*;
-    pub mod baz {
-        use fp_bindgen::prelude::*;
-        #[derive(Serializable)]
-        pub struct GroupImportedType1 {
-            pub you_will_see_this: bool,
-        }
-    }
-    #[derive(Serializable)]
-    pub struct GroupImportedType2 {
-        pub you_will_see_this: bool,
-    }
-}
+// Referencing types using their full module path can be problematic in some
+// edge cases. If you want to use types from other modules in your protocol,
+// it's best to import them with a `use` statement and refer to them by their
+// name only.
+mod types;
+use types::*;
 
 fp_import! {
-    use ExplicitedlyImportedType;
-    use foobar::{baz::GroupImportedType1, GroupImportedType2};
-
-    // Aliases need to be explicitly mentioned in either `fp_import!` or `fp_export!`:
+    // Aliases need to be explicitly mentioned in either `fp_import!` or
+    // `fp_export!`.
+    //
+    // See `types/aliases.rs` for more info.
     type Body = ByteBuf;
-    type ComplexAlias = ComplexGuestToHost;
-    type FloatingPoint = Point<f64>;
+    type HttpResponse = Result<Response, RequestError>;
 
-    /// Logs a message to the (development) console.
-    fn log(message: String);
+    // Types that are not referenced by any of the protocol functions (either
+    // directly as argument or return type, or indirectly through other types)
+    // need to be explicitly "used" in order to be generated as part of the
+    // generated bindings. Nested modules are supported in `use` statements.
+    //
+    // See `types/dead_code.rs` for more info.
+    use ExplicitedlyImportedType;
+    use submodule::{nested::GroupImportedType1, GroupImportedType2};
+    use types::{DocExampleEnum, DocExampleStruct};
 
-    /// This is a very simple function that only uses primitives. Our bindgen should have little
-    /// trouble with this.
-    fn my_plain_imported_function(a: u32, b: u32) -> u32;
+    // ===============================================================
+    // Imported functions that we call as part of the end-to-end tests
+    // ===============================================================
 
-    /// This one passes complex data types. Things are getting interesting.
-    fn my_complex_imported_function(a: ComplexAlias) -> ComplexHostToGuest;
+    // No arguments, no return type:
+    fn import_void_function();
 
-    fn count_words(string: String) -> Result<u16, String>;
+    // Passing primitives:
+    fn import_primitive_i8(arg: i8) -> i8;
+    fn import_primitive_i16(arg: i16) -> i16;
+    fn import_primitive_i32(arg: i32) -> i32;
+    fn import_primitive_i64(arg: i64) -> i64;
+    fn import_primitive_u8(arg: u8) -> u8;
+    fn import_primitive_u16(arg: u16) -> u16;
+    fn import_primitive_u32(arg: u32) -> u32;
+    fn import_primitive_u64(arg: u64) -> u64;
 
-    async fn my_async_imported_function() -> ComplexHostToGuest;
+    // Passing strings:
+    fn import_string(arg: String) -> String;
 
-    async fn make_request(opts: RequestOptions) -> Result<Response, RequestError>;
+    // Multiple arguments:
+    fn import_multiple_primitives(arg1: i8, arg2: String) -> i64;
+
+    // Integration with the `time` crate:
+    fn import_timestamp(arg: OffsetDateTime) -> OffsetDateTime;
+
+    // Passing custom types with flattened properties.
+    //
+    // See `types/flattening.rs` for more info.
+    fn import_fp_flatten(arg: FpFlatten) -> FpFlatten;
+    fn import_serde_flatten(arg: SerdeFlatten) -> SerdeFlatten;
+
+    // Generics.
+    //
+    // See `types/generics.rs` for more info.
+    fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
+
+    // Passing custom types with property/variant renaming.
+    //
+    // See `types/renaming.rs` for more info.
+    fn import_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming;
+    fn import_fp_enum(arg: FpVariantRenaming) -> FpVariantRenaming;
+    fn import_serde_struct(arg: SerdePropertyRenaming) -> SerdePropertyRenaming;
+    fn import_serde_enum(arg: SerdeVariantRenaming) -> SerdeVariantRenaming;
+
+    // Passing custom enums with different tagging options.
+    //
+    // See `types/tagged_enums.rs` for more info.
+    fn import_fp_internally_tagged(arg: FpInternallyTagged) -> FpInternallyTagged;
+    fn import_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged;
+    fn import_fp_untagged(arg: FpUntagged) -> FpUntagged;
+    fn import_serde_internally_tagged(arg: SerdeInternallyTagged) -> SerdeInternallyTagged;
+    fn import_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;
+    fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
+
+    // Async function:
+    async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
+
+    /// Example how a runtime could expose a `Fetch`-like function to plugins.
+    ///
+    /// See `types/http.rs` for more info.
+    async fn make_http_request(request: Request) -> HttpResult;
 }
 
 fp_export! {
-    use ExplicitedlyImportedType;
-    use HttpRequestOptions;
+    // ===============================================================
+    // Exported functions that we call as part of the end-to-end tests
+    // ===============================================================
 
-    fn my_plain_exported_function(a: u32, b: u32) -> u32;
+    // No arguments, no return type:
+    // FIXME: This doesn't work currently...
+    //fn export_void_function();
 
-    fn my_complex_exported_function(a: ComplexHostToGuest) -> ComplexAlias;
+    // Passing primitives:
+    fn export_primitive_i8(arg: i8) -> i8;
+    fn export_primitive_i16(arg: i16) -> i16;
+    fn export_primitive_i32(arg: i32) -> i32;
+    fn export_primitive_i64(arg: i64) -> i64;
+    fn export_primitive_u8(arg: u8) -> u8;
+    fn export_primitive_u16(arg: u16) -> u16;
+    fn export_primitive_u32(arg: u32) -> u32;
+    fn export_primitive_u64(arg: u64) -> u64;
 
-    async fn my_async_exported_function() -> ComplexGuestToHost;
+    // Passing strings:
+    fn export_string(arg: String) -> String;
 
-    async fn fetch_data(url: String) -> String;
+    // Multiple arguments:
+    fn export_multiple_primitives(arg1: i8, arg2: String) -> i64;
+
+    // Integration with the `time` crate:
+    fn export_timestamp(arg: OffsetDateTime) -> OffsetDateTime;
+
+    // Passing custom types with flattened properties.
+    //
+    // See `types/flattening.rs` for more info.
+    fn export_fp_flatten(arg: FpFlatten) -> FpFlatten;
+    fn export_serde_flatten(arg: SerdeFlatten) -> SerdeFlatten;
+
+    // Generics.
+    //
+    // See `types/generics.rs` for more info.
+    fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
+
+    // Passing custom types with property/variant renaming.
+    //
+    // See `types/renaming.rs` for more info.
+    fn export_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming;
+    fn export_fp_enum(arg: FpVariantRenaming) -> FpVariantRenaming;
+    fn export_serde_struct(arg: SerdePropertyRenaming) -> SerdePropertyRenaming;
+    fn export_serde_enum(arg: SerdeVariantRenaming) -> SerdeVariantRenaming;
+
+    // Passing custom enums with different tagging options.
+    //
+    // See `types/tagged_enums.rs` for more info.
+    fn export_fp_internally_tagged(arg: FpInternallyTagged) -> FpInternallyTagged;
+    fn export_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged;
+    fn export_fp_untagged(arg: FpUntagged) -> FpUntagged;
+    fn export_serde_internally_tagged(arg: SerdeInternallyTagged) -> SerdeInternallyTagged;
+    fn export_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;
+    fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
+
+    // Async function:
+    async fn export_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
+
+    /// Example how plugin could expose async data-fetching capabilities.
+    async fn fetch_data(r#type: String) -> FpAdjacentlyTagged;
 }
 
 const VERSION: &str = "1.0.0";
