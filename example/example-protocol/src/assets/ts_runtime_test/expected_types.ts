@@ -6,32 +6,41 @@
 
 export type Body = ArrayBuffer;
 
-export type ComplexAlias = ComplexGuestToHost;
+/**
+ * # This is an enum with doc comments.
+ */
+export type DocExampleEnum =
+    /**
+     * Multi-line doc comment with complex characters
+     * & " , \ ! '
+     */
+    | { Variant1: string }
+    /**
+     * Raw identifiers are supported too.
+     */
+    | { Variant2: {
 
-export type ComplexGuestToHost = {
-    simple: Simple;
-    map: Record<string, Simple>;
-    timestamp: string;
-};
+        /**
+         * Variant property.
+         */
+        inner: number;
+    } };
 
 /**
- * Multi-line doc comment with complex characters
- * & " , \ ! '
+ * # This is a struct with doc comments.
  */
-export type ComplexHostToGuest = {
-    list: Array<number>;
-    points: Array<Point<number>>;
-    recursive: Array<Point<Point<number>>>;
-    complexNested?: Record<string, Array<FloatingPoint>>;
-    timestamp: string;
-    optional_timestamp?: string;
+export type DocExampleStruct = {
+    /**
+     * Multi-line doc comment with complex characters
+     * & " , \ ! '
+     */
+    multi_line: string;
 
     /**
      * Raw identifiers are supported too.
      */
     type: string;
-    value: Value;
-} & Simple;
+};
 
 /**
  * This struct is also not referenced by any function or data structure, but
@@ -42,7 +51,44 @@ export type ExplicitedlyImportedType = {
     you_will_see_this: boolean;
 };
 
-export type FloatingPoint = Point<number>;
+export type FlattenedStruct = {
+    foo: string;
+    bar: bigint;
+};
+
+export type FpAdjacentlyTagged =
+    | { type: "Foo" }
+    | { type: "Bar"; payload: string }
+    | { type: "Baz"; payload: { a: number;b: bigint } };
+
+export type FpFlatten = {
+} & FlattenedStruct;
+
+export type FpInternallyTagged =
+    | { type: "Foo" }
+    | { type: "Baz"; a: number;b: bigint };
+
+export type FpPropertyRenaming = {
+    fooBar: string;
+    QUX_BAZ: number;
+    rawStruct: number;
+};
+
+export type FpUntagged =
+    | string
+    | { a: number; b: bigint; };
+
+export type FpVariantRenaming =
+    | "foo_bar"
+    | { QUX_BAZ: {
+
+        /**
+         * Will be renamed to "FOO_BAR" because of the `rename_all` on the
+         * variant.
+         */
+        FOO_BAR: string;
+        qux_baz: number;
+    } };
 
 export type GroupImportedType1 = {
     you_will_see_this: boolean;
@@ -52,15 +98,7 @@ export type GroupImportedType2 = {
     you_will_see_this: boolean;
 };
 
-/**
- * Similar to the `RequestOptions` struct, but using types from the `http` crate.
- */
-export type HttpRequestOptions = {
-    url: string;
-    method: Method;
-    headers: Record<string, string>;
-    body?: ArrayBuffer;
-};
+export type HttpResponse = Result<Response, RequestError>;
 
 export type Method = 
     | "GET"
@@ -73,12 +111,50 @@ export type Method =
     | "PATCH"
     | "TRACE";
 
+/**
+ * A point of an arbitrary type.
+ */
 export type Point<T> = {
-    Value: T;
+    value: T;
 };
 
 /**
- * Represents an error with the request.
+ * Example for representing Redux actions.
+ */
+export type ReduxAction =
+    | { type: "clear_title" }
+    | { type: "update_title"; payload: { title: string } };
+
+/**
+ * Represents an HTTP request to be sent.
+ */
+export type Request = {
+    /**
+     * The URI to submit the request to.
+     */
+    url: string;
+
+    /**
+     * HTTP method to use for the request.
+     */
+    method: Method;
+
+    /**
+     * HTTP headers to submit with the request.
+     *
+     * Note: We currently do not support the `Headers` type from the `http`
+     *       crate. See: https://github.com/fiberplane/fp-bindgen/issues/102
+     */
+    headers: Record<string, string>;
+
+    /**
+     * The body to submit with the request.
+     */
+    body?: Body;
+};
+
+/**
+ * Represents an error that occurred while attempting to submit the request.
  */
 export type RequestError =
     /**
@@ -106,33 +182,29 @@ export type RequestError =
      */
     | { type: "other/misc"; reason: string };
 
-export type RequestMethod =
-    | "DELETE"
-    | "GET"
-    | "OPTIONS"
-    | "POST"
-    | "PUT";
-
-export type RequestOptions = {
-    url: string;
-    method: RequestMethod;
-    headers: Record<string, string>;
-    body?: ArrayBuffer;
-};
-
 /**
- * A response to a request.
+ * Represents an HTTP response we received.
+ *
+ * Please note we currently do not support streaming responses.
  */
 export type Response = {
     /**
-     * Response headers, by name.
+     * The response body. May be empty.
+     */
+    body: Body;
+
+    /**
+     * HTTP headers that were part of the response.
+     *
+     * Note: We currently do not support the `Headers` type from the `http`
+     *       crate. See: https://github.com/fiberplane/fp-bindgen/issues/102
      */
     headers: Record<string, string>;
 
     /**
-     * Response body.
+     * HTTP status code.
      */
-    body: Body;
+    status_code: number;
 };
 
 /**
@@ -148,16 +220,55 @@ export type Result<T, E> =
      */
     | { Err: E };
 
-export type Simple = {
-    foo: number;
-    bar: string;
+export type SerdeAdjacentlyTagged =
+    | { type: "Foo" }
+    | { type: "Bar"; payload: string }
+    | { type: "Baz"; payload: { a: number;b: bigint } };
+
+export type SerdeFlatten = {
+} & FlattenedStruct;
+
+export type SerdeInternallyTagged =
+    | { type: "Foo" }
+    | { type: "Baz"; a: number;b: bigint };
+
+export type SerdePropertyRenaming = {
+    fooBar: string;
+    QUX_BAZ: number;
+    rawStruct: number;
 };
 
+export type SerdeUntagged =
+    | string
+    | { a: number; b: bigint; };
+
+export type SerdeVariantRenaming =
+    | "foo_bar"
+    | { QUX_BAZ: {
+
+        /**
+         * Will be renamed to "FooBar" because of the `rename_all` on the
+         * variant.
+         */
+        FooBar: string;
+        qux_baz: number;
+    } };
+
 /**
- * Tagged dynamic value.
+ * A state update to communicate to the Redux host.
+ *
+ * Fields are wrapped in `Option`. If any field is `None` it means it hasn't
+ * changed.
  */
-export type Value =
-    | { Integer: bigint }
-    | { Float: number }
-    | { List: Array<Value> }
-    | { Map: Record<string, Value> };
+export type StateUpdate = {
+    title?: string;
+    revision?: number;
+};
+
+export type StructWithGenerics<T> = {
+    list: Array<T>;
+    points: Array<Point<T>>;
+    recursive: Array<Point<Point<T>>>;
+    complex_nested?: Record<string, Array<FloatingPoint>>;
+    optional_timestamp?: string;
+};

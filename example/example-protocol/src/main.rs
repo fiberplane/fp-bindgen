@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use example_types::{ReduxAction, StateUpdate};
 use fp_bindgen::{prelude::*, types::CargoDependency};
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
@@ -155,6 +156,9 @@ fp_export! {
 
     /// Example how plugin could expose async data-fetching capabilities.
     async fn fetch_data(r#type: String) -> FpAdjacentlyTagged;
+
+    /// Example how plugin could expose a reducer.
+    fn reducer_bridge(action: ReduxAction) -> StateUpdate;
 }
 
 const VERSION: &str = "1.0.0";
@@ -221,16 +225,24 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: BTreeMap::from([(
-                "fp-bindgen-support",
-                CargoDependency {
-                    path: Some("../../fp-bindgen-support"),
-                    features: BTreeSet::from(["async"]),
-                    git: None,
-                    branch: None,
-                    version: None
-                }
-            )])
+            dependencies: BTreeMap::from([
+                (
+                    "example-types",
+                    CargoDependency {
+                        path: Some("../example-types"),
+                        features: BTreeSet::default(),
+                        ..Default::default()
+                    }
+                ),
+                (
+                    "fp-bindgen-support",
+                    CargoDependency {
+                        path: Some("../../fp-bindgen-support"),
+                        features: BTreeSet::from(["async"]),
+                        ..Default::default()
+                    }
+                )
+            ])
         }),
         path: "bindings/rust-plugin",
     });

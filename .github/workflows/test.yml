@@ -62,8 +62,8 @@ jobs:
           cargo build
           popd
 
-      - name: Verify example-runtime builds
+      - name: Verify example-rust-runtime builds
         run: |
-          pushd example/example-runtime
+          pushd example/example-rust-runtime
           cargo build
           popd
