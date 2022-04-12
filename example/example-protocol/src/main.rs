@@ -2,6 +2,7 @@
 
 use example_types::{ReduxAction, StateUpdate};
 use fp_bindgen::{prelude::*, types::CargoDependency};
+use once_cell::sync::Lazy;
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
@@ -165,20 +166,34 @@ const VERSION: &str = "1.0.0";
 const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
 const NAME: &str = "example-bindings";
 
+static DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
+    BTreeMap::from([
+        (
+            "example-types",
+            CargoDependency {
+                path: Some("../example-types"),
+                features: BTreeSet::default(),
+                ..Default::default()
+            },
+        ),
+        (
+            "fp-bindgen-support",
+            CargoDependency {
+                path: Some("../../fp-bindgen-support"),
+                features: BTreeSet::from(["async", "guest"]),
+                ..CargoDependency::default()
+            },
+        ),
+    ])
+});
+
 fn main() {
     for bindings_type in [
         BindingsType::RustPlugin(RustPluginConfig {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: BTreeMap::from([(
-                "fp-bindgen-support",
-                CargoDependency {
-                    path: Some("../../../../fp-bindgen-support"),
-                    features: BTreeSet::from(["async", "guest"]),
-                    ..CargoDependency::default()
-                },
-            )]),
+            dependencies: DEPENDENCIES.clone(),
         }),
         BindingsType::RustWasmerRuntime,
         BindingsType::TsRuntime(TsRuntimeConfig {
@@ -225,24 +240,7 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: BTreeMap::from([
-                (
-                    "example-types",
-                    CargoDependency {
-                        path: Some("../example-types"),
-                        features: BTreeSet::default(),
-                        ..Default::default()
-                    }
-                ),
-                (
-                    "fp-bindgen-support",
-                    CargoDependency {
-                        path: Some("../../fp-bindgen-support"),
-                        features: BTreeSet::from(["async"]),
-                        ..Default::default()
-                    }
-                )
-            ])
+            dependencies: DEPENDENCIES.clone()
         }),
         path: "bindings/rust-plugin",
     });

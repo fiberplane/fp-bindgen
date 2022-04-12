@@ -5,7 +5,8 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [dependencies]
-fp-bindgen-support = { path = "../../../../fp-bindgen-support", version = "1.0.0", features = ["async", "guest", "http"] }
+example-types = { path = "../example-types" }
+fp-bindgen-support = { path = "../../fp-bindgen-support", version = "1.0.0", features = ["async", "guest", "http"] }
 http = { version = "0.2" }
 once_cell = { version = "1.4" }
 rmp-serde = { version = "1.0" }
