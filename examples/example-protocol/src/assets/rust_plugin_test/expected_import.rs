@@ -75,8 +75,12 @@ pub fn import_timestamp(arg: time::OffsetDateTime) -> time::OffsetDateTime;
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_void_function();
 
+/// Logs a message to the (development) console.
 #[fp_bindgen_support::fp_import_signature]
+pub fn log(message: String);
+
 /// Example how a runtime could expose a `Fetch`-like function to plugins.
 ///
 /// See `types/http.rs` for more info.
+#[fp_bindgen_support::fp_import_signature]
 pub async fn make_http_request(request: Request) -> HttpResult;

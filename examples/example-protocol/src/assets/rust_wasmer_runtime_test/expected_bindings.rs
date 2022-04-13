@@ -38,6 +38,36 @@ impl Runtime {
         Store::new(&engine)
     }
 
+    pub async fn export_async_struct(
+        &self,
+        arg1: FpPropertyRenaming,
+        arg2: u64,
+    ) -> Result<FpPropertyRenaming, InvocationError> {
+        let arg1 = serialize_to_vec(&arg1);
+        let result = self.export_async_struct_raw(arg1, arg2);
+        let result = result.await;
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub async fn export_async_struct_raw(
+        &self,
+        arg1: Vec<u8>,
+        arg2: u64,
+    ) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let arg1 = export_to_guest_raw(&env, arg1);
+        let function = instance
+            .exports
+            .get_native_function::<(FatPtr, u64), FatPtr>("__fp_gen_export_async_struct")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(arg1, arg2)?;
+        let result = ModuleRawFuture::new(env.clone(), result).await;
+        Ok(result)
+    }
+
     pub fn export_fp_adjacently_tagged(
         &self,
         arg: FpAdjacentlyTagged,
@@ -558,8 +588,28 @@ impl Runtime {
         Ok(result)
     }
 
+    pub fn export_void_function(&self) -> Result<(), InvocationError> {
+        let result = self.export_void_function_raw();
+        result
+    }
+    pub fn export_void_function_raw(&self) -> Result<(), InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(), ()>("__fp_gen_export_void_function")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call()?;
+        Ok(result)
+    }
+
     #[doc = " Example how plugin could expose async data-fetching capabilities."]
-    pub async fn fetch_data(&self, r#type: String) -> Result<FpAdjacentlyTagged, InvocationError> {
+    pub async fn fetch_data(
+        &self,
+        r#type: String,
+    ) -> Result<Result<String, String>, InvocationError> {
         let r#type = serialize_to_vec(&r#type);
         let result = self.fetch_data_raw(r#type);
         let result = result.await;
@@ -578,6 +628,24 @@ impl Runtime {
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call(r#type)?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
+        Ok(result)
+    }
+
+    #[doc = " Called on the plugin to give it a chance to initialize."]
+    pub fn init(&self) -> Result<(), InvocationError> {
+        let result = self.init_raw();
+        result
+    }
+    pub fn init_raw(&self) -> Result<(), InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(), ()>("__fp_gen_init")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call()?;
         Ok(result)
     }
 
@@ -633,6 +701,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
            "__fp_gen_import_string" => Function :: new_native_with_env (store , env . clone () , _import_string) ,
            "__fp_gen_import_timestamp" => Function :: new_native_with_env (store , env . clone () , _import_timestamp) ,
            "__fp_gen_import_void_function" => Function :: new_native_with_env (store , env . clone () , _import_void_function) ,
+           "__fp_gen_log" => Function :: new_native_with_env (store , env . clone () , _log) ,
            "__fp_gen_make_http_request" => Function :: new_native_with_env (store , env . clone () , _make_http_request) ,
         }
     }
@@ -776,6 +845,12 @@ pub fn _import_timestamp(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 
 pub fn _import_void_function(env: &RuntimeInstanceData) {
     let result = super::import_void_function();
+    ()
+}
+
+pub fn _log(env: &RuntimeInstanceData, message: FatPtr) {
+    let message = import_from_guest::<String>(env, message);
+    let result = super::log(message);
     ()
 }
 

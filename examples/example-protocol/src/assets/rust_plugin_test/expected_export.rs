@@ -1,6 +1,9 @@
 use crate::types::*;
 
 #[fp_bindgen_support::fp_export_signature]
+pub async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
+
+#[fp_bindgen_support::fp_export_signature]
 pub fn export_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged;
 
 #[fp_bindgen_support::fp_export_signature]
@@ -73,9 +76,16 @@ pub fn export_string(arg: String) -> String;
 pub fn export_timestamp(arg: time::OffsetDateTime) -> time::OffsetDateTime;
 
 #[fp_bindgen_support::fp_export_signature]
-/// Example how plugin could expose async data-fetching capabilities.
-pub async fn fetch_data(r#type: String) -> FpAdjacentlyTagged;
+pub fn export_void_function();
 
+/// Example how plugin could expose async data-fetching capabilities.
 #[fp_bindgen_support::fp_export_signature]
+pub async fn fetch_data(r#type: String) -> Result<String, String>;
+
+/// Called on the plugin to give it a chance to initialize.
+#[fp_bindgen_support::fp_export_signature]
+pub fn init();
+
 /// Example how plugin could expose a reducer.
+#[fp_bindgen_support::fp_export_signature]
 pub fn reducer_bridge(action: ReduxAction) -> StateUpdate;

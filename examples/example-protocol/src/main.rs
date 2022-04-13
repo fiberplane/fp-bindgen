@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use example_types::{ReduxAction, StateUpdate};
+use redux_example::{ReduxAction, StateUpdate};
 use fp_bindgen::{prelude::*, types::CargoDependency};
 use once_cell::sync::Lazy;
 use std::collections::{BTreeMap, BTreeSet};
@@ -19,7 +19,8 @@ fp_import! {
     //
     // See `types/aliases.rs` for more info.
     type Body = ByteBuf;
-    type HttpResponse = Result<Response, RequestError>;
+    type FloatingPoint = Point<f64>;
+    type HttpResult = Result<Response, RequestError>;
 
     // Types that are not referenced by any of the protocol functions (either
     // directly as argument or return type, or indirectly through other types)
@@ -89,6 +90,9 @@ fp_import! {
     // Async function:
     async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
 
+    /// Logs a message to the (development) console.
+    fn log(message: String);
+
     /// Example how a runtime could expose a `Fetch`-like function to plugins.
     ///
     /// See `types/http.rs` for more info.
@@ -101,8 +105,7 @@ fp_export! {
     // ===============================================================
 
     // No arguments, no return type:
-    // FIXME: This doesn't work currently...
-    //fn export_void_function();
+    fn export_void_function();
 
     // Passing primitives:
     fn export_primitive_i8(arg: i8) -> i8;
@@ -153,10 +156,13 @@ fp_export! {
     fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
 
     // Async function:
-    async fn export_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
+    async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
 
     /// Example how plugin could expose async data-fetching capabilities.
-    async fn fetch_data(r#type: String) -> FpAdjacentlyTagged;
+    async fn fetch_data(r#type: String) -> Result<String, String>;
+
+    /// Called on the plugin to give it a chance to initialize.
+    fn init();
 
     /// Example how plugin could expose a reducer.
     fn reducer_bridge(action: ReduxAction) -> StateUpdate;
@@ -166,12 +172,12 @@ const VERSION: &str = "1.0.0";
 const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
 const NAME: &str = "example-bindings";
 
-static DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
+static PLUGIN_DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
     BTreeMap::from([
         (
-            "example-types",
+            "redux-example",
             CargoDependency {
-                path: Some("../example-types"),
+                path: Some("../../../redux-example"),
                 features: BTreeSet::default(),
                 ..Default::default()
             },
@@ -179,8 +185,16 @@ static DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
         (
             "fp-bindgen-support",
             CargoDependency {
-                path: Some("../../fp-bindgen-support"),
+                path: Some("../../../../fp-bindgen-support"),
                 features: BTreeSet::from(["async", "guest"]),
+                ..CargoDependency::default()
+            },
+        ),
+        (
+            "time",
+            CargoDependency {
+                version: Some("0.3"),
+                features: BTreeSet::from(["macros"]),
                 ..CargoDependency::default()
             },
         ),
@@ -193,7 +207,7 @@ fn main() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: DEPENDENCIES.clone(),
+            dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         BindingsType::RustWasmerRuntime,
         BindingsType::TsRuntime(TsRuntimeConfig {
@@ -240,7 +254,7 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: DEPENDENCIES.clone()
+            dependencies: PLUGIN_DEPENDENCIES.clone()
         }),
         path: "bindings/rust-plugin",
     });

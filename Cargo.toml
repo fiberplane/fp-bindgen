@@ -1,6 +1,5 @@
 [workspace]
 exclude = [
-  "examples/example-plugin",
   "examples/example-rust-runtime",
   "bindings/rust-plugin",
 ]
@@ -8,6 +7,7 @@ members = [
   "fp-bindgen",
   "fp-bindgen-support",
   "macros",
+  "examples/example-plugin",
   "examples/example-protocol",
-  "examples/example-types",
+  "examples/redux-example",
 ]

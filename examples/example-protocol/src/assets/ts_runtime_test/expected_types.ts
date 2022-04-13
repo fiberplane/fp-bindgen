@@ -56,6 +56,8 @@ export type FlattenedStruct = {
     bar: bigint;
 };
 
+export type FloatingPoint = Point<number>;
+
 export type FpAdjacentlyTagged =
     | { type: "Foo" }
     | { type: "Bar"; payload: string }
@@ -98,7 +100,7 @@ export type GroupImportedType2 = {
     you_will_see_this: boolean;
 };
 
-export type HttpResponse = Result<Response, RequestError>;
+export type HttpResult = Result<Response, RequestError>;
 
 export type Method = 
     | "GET"

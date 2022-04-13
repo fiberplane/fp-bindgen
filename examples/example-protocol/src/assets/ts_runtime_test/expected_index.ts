@@ -12,6 +12,7 @@ import type {
     DocExampleStruct,
     ExplicitedlyImportedType,
     FlattenedStruct,
+    FloatingPoint,
     FpAdjacentlyTagged,
     FpFlatten,
     FpInternallyTagged,
@@ -20,7 +21,7 @@ import type {
     FpVariantRenaming,
     GroupImportedType1,
     GroupImportedType2,
-    HttpResponse,
+    HttpResult,
     Point,
     ReduxAction,
     Request,
@@ -65,10 +66,12 @@ export type Imports = {
     importString: (arg: string) => string;
     importTimestamp: (arg: string) => string;
     importVoidFunction: () => void;
+    log: (message: string) => void;
     makeHttpRequest: (request: Request) => Promise<HttpResult>;
 };
 
 export type Exports = {
+    exportAsyncStruct?: (arg1: FpPropertyRenaming, arg2: bigint) => Promise<FpPropertyRenaming>;
     exportFpAdjacentlyTagged?: (arg: FpAdjacentlyTagged) => FpAdjacentlyTagged;
     exportFpEnum?: (arg: FpVariantRenaming) => FpVariantRenaming;
     exportFpFlatten?: (arg: FpFlatten) => FpFlatten;
@@ -93,8 +96,11 @@ export type Exports = {
     exportSerdeUntagged?: (arg: SerdeUntagged) => SerdeUntagged;
     exportString?: (arg: string) => string;
     exportTimestamp?: (arg: string) => string;
-    fetchData?: (rType: string) => Promise<FpAdjacentlyTagged>;
+    exportVoidFunction?: () => void;
+    fetchData?: (rType: string) => Promise<Result<string, string>>;
+    init?: () => void;
     reducerBridge?: (action: ReduxAction) => StateUpdate;
+    exportAsyncStructRaw?: (arg1: Uint8Array, arg2: bigint) => Promise<Uint8Array>;
     exportFpAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportFpEnumRaw?: (arg: Uint8Array) => Uint8Array;
     exportFpFlattenRaw?: (arg: Uint8Array) => Uint8Array;
@@ -285,6 +291,10 @@ export async function createRuntime(
             __fp_gen_import_void_function: () => {
                 importFunctions.importVoidFunction();
             },
+            __fp_gen_log: (message_ptr: FatPtr) => {
+                const message = parseObject<string>(message_ptr);
+                importFunctions.log(message);
+            },
             __fp_gen_make_http_request: (request_ptr: FatPtr): FatPtr => {
                 const request = parseObject<Request>(request_ptr);
                 const _async_result_ptr = createAsyncValue();
@@ -318,6 +328,15 @@ export async function createRuntime(
     const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>("__fp_guest_resolve_async_value");
 
     return {
+        exportAsyncStruct: (() => {
+            const export_fn = instance.exports.__fp_gen_export_async_struct as any;
+            if (!export_fn) return;
+
+            return (arg1: FpPropertyRenaming, arg2: bigint) => {
+                const arg1_ptr = serializeObject(arg1);
+                return promiseFromPtr(export_fn(arg1_ptr, arg2)).then((ptr) => parseObject<FpPropertyRenaming>(ptr));
+            };
+        })(),
         exportFpAdjacentlyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_adjacently_tagged as any;
             if (!export_fn) return;
@@ -470,15 +489,17 @@ export async function createRuntime(
                 return parseObject<string>(export_fn(arg_ptr));
             };
         })(),
+        exportVoidFunction: instance.exports.__fp_gen_export_void_function as any,
         fetchData: (() => {
             const export_fn = instance.exports.__fp_gen_fetch_data as any;
             if (!export_fn) return;
 
             return (rType: string) => {
                 const r#type_ptr = serializeObject(rType);
-                return promiseFromPtr(export_fn(r#type_ptr)).then((ptr) => parseObject<FpAdjacentlyTagged>(ptr));
+                return promiseFromPtr(export_fn(r#type_ptr)).then((ptr) => parseObject<Result<string, string>>(ptr));
             };
         })(),
+        init: instance.exports.__fp_gen_init as any,
         reducerBridge: (() => {
             const export_fn = instance.exports.__fp_gen_reducer_bridge as any;
             if (!export_fn) return;
@@ -486,6 +507,15 @@ export async function createRuntime(
             return (action: ReduxAction) => {
                 const action_ptr = serializeObject(action);
                 return parseObject<StateUpdate>(export_fn(action_ptr));
+            };
+        })(),
+        exportAsyncStructRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_async_struct as any;
+            if (!export_fn) return;
+
+            return (arg1: Uint8Array, arg2: bigint) => {
+                const arg1_ptr = exportToMemory(arg1);
+                return promiseFromPtr(export_fn(arg1_ptr, arg2)).then(importFromMemory);
             };
         })(),
         exportFpAdjacentlyTaggedRaw: (() => {

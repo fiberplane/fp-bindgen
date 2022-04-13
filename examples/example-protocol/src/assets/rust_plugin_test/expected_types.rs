@@ -1,8 +1,9 @@
+#![allow(unused_imports)]
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, collections::HashMap, rc::Rc};
 
-pub use example-types::ReduxAction;
-pub use example-types::StateUpdate;
+pub use redux_example::ReduxAction;
+pub use redux_example::StateUpdate;
 
 pub type Body = serde_bytes::ByteBuf;
 
@@ -43,6 +44,8 @@ pub struct FlattenedStruct {
     pub foo: String,
     pub bar: i64,
 }
+
+pub type FloatingPoint = Point<f64>;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "type", content = "payload")]
@@ -105,7 +108,7 @@ pub struct GroupImportedType2 {
     pub you_will_see_this: bool,
 }
 
-pub type HttpResponse = Result<Response, RequestError>;
+pub type HttpResult = Result<Response, RequestError>;
 
 /// A point of an arbitrary type.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

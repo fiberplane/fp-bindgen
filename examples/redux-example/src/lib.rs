@@ -5,8 +5,8 @@ use std::rc::Rc;
 /// Example for representing Redux actions.
 #[derive(Serializable, Serialize, Deserialize)]
 #[fp(
-    rust_plugin_module = "example-types",
-    rust_wasmer_runtime_module = "example-types"
+    rust_plugin_module = "redux_example",
+    rust_wasmer_runtime_module = "redux_example"
 )]
 #[serde(rename_all = "snake_case", tag = "type", content = "payload")]
 pub enum ReduxAction {
@@ -19,10 +19,10 @@ pub enum ReduxAction {
 /// Any fields that do not implement `Copy` are wrapped in `Rc` so that we can
 /// cheaply clone the state, as well as to cheaply perform a diff between the
 /// old and new state. This is done in `StateUpdate::from_states()`.
-#[derive(Serializable, Serialize, Deserialize)]
+#[derive(Clone, Default, Serializable, Serialize, Deserialize)]
 #[fp(
-    rust_plugin_module = "example-types",
-    rust_wasmer_runtime_module = "example-types"
+    rust_plugin_module = "redux_example",
+    rust_wasmer_runtime_module = "redux_example"
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ReduxState {
@@ -36,8 +36,8 @@ pub struct ReduxState {
 /// changed.
 #[derive(Serializable, Serialize, Deserialize)]
 #[fp(
-    rust_plugin_module = "example-types",
-    rust_wasmer_runtime_module = "example-types"
+    rust_plugin_module = "redux_example",
+    rust_wasmer_runtime_module = "redux_example"
 )]
 #[serde(rename_all = "camelCase")]
 pub struct StateUpdate {
