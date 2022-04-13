@@ -211,8 +211,8 @@ fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path:
                 None => "".to_owned(),
             };
             format!(
-                "#[{}]\n{}pub {}fn {}({}){};",
-                macro_path, doc, modifiers, name, args_with_types, return_type,
+                "{}#[{}]\npub {}fn {}({}){};",
+                doc, macro_path, modifiers, name, args_with_types, return_type,
             )
         })
         .collect::<Vec<_>>()
