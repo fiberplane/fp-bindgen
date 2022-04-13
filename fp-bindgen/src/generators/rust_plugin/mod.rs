@@ -121,10 +121,7 @@ edition = \"2018\"
 }
 
 pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
-    let std_types = types
-        .values()
-        .filter_map(collect_std_types)
-        .collect::<BTreeSet<_>>();
+    let std_types: BTreeSet<_> = types.values().filter_map(collect_std_types).collect();
     let std_imports = if std_types.is_empty() {
         "".to_owned()
     } else if std_types.len() == 1 {
@@ -182,7 +179,8 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
     write_bindings_file(
         format!("{}/types.rs", path),
         format!(
-            "use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
+            "#![allow(unused_imports)]\n\
+            use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
             std_imports,
             type_imports,
             type_defs.join("\n\n")
