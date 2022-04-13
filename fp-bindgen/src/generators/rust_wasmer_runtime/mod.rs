@@ -179,6 +179,11 @@ impl ToTokens for RuntimeImportedFunction<'_> {
             (TokenStream::default(), TokenStream::default())
         };
 
+        let return_type = match return_type {
+            Some(ident) => quote! { #ident },
+            None => quote! { () },
+        };
+
         (quote! {
             #(#[doc = #doc_lines])*
             pub #asyncness fn #name(&self #(,#args)*) -> Result<#return_type, InvocationError> {
