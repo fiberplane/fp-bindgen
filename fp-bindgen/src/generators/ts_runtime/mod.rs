@@ -3,16 +3,16 @@ use crate::{
     functions::{Function, FunctionList},
     prelude::Primitive,
     types::{CustomType, Enum, EnumOptions, Field, Struct, Type, TypeIdent, TypeMap, Variant},
-    TsRuntimeConfig,
+    TsExtendedRuntimeConfig,
 };
 use inflector::Inflector;
 use std::{fs, str::FromStr};
 
-pub fn generate_bindings(
+pub(crate) fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     types: TypeMap,
-    config: TsRuntimeConfig,
+    config: TsExtendedRuntimeConfig,
     path: &str,
 ) {
     generate_type_bindings(&types, path);
@@ -58,11 +58,12 @@ pub fn generate_bindings(
 //                                               //
 // This file is generated. PLEASE DO NOT MODIFY. //
 // ============================================= //
+// deno-lint-ignore-file no-explicit-any no-unused-vars
 
-import {{ encode, decode }} from \"@msgpack/msgpack\";
+import {{ encode, decode }} from \"{}\";
 
 import type {{
-{}}} from \"./types\";
+{}}} from \"./types{}\";
 
 type FatPtr = bigint;
 
@@ -105,10 +106,26 @@ export async function createRuntime(
         return fatPtr;
     }}
 
+    function interpretSign(num: number, cap: number) {{
+        if (num < cap) {{
+            return num;
+        }} else {{
+            return num - (cap << 1);
+        }}
+    }}
+
+    function interpretBigSign(num: bigint, cap: bigint) {{
+        if (num < cap) {{
+            return num;
+        }} else {{
+            return num - (cap << 1n);
+        }}
+    }}
+
     function parseObject<T>(fatPtr: FatPtr): T {{
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
-        const object = decode<T>(buffer) as T;
+        const object = decode(buffer) as unknown as T;
         free(fatPtr);
         return object;
     }}
@@ -181,7 +198,17 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
     return (BigInt(ptr) << 32n) | BigInt(len);
 }}
 ",
+        config.msgpack_module,
         join_lines(&type_names, |line| format!("    {},", line)),
+        // HACK: Import paths in TypeScript are a bit of a mess. Usually, you
+        // shouldn't need an extension, but with some configurations you do.
+        // For now, we just try to detect Deno users by looking at the
+        // `msgpack_module` and accomodate them here:
+        if config.msgpack_module.ends_with(".ts") {
+            ".ts"
+        } else {
+            ""
+        },
         join_lines(&import_decls, |line| format!("    {};", line)),
         join_lines(&export_decls, |line| format!("    {};", line)),
         join_lines(&raw_export_decls, |line| format!("    {};", line)),
@@ -322,7 +349,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                             format_primitive(primitive)
                         )
                     } else {
-                        format!("{}_ptr: FatPtr", arg.name)
+                        format!("{}: FatPtr", get_pointer_name(&arg.name))
                     }
                 })
                 .collect::<Vec<_>>()
@@ -344,10 +371,10 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                         None
                     } else {
                         Some(format!(
-                            "const {} = parseObject<{}>({}_ptr);",
+                            "const {} = parseObject<{}>({});",
                             arg.name.to_camel_case(),
                             format_ident(&arg.ty, types),
-                            arg.name
+                            get_pointer_name(&arg.name)
                         ))
                     }
                 })
@@ -399,7 +426,13 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 let fn_call = match &function.return_type {
                     None => format!("importFunctions.{}({});", name.to_camel_case(), args),
                     Some(ty) if ty.is_primitive() => {
-                        format!("return importFunctions.{}({});", name.to_camel_case(), args)
+                        format!(
+                            "return {};",
+                            import_primitive(
+                                ty,
+                                &format!("importFunctions.{}({})", name.to_camel_case(), args)
+                            )
+                        )
                     }
                     _ => format!(
                         "return serializeObject(importFunctions.{}({}));",
@@ -461,8 +494,8 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 .filter(|arg| !arg.ty.is_primitive())
                 .map(|arg| {
                     format!(
-                        "const {}_ptr = serializeObject({});",
-                        arg.name,
+                        "const {} = serializeObject({});",
+                        get_pointer_name(&arg.name),
                         arg.name.to_camel_case()
                     )
                 })
@@ -475,7 +508,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                     if arg.ty.is_primitive() {
                         arg.name.to_camel_case()
                     } else {
-                        format!("{}_ptr", arg.name)
+                        get_pointer_name(&arg.name)
                     }
                 })
                 .collect::<Vec<_>>()
@@ -493,9 +526,10 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
             } else {
                 match &function.return_type {
                     None => format!("export_fn({});", call_args),
-                    Some(ty) if ty.is_primitive() => {
-                        format!("return export_fn({});", call_args)
-                    }
+                    Some(ty) if ty.is_primitive() => format!(
+                        "return {};",
+                        import_primitive(ty, &format!("export_fn({})", call_args))
+                    ),
                     Some(ty) => format!(
                         "return parseObject<{}>(export_fn({}));",
                         format_ident(ty, types),
@@ -549,8 +583,8 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 .filter(|arg| !arg.ty.is_primitive())
                 .map(|arg| {
                     format!(
-                        "const {}_ptr = exportToMemory({});",
-                        arg.name,
+                        "const {} = exportToMemory({});",
+                        get_pointer_name(&arg.name),
                         arg.name.to_camel_case()
                     )
                 })
@@ -563,7 +597,7 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                     if arg.ty.is_primitive() {
                         arg.name.to_camel_case()
                     } else {
-                        format!("{}_ptr", arg.name)
+                        get_pointer_name(&arg.name)
                     }
                 })
                 .collect::<Vec<_>>()
@@ -576,10 +610,14 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
             } else {
                 match &function.return_type {
                     None => format!("export_fn({});", call_args),
-                    Some(ty) if ty.is_primitive() => {
-                        format!("return export_fn({});", call_args)
-                    }
-                    _ => format!("return importFromMemory(export_fn({}));", call_args),
+                    Some(ty) => format!(
+                        "return {};",
+                        if ty.is_primitive() {
+                            import_primitive(ty, &format!("export_fn({})", call_args))
+                        } else {
+                            format!("importFromMemory(export_fn({}))", call_args)
+                        }
+                    ),
                 }
             };
             let return_fn = if export_args.is_empty() {
@@ -646,7 +684,10 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
 }
 
 fn is_primitive_function(function: &Function) -> bool {
-    function.args.iter().all(|arg| arg.ty.is_primitive())
+    function
+        .args
+        .iter()
+        .all(|arg| arg.ty.is_primitive() && !is_signed_primitive(&arg.ty))
         && !function.is_async
         && function
             .return_type
@@ -959,11 +1000,7 @@ fn get_field_name(field: &Field, casing: Casing) -> String {
     if let Some(rename) = field.attrs.rename.as_ref() {
         rename.to_owned()
     } else {
-        casing.format_string(if field.name.starts_with("r#") {
-            &field.name[2..]
-        } else {
-            &field.name
-        })
+        casing.format_string(get_variable_name(&field.name))
     }
 }
 
@@ -972,12 +1009,34 @@ fn get_variant_name(variant: &Variant, opts: &EnumOptions) -> String {
         rename.to_owned()
     } else {
         opts.variant_casing
-            .format_string(if variant.name.starts_with("r#") {
-                &variant.name[2..]
-            } else {
-                &variant.name
-            })
+            .format_string(get_variable_name(&variant.name))
     }
+}
+
+fn get_variable_name(name: &str) -> &str {
+    if let Some(stripped) = name.strip_prefix("r#") {
+        stripped
+    } else {
+        name
+    }
+}
+
+fn get_pointer_name(name: &str) -> String {
+    format!("{}_ptr", get_variable_name(name))
+}
+
+fn import_primitive(ty: &TypeIdent, value: &str) -> String {
+    match ty.name.as_str() {
+        "i8" => format!("interpretSign({}, 128)", value),
+        "i16" => format!("interpretSign({}, 32768)", value),
+        "i32" => format!("interpretSign({}, 2147483648)", value),
+        "i64" => format!("interpretBigSign({}, 9223372036854775808n)", value),
+        _ => value.to_owned(),
+    }
+}
+
+fn is_signed_primitive(ty: &TypeIdent) -> bool {
+    matches!(ty.name.as_str(), "i8" | "i16" | "i32" | "i64")
 }
 
 fn join_lines<F>(lines: &[String], formatter: F) -> String

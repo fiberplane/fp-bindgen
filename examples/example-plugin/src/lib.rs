@@ -44,7 +44,7 @@ fn export_primitive_i32(arg: i32) -> i32 {
 #[fp_export_impl(example_bindings)]
 fn export_primitive_i64(arg: i64) -> i64 {
     assert_eq!(arg, -64);
-    64
+    -64
 }
 
 #[fp_export_impl(example_bindings)]

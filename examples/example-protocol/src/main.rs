@@ -210,9 +210,11 @@ fn main() {
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         BindingsType::RustWasmerRuntime,
-        BindingsType::TsRuntime(TsRuntimeConfig {
-            generate_raw_export_wrappers: true,
-        }),
+        BindingsType::TsRuntimeWithExtendedConfig(
+            TsExtendedRuntimeConfig::new()
+                .with_msgpack_module("https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts")
+                .with_raw_export_wrappers(),
+        ),
     ] {
         let output_path = format!("bindings/{}", bindings_type);
 
@@ -254,7 +256,7 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            dependencies: PLUGIN_DEPENDENCIES.clone()
+            dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         path: "bindings/rust-plugin",
     });
@@ -299,9 +301,11 @@ fn test_generate_ts_runtime() {
     ];
 
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::TsRuntime(TsRuntimeConfig {
-            generate_raw_export_wrappers: true
-        }),
+        bindings_type: BindingsType::TsRuntimeWithExtendedConfig(
+            TsExtendedRuntimeConfig::new()
+                .with_msgpack_module("https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts")
+                .with_raw_export_wrappers()
+        ),
         path: "bindings/ts-runtime",
     });
 

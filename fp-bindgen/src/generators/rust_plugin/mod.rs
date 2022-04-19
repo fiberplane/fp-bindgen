@@ -8,7 +8,7 @@ use std::{
     fs,
 };
 
-pub fn generate_bindings(
+pub(crate) fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     types: TypeMap,

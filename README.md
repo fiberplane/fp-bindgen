@@ -22,13 +22,13 @@ enabling tight integration with existing crates from the Rust ecosystem.
 
 The following table is intended to highlight the major differences between the different tools:
 
-| Feature                                                   |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
-| --------------------------------------------------------- | :----------------------: | :------------: | :--------------------------------: |
-| Host environments                                         | Wasmer (Rust), browser\* |    Browser     | Wasmtime (Rust, Python), browser\* |
-| Guest languages                                           |          Rust\*          |      Rust      |             Rust, C\*              |
-| Protocol format                                           |   Rust (using macros)    |      N/A       |                .wit                |
-| Serialization format                                      |       MessagePack        |      JSON      |               Custom               |
-| [Can use existing Rust types](#using-existing-rust-types) |         &#9989;          |    &#10060;    |              &#10060;              |
+| Feature                                                   |         `fp-bindgen`        | `wasm-bindgen` |         `wit-bindgen`           |
+| --------------------------------------------------------- | :-------------------------: | :------------: | :-----------------------------: |
+| Host environments                                         | Rust (Wasmer), TypeScript\* |     JS/TS      | Rust/Python (Wasmtime), JS/TS\* |
+| Guest languages                                           |            Rust\*           |      Rust      |           Rust, C\*             |
+| Protocol format                                           |     Rust (using macros)     |      N/A       |              .wit               |
+| Serialization format                                      |         MessagePack         |      JSON      |             Custom              |
+| [Can use existing Rust types](#using-existing-rust-types) |           &#9989;           |    &#10060;    |            &#10060;             |
 
 \*) These are only the _currently supported_ options. More may be added in the future.
 
@@ -215,16 +215,19 @@ this in `example-rust-runtime/spec/mod.rs` (do note the example runtime only bui
 Finally, the `bindings.rs` file contains a constructor (`Runtime::new()`) that you can use to
 instantiate Wasmer runtimes with the Wasm module provided as a blob. The `fp_export!` functions are
 provided on the `Runtime` instance as methods. Please be aware that implementation of the
-`fp_export!` functions is always at the discretion of the plugin, and an attempt to invoke a missing implementation can fail with an `InvocationError::FunctionNotExported` error.
+`fp_export!` functions is always at the discretion of the plugin, and an attempt to invoke a missing
+implementation can fail with an `InvocationError::FunctionNotExported` error.
 
 ### Using the TypeScript runtime bindings
 
-The generator for the TypeScript runtime works similarly to that for the Wasmer runtime, but it
-generates an `index.ts` and a `types.ts`. `types.ts` contains the type definitions for all the data
-structures, while the `index.ts` exports a `createRuntime()` function that you can use for
-instantiating the runtime. Upon instantiation, you are expected to provide implementations for all
-the `fp_import!` functions, while the returned `Promise` will give you an object with all the
-`fp_export!` functions the provided plugin has implemented.
+The TypeScript runtime generator can work with browsers, Node.js and Deno.
+
+It works similarly to that for the Wasmer runtime, but it generates an `index.ts` and a `types.ts`.
+`types.ts` contains the type definitions for all the data structures, while the `index.ts` exports a
+`createRuntime()` function that you can use for instantiating the runtime. Upon instantiation, you
+are expected to provide implementations for all the `fp_import!` functions, while the returned
+`Promise` will give you an object with all the `fp_export!` functions the provided plugin has
+implemented.
 
 ## Examples
 
@@ -252,7 +255,8 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 Are you using the type in one of the `fp_import!` or `fp_export!` functions? Deriving `Serializable`
 makes it possible to use the type as part of your protocol, but it won't become part of the
 generated bindings until it is actually referenced. Note that types can be either referenced
-directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is already in use.
+directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is
+already in use.
 
 If a type is not referenced either directly or indirectly by any of the functions that are part of
 your protocol, you can force inclusion by adding a `use` statement referencing the type to either

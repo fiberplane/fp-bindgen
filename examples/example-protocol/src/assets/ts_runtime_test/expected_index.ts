@@ -3,8 +3,9 @@
 //                                               //
 // This file is generated. PLEASE DO NOT MODIFY. //
 // ============================================= //
+// deno-lint-ignore-file no-explicit-any no-unused-vars
 
-import { encode, decode } from "@msgpack/msgpack";
+import { encode, decode } from "https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts";
 
 import type {
     Body,
@@ -36,7 +37,7 @@ import type {
     SerdeVariantRenaming,
     StateUpdate,
     StructWithGenerics,
-} from "./types";
+} from "./types.ts";
 
 type FatPtr = bigint;
 
@@ -109,6 +110,10 @@ export type Exports = {
     exportFpUntaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
+    exportPrimitiveI16Raw?: (arg: number) => number;
+    exportPrimitiveI32Raw?: (arg: number) => number;
+    exportPrimitiveI64Raw?: (arg: bigint) => bigint;
+    exportPrimitiveI8Raw?: (arg: number) => number;
     exportSerdeAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeEnumRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeFlattenRaw?: (arg: Uint8Array) => Uint8Array;
@@ -154,10 +159,26 @@ export async function createRuntime(
         return fatPtr;
     }
 
+    function interpretSign(num: number, cap: number) {
+        if (num < cap) {
+            return num;
+        } else {
+            return num - (cap << 1);
+        }
+    }
+
+    function interpretBigSign(num: bigint, cap: bigint) {
+        if (num < cap) {
+            return num;
+        } else {
+            return num - (cap << 1n);
+        }
+    }
+
     function parseObject<T>(fatPtr: FatPtr): T {
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
-        const object = decode<T>(buffer) as T;
+        const object = decode(buffer) as unknown as T;
         free(fatPtr);
         return object;
     }
@@ -230,19 +251,19 @@ export async function createRuntime(
             },
             __fp_gen_import_multiple_primitives: (arg1: number, arg2_ptr: FatPtr): bigint => {
                 const arg2 = parseObject<string>(arg2_ptr);
-                return importFunctions.importMultiplePrimitives(arg1, arg2);
+                return interpretBigSign(importFunctions.importMultiplePrimitives(arg1, arg2), 9223372036854775808n);
             },
             __fp_gen_import_primitive_i16: (arg: number): number => {
-                return importFunctions.importPrimitiveI16(arg);
+                return interpretSign(importFunctions.importPrimitiveI16(arg), 32768);
             },
             __fp_gen_import_primitive_i32: (arg: number): number => {
-                return importFunctions.importPrimitiveI32(arg);
+                return interpretSign(importFunctions.importPrimitiveI32(arg), 2147483648);
             },
             __fp_gen_import_primitive_i64: (arg: bigint): bigint => {
-                return importFunctions.importPrimitiveI64(arg);
+                return interpretBigSign(importFunctions.importPrimitiveI64(arg), 9223372036854775808n);
             },
             __fp_gen_import_primitive_i8: (arg: number): number => {
-                return importFunctions.importPrimitiveI8(arg);
+                return interpretSign(importFunctions.importPrimitiveI8(arg), 128);
             },
             __fp_gen_import_primitive_u16: (arg: number): number => {
                 return importFunctions.importPrimitiveU16(arg);
@@ -406,13 +427,33 @@ export async function createRuntime(
 
             return (arg1: number, arg2: string) => {
                 const arg2_ptr = serializeObject(arg2);
-                return export_fn(arg1, arg2_ptr);
+                return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
         })(),
-        exportPrimitiveI16: instance.exports.__fp_gen_export_primitive_i16 as any,
-        exportPrimitiveI32: instance.exports.__fp_gen_export_primitive_i32 as any,
-        exportPrimitiveI64: instance.exports.__fp_gen_export_primitive_i64 as any,
-        exportPrimitiveI8: instance.exports.__fp_gen_export_primitive_i8 as any,
+        exportPrimitiveI16: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 32768);
+        })(),
+        exportPrimitiveI32: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 2147483648);
+        })(),
+        exportPrimitiveI64: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64 as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
+        })(),
+        exportPrimitiveI8: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 128);
+        })(),
         exportPrimitiveU16: instance.exports.__fp_gen_export_primitive_u16 as any,
         exportPrimitiveU32: instance.exports.__fp_gen_export_primitive_u32 as any,
         exportPrimitiveU64: instance.exports.__fp_gen_export_primitive_u64 as any,
@@ -495,8 +536,8 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (rType: string) => {
-                const r#type_ptr = serializeObject(rType);
-                return promiseFromPtr(export_fn(r#type_ptr)).then((ptr) => parseObject<Result<string, string>>(ptr));
+                const type_ptr = serializeObject(rType);
+                return promiseFromPtr(export_fn(type_ptr)).then((ptr) => parseObject<Result<string, string>>(ptr));
             };
         })(),
         init: instance.exports.__fp_gen_init as any,
@@ -587,8 +628,32 @@ export async function createRuntime(
 
             return (arg1: number, arg2: Uint8Array) => {
                 const arg2_ptr = exportToMemory(arg2);
-                return export_fn(arg1, arg2_ptr);
+                return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
+        })(),
+        exportPrimitiveI16Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 32768);
+        })(),
+        exportPrimitiveI32Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 2147483648);
+        })(),
+        exportPrimitiveI64Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64 as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
+        })(),
+        exportPrimitiveI8Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8 as any;
+            if (!export_fn) return;
+
+            return (arg: number) => interpretSign(export_fn(arg), 128);
         })(),
         exportSerdeAdjacentlyTaggedRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_adjacently_tagged as any;
@@ -667,8 +732,8 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (rType: Uint8Array) => {
-                const r#type_ptr = exportToMemory(rType);
-                return promiseFromPtr(export_fn(r#type_ptr)).then(importFromMemory);
+                const type_ptr = exportToMemory(rType);
+                return promiseFromPtr(export_fn(type_ptr)).then(importFromMemory);
             };
         })(),
         reducerBridgeRaw: (() => {

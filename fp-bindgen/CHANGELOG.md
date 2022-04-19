@@ -1,0 +1,12 @@
+# CHANGELOG
+
+## main
+
+- Added Deno support for the TypeScript runtime.
+- Reorganized examples and improved documentation.
+- Added end-to-end tests.
+- Fix #105: Correctly handle passing negative integers as primitives (outside
+  MessagePack) between Rust and TypeScript.
+- Various smaller bugfixes.
+- **Deprecation**: `BindingsType::TsRuntime` is now deprecated in favor of
+  `BindingsType::TsRuntimeWithExtendedConfig`.

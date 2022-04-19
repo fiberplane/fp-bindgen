@@ -9,7 +9,7 @@ use quote::{format_ident, quote, ToTokens};
 use std::{fs, str::FromStr};
 use syn::token::Async;
 
-pub fn generate_bindings(
+pub(crate) fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     types: TypeMap,
@@ -60,7 +60,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> TokenS
     }
 }
 
-pub struct WasmType<'a>(pub &'a TypeIdent);
+struct WasmType<'a>(&'a TypeIdent);
 
 impl ToTokens for WasmType<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
@@ -73,7 +73,7 @@ impl ToTokens for WasmType<'_> {
     }
 }
 
-pub struct WasmArg<'a>(pub &'a FunctionArg);
+struct WasmArg<'a>(&'a FunctionArg);
 
 impl ToTokens for WasmArg<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
@@ -298,7 +298,7 @@ impl ToTokens for RuntimeExportedFunction<'_> {
     }
 }
 
-pub fn generate_function_bindings(
+fn generate_function_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     path: &str,

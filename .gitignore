@@ -2,3 +2,4 @@ Cargo.lock
 bindings/
 example-protocol/bindings
 target
+.vscode
