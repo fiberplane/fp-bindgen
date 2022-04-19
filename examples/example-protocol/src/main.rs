@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use redux_example::{ReduxAction, StateUpdate};
 use fp_bindgen::{prelude::*, types::CargoDependency};
 use once_cell::sync::Lazy;
+use redux_example::{ReduxAction, StateUpdate};
 use std::collections::{BTreeMap, BTreeSet};
 use time::OffsetDateTime;
 
