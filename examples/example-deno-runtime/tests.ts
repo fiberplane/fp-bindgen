@@ -234,3 +234,20 @@ Deno.test("test primitives", async () => {
   assertEquals(plugin.exportPrimitiveI32?.(-32), -32);
   assertEquals(plugin.exportPrimitiveI64?.(-64n), -64n);
 });
+
+Deno.test("test flattened structs", async () => {
+  const plugin = await loadPlugin(
+    "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
+    imports,
+  );
+
+  assertEquals(plugin.exportFpFlatten?.({ foo: "Hello, 🇳🇱!", bar: -64 }), {
+    foo: "Hello, 🇩🇪!",
+    bar: -64,
+  });
+
+  assertEquals(plugin.exportSerdeFlatten?.({ foo: "Hello, 🇳🇱!", bar: -64 }), {
+    foo: "Hello, 🇩🇪!",
+    bar: -64,
+  });
+});
