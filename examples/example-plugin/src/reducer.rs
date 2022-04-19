@@ -3,6 +3,9 @@ use once_cell::sync::Lazy;
 use redux_example::{ReduxAction, ReduxState, StateUpdate};
 use std::{cell::RefCell, rc::Rc};
 
+// We maintain the global state in a mutable static so that we do not need to pass it from
+// JavaScript every time we call the reducer. This avoids significant serialization overhead we
+// would incur otherwise.
 static mut STATE: Lazy<RefCell<ReduxState>> = Lazy::new(|| RefCell::new(ReduxState::default()));
 
 #[fp_export_impl(example_bindings)]

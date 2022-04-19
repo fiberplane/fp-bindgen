@@ -1,9 +1,6 @@
 mod aliases;
 pub use aliases::*;
 
-mod dead_code;
-pub use dead_code::*;
-
 mod flattening;
 pub use flattening::*;
 
@@ -21,3 +18,6 @@ pub use renaming::*;
 
 mod tagged_enums;
 pub use tagged_enums::*;
+
+mod use_statements;
+pub use use_statements::*;
