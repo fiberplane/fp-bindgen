@@ -63,7 +63,7 @@ jobs:
           popd
 
       - name: Install Deno
-      - uses: denoland/setup-deno@v1
+        uses: denoland/setup-deno@v1
         with:
           deno-version: v1.x
 
@@ -73,8 +73,8 @@ jobs:
           deno test --allow-read tests.ts
           popd
 
-      - name: Verify example-rust-runtime builds
-        run: |
-          pushd examples/example-rust-runtime
-          cargo build
-          popd
+#      - name: Verify example-rust-runtime builds
+#        run: |
+#          pushd examples/example-rust-runtime
+#          cargo build
+#          popd
