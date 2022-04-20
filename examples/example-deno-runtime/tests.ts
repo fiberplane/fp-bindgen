@@ -1,4 +1,5 @@
 import {
+  assert,
   assertAlmostEquals,
   assertEquals,
   fail,
@@ -211,7 +212,7 @@ const imports: Imports = {
     const encoder = new TextEncoder();
 
     assertEquals(request, {
-      url: "https://fiberplane.dev",
+      url: "https://fiberplane.dev/",
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -315,4 +316,29 @@ Deno.test("tagged enums", async () => {
   });
 
   assertEquals(plugin.exportSerdeUntagged?.("Hello, plugin!"), { a: -8, b: 64 });
+});
+
+Deno.test("async struct", async () => {
+  const { exportAsyncStruct } = await loadExamplePlugin();
+  assert(exportAsyncStruct);
+
+  assertEquals(await exportAsyncStruct({
+    fooBar: "foo_bar",
+    QUX_BAZ: 64.0,
+    rawStruct: -32
+  }, 64n), {
+    fooBar: "fooBar",
+    QUX_BAZ: -64.0,
+    rawStruct: 32,
+  });
+});
+
+Deno.test("fetch async data", async () => {
+  const { fetchData } = await loadExamplePlugin();
+  assert(fetchData);
+
+  const data = await fetchData("sign-up");
+  assertEquals(data, {
+    Ok: JSON.stringify({ "status": "confirmed" })
+  });
 });

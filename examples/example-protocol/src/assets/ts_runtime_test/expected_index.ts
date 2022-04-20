@@ -156,7 +156,7 @@ export async function createRuntime(
     plugin: ArrayBuffer,
     importFunctions: Imports
 ): Promise<Exports> {
-    const promises = new Map<FatPtr, (result: FatPtr) => void>();
+    const promises = new Map<FatPtr, ((result: FatPtr) => void) | FatPtr>();
 
     function createAsyncValue(): FatPtr {
         const len = 12; // std::mem::size_of::<AsyncValue>()
@@ -192,18 +192,33 @@ export async function createRuntime(
     }
 
     function promiseFromPtr(ptr: FatPtr): Promise<FatPtr> {
-        return new Promise((resolve) => {
-            promises.set(ptr, resolve as (result: FatPtr) => void);
-        });
+        const resultPtr = promises.get(ptr);
+        if (resultPtr) {
+            if (typeof resultPtr === "function") {
+                throw new FPRuntimeError("Already created promise for this value");
+            }
+
+            promises.delete(ptr);
+            return Promise.resolve(resultPtr);
+        } else {
+            return new Promise((resolve) => {
+                promises.set(ptr, resolve as (result: FatPtr) => void);
+            });
+        }
     }
 
     function resolvePromise(asyncValuePtr: FatPtr, resultPtr: FatPtr) {
         const resolve = promises.get(asyncValuePtr);
-        if (!resolve) {
-            throw new FPRuntimeError("Tried to resolve unknown promise");
-        }
+        if (resolve) {
+            if (typeof resolve !== "function") {
+                throw new FPRuntimeError("Tried to resolve invalid promise");
+            }
 
-        resolve(resultPtr);
+            promises.delete(asyncValuePtr);
+            resolve(resultPtr);
+        } else {
+            promises.set(asyncValuePtr, resultPtr);
+        }
     }
 
     function serializeObject<T>(object: T): FatPtr {
