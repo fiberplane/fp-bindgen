@@ -62,6 +62,17 @@ jobs:
           cargo build
           popd
 
+      - name: Install Deno
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Run end-to-end tests in Deno runtime
+        run: |
+          pushd examples/example-deno-runtime
+          deno test --allow-read tests.ts
+          popd
+
       - name: Verify example-rust-runtime builds
         run: |
           pushd examples/example-rust-runtime
