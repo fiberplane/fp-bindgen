@@ -23,6 +23,7 @@ import type {
     GroupImportedType1,
     GroupImportedType2,
     HttpResult,
+    Int64,
     Point,
     ReduxAction,
     Request,
@@ -48,8 +49,11 @@ export type Imports = {
     importFpInternallyTagged: (arg: FpInternallyTagged) => FpInternallyTagged;
     importFpStruct: (arg: FpPropertyRenaming) => FpPropertyRenaming;
     importFpUntagged: (arg: FpUntagged) => FpUntagged;
-    importGenerics: (arg: StructWithGenerics<bigint>) => StructWithGenerics<bigint>;
+    importGenerics: (arg: StructWithGenerics<number>) => StructWithGenerics<number>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
+    importPrimitiveBool: (arg: boolean) => boolean;
+    importPrimitiveF32: (arg: number) => number;
+    importPrimitiveF64: (arg: number) => number;
     importPrimitiveI16: (arg: number) => number;
     importPrimitiveI32: (arg: number) => number;
     importPrimitiveI64: (arg: bigint) => bigint;
@@ -79,8 +83,11 @@ export type Exports = {
     exportFpInternallyTagged?: (arg: FpInternallyTagged) => FpInternallyTagged;
     exportFpStruct?: (arg: FpPropertyRenaming) => FpPropertyRenaming;
     exportFpUntagged?: (arg: FpUntagged) => FpUntagged;
-    exportGenerics?: (arg: StructWithGenerics<bigint>) => StructWithGenerics<bigint>;
+    exportGenerics?: (arg: StructWithGenerics<number>) => StructWithGenerics<number>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
+    exportPrimitiveBool?: (arg: boolean) => boolean;
+    exportPrimitiveF32?: (arg: number) => number;
+    exportPrimitiveF64?: (arg: number) => number;
     exportPrimitiveI16?: (arg: number) => number;
     exportPrimitiveI32?: (arg: number) => number;
     exportPrimitiveI64?: (arg: bigint) => bigint;
@@ -110,6 +117,7 @@ export type Exports = {
     exportFpUntaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
+    exportPrimitiveBoolRaw?: (arg: boolean) => boolean;
     exportPrimitiveI16Raw?: (arg: number) => number;
     exportPrimitiveI32Raw?: (arg: number) => number;
     exportPrimitiveI64Raw?: (arg: bigint) => bigint;
@@ -246,12 +254,21 @@ export async function createRuntime(
                 return serializeObject(importFunctions.importFpUntagged(arg));
             },
             __fp_gen_import_generics: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<StructWithGenerics<bigint>>(arg_ptr);
+                const arg = parseObject<StructWithGenerics<number>>(arg_ptr);
                 return serializeObject(importFunctions.importGenerics(arg));
             },
             __fp_gen_import_multiple_primitives: (arg1: number, arg2_ptr: FatPtr): bigint => {
                 const arg2 = parseObject<string>(arg2_ptr);
                 return interpretBigSign(importFunctions.importMultiplePrimitives(arg1, arg2), 9223372036854775808n);
+            },
+            __fp_gen_import_primitive_bool: (arg: boolean): boolean => {
+                return !!importFunctions.importPrimitiveBool(arg);
+            },
+            __fp_gen_import_primitive_f32: (arg: number): number => {
+                return importFunctions.importPrimitiveF32(arg);
+            },
+            __fp_gen_import_primitive_f64: (arg: number): number => {
+                return importFunctions.importPrimitiveF64(arg);
             },
             __fp_gen_import_primitive_i16: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI16(arg), 32768);
@@ -416,9 +433,9 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_export_generics as any;
             if (!export_fn) return;
 
-            return (arg: StructWithGenerics<bigint>) => {
+            return (arg: StructWithGenerics<number>) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<StructWithGenerics<bigint>>(export_fn(arg_ptr));
+                return parseObject<StructWithGenerics<number>>(export_fn(arg_ptr));
             };
         })(),
         exportMultiplePrimitives: (() => {
@@ -430,6 +447,14 @@ export async function createRuntime(
                 return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
         })(),
+        exportPrimitiveBool: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool as any;
+            if (!export_fn) return;
+
+            return (arg: boolean) => !!export_fn(arg);
+        })(),
+        exportPrimitiveF32: instance.exports.__fp_gen_export_primitive_f32 as any,
+        exportPrimitiveF64: instance.exports.__fp_gen_export_primitive_f64 as any,
         exportPrimitiveI16: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;
             if (!export_fn) return;
@@ -630,6 +655,12 @@ export async function createRuntime(
                 const arg2_ptr = exportToMemory(arg2);
                 return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
+        })(),
+        exportPrimitiveBoolRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool as any;
+            if (!export_fn) return;
+
+            return (arg: boolean) => !!export_fn(arg);
         })(),
         exportPrimitiveI16Raw: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;

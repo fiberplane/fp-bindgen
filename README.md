@@ -247,6 +247,11 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 - Data types may only contain value types. References are currently unsupported.
 - Referencing types using their full module path is prone to cause mismatches during type
   discovery. Please import types using a `use` statement and refer to them by their name only.
+- TypeScript bindings handle 64-bit integers somewhat inconsistently. When passed as primitives (as
+  plain function arguments or return values) they will be encoded using the `BigInt` type. But when
+  they're part of a MessagePack-encoded data type, they will be encoded using `number`, which
+  effectively limits them to a maximum size of `2^53 - 1`. For more information, see:
+  https://github.com/msgpack/msgpack-javascript/issues/115
 
 ## FAQ
 

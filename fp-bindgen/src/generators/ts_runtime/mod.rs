@@ -250,7 +250,7 @@ fn format_function_declarations(
                     format!(
                         "{}: {}",
                         arg.name.to_camel_case(),
-                        format_ident(&arg.ty, types)
+                        format_plain_primitive_or_ident(&arg.ty, types)
                     )
                 })
                 .collect::<Vec<_>>()
@@ -267,7 +267,7 @@ fn format_function_declarations(
                 format!(
                     " => {}",
                     match &function.return_type {
-                        Some(ty) => format_ident(ty, types),
+                        Some(ty) => format_plain_primitive_or_ident(ty, types),
                         None => "void".to_owned(),
                     }
                 )
@@ -346,7 +346,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                         format!(
                             "{}: {}",
                             arg.name.to_camel_case(),
-                            format_primitive(primitive)
+                            format_plain_primitive(primitive)
                         )
                     } else {
                         format!("{}: FatPtr", get_pointer_name(&arg.name))
@@ -360,7 +360,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 .map(|ty| Primitive::from_str(&ty.name))
             {
                 None => "".to_owned(),
-                Some(Ok(primitive)) => format!(": {}", format_primitive(*primitive)),
+                Some(Ok(primitive)) => format!(": {}", format_plain_primitive(*primitive)),
                 Some(_) => ": FatPtr".to_owned(),
             };
             let import_args = function
@@ -483,7 +483,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                     format!(
                         "{}: {}",
                         arg.name.to_camel_case(),
-                        format_ident(&arg.ty, types)
+                        format_plain_primitive_or_ident(&arg.ty, types)
                     )
                 })
                 .collect::<Vec<_>>()
@@ -655,7 +655,14 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
             Type::Alias(name, ty) => Some(format!(
                 "export type {} = {};",
                 name,
-                format_ident(ty, types)
+                // Now we're in a real pickle: We don't know the context in
+                // which this alias will be used. It could be either a plain
+                // primitive or a MessagePack-encoded one, so we account for
+                // both cases:
+                match ty.name.as_str() {
+                    "i64" | "u64" => "number | bigint".to_owned(),
+                    _ => format_ident(ty, types),
+                }
             )),
             Type::Custom(CustomType {
                 ts_ty,
@@ -687,7 +694,7 @@ fn is_primitive_function(function: &Function) -> bool {
     function
         .args
         .iter()
-        .all(|arg| arg.ty.is_primitive() && !is_signed_primitive(&arg.ty))
+        .all(|arg| arg.ty.is_primitive() && !needs_primitive_cast(&arg.ty))
         && !function.is_async
         && function
             .return_type
@@ -733,7 +740,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                                 join_lines(&field_lines, |line| format!("    {}", line))
                             )
                         } else {
-                            format!(" {} ", field_lines.join("").trim_end_matches(';'))
+                            format!(" {} ", field_lines.join(" ").trim_end_matches(';'))
                         };
 
                         match (&ty.options.tag_prop_name, &ty.options.content_prop_name) {
@@ -901,7 +908,7 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
 
 fn format_raw_type(ty: &TypeIdent) -> &str {
     if let Ok(primitive) = Primitive::from_str(&ty.name) {
-        format_primitive(primitive)
+        format_plain_primitive(primitive)
     } else {
         "Uint8Array"
     }
@@ -966,7 +973,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
                 format_ident(arg2, types)
             )
         }
-        Type::Primitive(primitive) => format_primitive(*primitive).to_owned(),
+        Type::Primitive(primitive) => format_encoded_primitive(*primitive).to_owned(),
         Type::String => "string".to_owned(),
         Type::Tuple(items) => format!(
             "[{}]",
@@ -980,7 +987,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
     }
 }
 
-fn format_primitive(primitive: Primitive) -> &'static str {
+fn format_plain_primitive(primitive: Primitive) -> &'static str {
     match primitive {
         Primitive::Bool => "boolean",
         Primitive::F32 => "number",
@@ -993,6 +1000,26 @@ fn format_primitive(primitive: Primitive) -> &'static str {
         Primitive::U16 => "number",
         Primitive::U32 => "number",
         Primitive::U64 => "bigint",
+    }
+}
+
+fn format_plain_primitive_or_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+    if let Ok(primitive) = Primitive::from_str(&ident.name) {
+        format_plain_primitive(primitive).to_owned()
+    } else {
+        format_ident(ident, types)
+    }
+}
+
+// When encoded as part of a MessagePack type, 64-bit numbers are decoded into
+// regular numbers rather than BigInt. This effectively limits them to a maximum
+// value of `2^53 - 1`.
+// See: https://github.com/msgpack/msgpack-javascript/issues/115
+fn format_encoded_primitive(primitive: Primitive) -> &'static str {
+    match primitive {
+        Primitive::I64 => "number",
+        Primitive::U64 => "number",
+        primitive => format_plain_primitive(primitive),
     }
 }
 
@@ -1027,6 +1054,7 @@ fn get_pointer_name(name: &str) -> String {
 
 fn import_primitive(ty: &TypeIdent, value: &str) -> String {
     match ty.name.as_str() {
+        "bool" => format!("!!{}", value),
         "i8" => format!("interpretSign({}, 128)", value),
         "i16" => format!("interpretSign({}, 32768)", value),
         "i32" => format!("interpretSign({}, 2147483648)", value),
@@ -1035,8 +1063,8 @@ fn import_primitive(ty: &TypeIdent, value: &str) -> String {
     }
 }
 
-fn is_signed_primitive(ty: &TypeIdent) -> bool {
-    matches!(ty.name.as_str(), "i8" | "i16" | "i32" | "i64")
+fn needs_primitive_cast(ty: &TypeIdent) -> bool {
+    matches!(ty.name.as_str(), "bool" | "i8" | "i16" | "i32" | "i64")
 }
 
 fn join_lines<F>(lines: &[String], formatter: F) -> String

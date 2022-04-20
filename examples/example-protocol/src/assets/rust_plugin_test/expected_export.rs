@@ -28,6 +28,15 @@ pub fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
 pub fn export_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
 #[fp_bindgen_support::fp_export_signature]
+pub fn export_primitive_bool(arg: bool) -> bool;
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_primitive_f32(arg: f32) -> f32;
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_primitive_f64(arg: f64) -> f64;
+
+#[fp_bindgen_support::fp_export_signature]
 pub fn export_primitive_i16(arg: i16) -> i16;
 
 #[fp_bindgen_support::fp_export_signature]

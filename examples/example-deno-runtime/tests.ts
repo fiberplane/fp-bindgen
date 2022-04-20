@@ -1,4 +1,5 @@
 import {
+  assertAlmostEquals,
   assertEquals,
   fail,
 } from "https://deno.land/std@0.135.0/testing/asserts.ts";
@@ -27,7 +28,7 @@ let voidFunctionCalled = false;
 const imports: Imports = {
   importFpAdjacentlyTagged: (arg: FpAdjacentlyTagged): FpAdjacentlyTagged => {
     assertEquals(arg, { type: "Bar", payload: "Hello, plugin!" });
-    return { type: "Baz", payload: { a: -8, b: 64n } };
+    return { type: "Baz", payload: { a: -8, b: 64 } };
   },
 
   importFpEnum: (arg: FpVariantRenaming): FpVariantRenaming => {
@@ -42,12 +43,12 @@ const imports: Imports = {
 
   importFpFlatten: (arg: FpFlatten): FpFlatten => {
     assertEquals(arg, { foo: "Hello, 🇳🇱!", bar: -64n });
-    return { foo: "Hello, 🇩🇪!", bar: -64n };
+    return { foo: "Hello, 🇩🇪!", bar: -64 };
   },
 
   importFpInternallyTagged: (arg: FpInternallyTagged): FpInternallyTagged => {
     assertEquals(arg, { type: "Foo" });
-    return { type: "Baz", a: -8, b: 64n };
+    return { type: "Baz", a: -8, b: 64 };
   },
 
   importFpStruct: (arg: FpPropertyRenaming): FpPropertyRenaming => {
@@ -57,12 +58,12 @@ const imports: Imports = {
 
   importFpUntagged: (arg: FpUntagged): FpUntagged => {
     assertEquals(arg, "Hello, plugin!");
-    return { a: -8, b: 64n };
+    return { a: -8, b: 64 };
   },
 
   importGenerics: (
-    arg: StructWithGenerics<bigint>,
-  ): StructWithGenerics<bigint> => {
+    arg: StructWithGenerics<number>,
+  ): StructWithGenerics<number> => {
     assertEquals(
       arg,
       {
@@ -77,9 +78,9 @@ const imports: Imports = {
       },
     );
     return {
-      list: [0n, 64n],
-      points: [{ value: 64n }],
-      recursive: [{ value: { value: 64n } }],
+      list: [0, 64],
+      points: [{ value: 64 }],
+      recursive: [{ value: { value: 64 } }],
       complex_nested: {
         "een": [{ value: 1.0 }],
         "twee": [{ value: 2.0 }],
@@ -92,6 +93,20 @@ const imports: Imports = {
     assertEquals(arg1, -8);
     assertEquals(arg2, "Hello, 🇳🇱!");
     return -64n;
+  },
+
+  importPrimitiveBool: (arg: boolean): boolean => {
+    return arg;
+  },
+
+  importPrimitiveF32: (arg: number): number => {
+    assertAlmostEquals(arg, 3.1415926535);
+    return 3.1415926535;
+  },
+
+  importPrimitiveF64: (arg: number): number => {
+    assertAlmostEquals(arg, 2.718281828459);
+    return 2.718281828459;
   },
 
   importPrimitiveI16: (arg: number): number => {
@@ -138,7 +153,7 @@ const imports: Imports = {
     arg: SerdeAdjacentlyTagged,
   ): SerdeAdjacentlyTagged => {
     assertEquals(arg, { type: "Bar", payload: "Hello, plugin!" });
-    return { type: "Baz", payload: { a: -8, b: 64n } };
+    return { type: "Baz", payload: { a: -8, b: 64 } };
   },
 
   importSerdeEnum: (arg: SerdeVariantRenaming): SerdeVariantRenaming => {
@@ -153,14 +168,14 @@ const imports: Imports = {
 
   importSerdeFlatten: (arg: SerdeFlatten): SerdeFlatten => {
     assertEquals(arg, { foo: "Hello, 🇳🇱!", bar: -64n });
-    return { foo: "Hello, 🇩🇪!", bar: -64n };
+    return { foo: "Hello, 🇩🇪!", bar: -64 };
   },
 
   importSerdeInternallyTagged: (
     arg: SerdeInternallyTagged,
   ): SerdeInternallyTagged => {
     assertEquals(arg, { type: "Foo" });
-    return { type: "Baz", a: -8, b: 64n };
+    return { type: "Baz", a: -8, b: 64 };
   },
 
   importSerdeStruct: (arg: SerdePropertyRenaming): SerdePropertyRenaming => {
@@ -170,7 +185,7 @@ const imports: Imports = {
 
   importSerdeUntagged: (arg: SerdeUntagged): SerdeUntagged => {
     assertEquals(arg, "Hello, plugin!");
-    return { a: -8, b: 64n };
+    return { a: -8, b: 64 };
   },
 
   importString: (arg: string): string => {
@@ -225,6 +240,8 @@ Deno.test("test primitives", async () => {
     imports,
   );
 
+  assertEquals(plugin.exportPrimitiveBool?.(true), true);
+  assertEquals(plugin.exportPrimitiveBool?.(false), false);
   assertEquals(plugin.exportPrimitiveU8?.(8), 8);
   assertEquals(plugin.exportPrimitiveU16?.(16), 16);
   assertEquals(plugin.exportPrimitiveU32?.(32), 32);
@@ -233,6 +250,8 @@ Deno.test("test primitives", async () => {
   assertEquals(plugin.exportPrimitiveI16?.(-16), -16);
   assertEquals(plugin.exportPrimitiveI32?.(-32), -32);
   assertEquals(plugin.exportPrimitiveI64?.(-64n), -64n);
+  assertAlmostEquals(plugin.exportPrimitiveF32?.(3.1415926535) ?? 0, 3.1415926535);
+  assertAlmostEquals(plugin.exportPrimitiveF64?.(2.718281828459) ?? 0, 2.718281828459);
 });
 
 Deno.test("test flattened structs", async () => {

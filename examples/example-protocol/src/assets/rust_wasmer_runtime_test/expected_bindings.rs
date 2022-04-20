@@ -263,6 +263,57 @@ impl Runtime {
         Ok(result)
     }
 
+    pub fn export_primitive_bool(&self, arg: bool) -> Result<bool, InvocationError> {
+        let result = self.export_primitive_bool_raw(arg);
+        result
+    }
+    pub fn export_primitive_bool_raw(&self, arg: bool) -> Result<bool, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(bool), bool>("__fp_gen_export_primitive_bool")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(arg)?;
+        Ok(result)
+    }
+
+    pub fn export_primitive_f32(&self, arg: f32) -> Result<f32, InvocationError> {
+        let result = self.export_primitive_f32_raw(arg);
+        result
+    }
+    pub fn export_primitive_f32_raw(&self, arg: f32) -> Result<f32, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(f32), f32>("__fp_gen_export_primitive_f32")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(arg)?;
+        Ok(result)
+    }
+
+    pub fn export_primitive_f64(&self, arg: f64) -> Result<f64, InvocationError> {
+        let result = self.export_primitive_f64_raw(arg);
+        result
+    }
+    pub fn export_primitive_f64_raw(&self, arg: f64) -> Result<f64, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(f64), f64>("__fp_gen_export_primitive_f64")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call(arg)?;
+        Ok(result)
+    }
+
     pub fn export_primitive_i16(&self, arg: i16) -> Result<i16, InvocationError> {
         let result = self.export_primitive_i16_raw(arg);
         result
@@ -684,6 +735,9 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
            "__fp_gen_import_fp_untagged" => Function :: new_native_with_env (store , env . clone () , _import_fp_untagged) ,
            "__fp_gen_import_generics" => Function :: new_native_with_env (store , env . clone () , _import_generics) ,
            "__fp_gen_import_multiple_primitives" => Function :: new_native_with_env (store , env . clone () , _import_multiple_primitives) ,
+           "__fp_gen_import_primitive_bool" => Function :: new_native_with_env (store , env . clone () , _import_primitive_bool) ,
+           "__fp_gen_import_primitive_f32" => Function :: new_native_with_env (store , env . clone () , _import_primitive_f32) ,
+           "__fp_gen_import_primitive_f64" => Function :: new_native_with_env (store , env . clone () , _import_primitive_f64) ,
            "__fp_gen_import_primitive_i16" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i16) ,
            "__fp_gen_import_primitive_i32" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i32) ,
            "__fp_gen_import_primitive_i64" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i64) ,
@@ -752,6 +806,21 @@ pub fn _import_generics(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 pub fn _import_multiple_primitives(env: &RuntimeInstanceData, arg1: i8, arg2: FatPtr) -> i64 {
     let arg2 = import_from_guest::<String>(env, arg2);
     let result = super::import_multiple_primitives(arg1, arg2);
+    result
+}
+
+pub fn _import_primitive_bool(env: &RuntimeInstanceData, arg: bool) -> bool {
+    let result = super::import_primitive_bool(arg);
+    result
+}
+
+pub fn _import_primitive_f32(env: &RuntimeInstanceData, arg: f32) -> f32 {
+    let result = super::import_primitive_f32(arg);
+    result
+}
+
+pub fn _import_primitive_f64(env: &RuntimeInstanceData, arg: f64) -> f64 {
+    let result = super::import_primitive_f64(arg);
     result
 }
 

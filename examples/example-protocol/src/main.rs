@@ -21,6 +21,7 @@ fp_import! {
     type Body = ByteBuf;
     type FloatingPoint = Point<f64>;
     type HttpResult = Result<Response, RequestError>;
+    type Int64 = u64;
 
     // Types that are not referenced by any of the protocol functions (either
     // directly as argument or return type, or indirectly through other types)
@@ -40,6 +41,9 @@ fp_import! {
     fn import_void_function();
 
     // Passing primitives:
+    fn import_primitive_bool(arg: bool) -> bool;
+    fn import_primitive_f32(arg: f32) -> f32;
+    fn import_primitive_f64(arg: f64) -> f64;
     fn import_primitive_i8(arg: i8) -> i8;
     fn import_primitive_i16(arg: i16) -> i16;
     fn import_primitive_i32(arg: i32) -> i32;
@@ -108,6 +112,9 @@ fp_export! {
     fn export_void_function();
 
     // Passing primitives:
+    fn export_primitive_bool(arg: bool) -> bool;
+    fn export_primitive_f32(arg: f32) -> f32;
+    fn export_primitive_f64(arg: f64) -> f64;
     fn export_primitive_i8(arg: i8) -> i8;
     fn export_primitive_i16(arg: i16) -> i16;
     fn export_primitive_i32(arg: i32) -> i32;

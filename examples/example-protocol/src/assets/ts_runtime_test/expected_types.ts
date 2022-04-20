@@ -53,7 +53,7 @@ export type ExplicitedlyImportedType = {
 
 export type FlattenedStruct = {
     foo: string;
-    bar: bigint;
+    bar: number;
 };
 
 export type FloatingPoint = Point<number>;
@@ -61,14 +61,14 @@ export type FloatingPoint = Point<number>;
 export type FpAdjacentlyTagged =
     | { type: "Foo" }
     | { type: "Bar"; payload: string }
-    | { type: "Baz"; payload: { a: number;b: bigint } };
+    | { type: "Baz"; payload: { a: number; b: number } };
 
 export type FpFlatten = {
 } & FlattenedStruct;
 
 export type FpInternallyTagged =
     | { type: "Foo" }
-    | { type: "Baz"; a: number;b: bigint };
+    | { type: "Baz"; a: number; b: number };
 
 export type FpPropertyRenaming = {
     fooBar: string;
@@ -78,7 +78,7 @@ export type FpPropertyRenaming = {
 
 export type FpUntagged =
     | string
-    | { a: number; b: bigint; };
+    | { a: number; b: number; };
 
 export type FpVariantRenaming =
     | "foo_bar"
@@ -101,6 +101,8 @@ export type GroupImportedType2 = {
 };
 
 export type HttpResult = Result<Response, RequestError>;
+
+export type Int64 = number | bigint;
 
 export type Method = 
     | "GET"
@@ -225,14 +227,14 @@ export type Result<T, E> =
 export type SerdeAdjacentlyTagged =
     | { type: "Foo" }
     | { type: "Bar"; payload: string }
-    | { type: "Baz"; payload: { a: number;b: bigint } };
+    | { type: "Baz"; payload: { a: number; b: number } };
 
 export type SerdeFlatten = {
 } & FlattenedStruct;
 
 export type SerdeInternallyTagged =
     | { type: "Foo" }
-    | { type: "Baz"; a: number;b: bigint };
+    | { type: "Baz"; a: number; b: number };
 
 export type SerdePropertyRenaming = {
     fooBar: string;
@@ -242,7 +244,7 @@ export type SerdePropertyRenaming = {
 
 export type SerdeUntagged =
     | string
-    | { a: number; b: bigint; };
+    | { a: number; b: number; };
 
 export type SerdeVariantRenaming =
     | "foo_bar"

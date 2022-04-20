@@ -24,6 +24,25 @@ fn init_panic_hook() {
 }
 
 #[fp_export_impl(example_bindings)]
+fn export_primitive_bool(arg: bool) -> bool {
+    arg
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_primitive_f32(arg: f32) -> f32 {
+    assert!(arg > 3.14);
+    assert!(arg < 3.15);
+    3.1415926535
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_primitive_f64(arg: f64) -> f64 {
+    assert!(arg > 2.7182);
+    assert!(arg < 2.7183);
+    2.718281828459
+}
+
+#[fp_export_impl(example_bindings)]
 fn export_primitive_i8(arg: i8) -> i8 {
     assert_eq!(arg, -8);
     -8

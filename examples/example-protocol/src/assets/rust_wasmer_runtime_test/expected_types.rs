@@ -110,6 +110,8 @@ pub struct GroupImportedType2 {
 
 pub type HttpResult = Result<Response, RequestError>;
 
+pub type Int64 = u64;
+
 /// A point of an arbitrary type.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Point<T> {

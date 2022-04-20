@@ -11,3 +11,8 @@ use super::{RequestError, Response};
 pub type Body = ByteBuf;
 
 pub type HttpResult = Result<Response, RequestError>;
+
+// This alias is annoying for the TypeScript bindings, because 64-bit numbers
+// could be encoded using numbers or the `BigInt` type depending on context.
+// An alias doesn't know its context, so it needs to account for either case.
+pub type Int64 = u64;
