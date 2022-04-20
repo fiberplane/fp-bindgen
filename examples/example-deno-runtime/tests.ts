@@ -242,6 +242,10 @@ async function loadExamplePlugin() {
       "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
       imports,
     )
+
+    const { init } = examplePlugin;
+    assert(init);
+    init();
   }
 
   return examplePlugin;
@@ -274,7 +278,77 @@ Deno.test("string", async () => {
   assertEquals(plugin.exportString?.("Hello, plugin!"), "Hello, world!");
 });
 
+// FIXME: Disabled pending https://github.com/fiberplane/fp-bindgen/issues/108
+/*Deno.test("timestamp", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportTimestamp?.("2022-04-12T19:10:00Z"), "2022-04-13T12:37:00Z");
+});*/
+
 Deno.test("flattened structs", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportFpStruct?.({
+    fooBar: "foo_bar",
+    QUX_BAZ: 64.0,
+    rawStruct: -32
+  }), {
+    fooBar: "fooBar",
+    QUX_BAZ: -64.0,
+    rawStruct: 32,
+  });
+
+  assertEquals(plugin.exportFpEnum?.("foo_bar"), {
+    QUX_BAZ: {
+      FOO_BAR: "foo_bar",
+      qux_baz: 64.0,
+    }
+  });
+
+  assertEquals(plugin.exportSerdeStruct?.({
+    fooBar: "foo_bar",
+    QUX_BAZ: 64.0,
+    rawStruct: -32
+  }), {
+    fooBar: "fooBar",
+    QUX_BAZ: -64.0,
+    rawStruct: 32,
+  });
+
+  assertEquals(plugin.exportSerdeEnum?.("foo_bar"), {
+    QUX_BAZ: {
+      FooBar: "foo_bar",
+      qux_baz: 64.0,
+    }
+  });
+});
+
+// FIXME: Disabled pending https://github.com/fiberplane/fp-bindgen/issues/108
+/*Deno.test("generics", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportGenerics?.({
+    list: [0, 64],
+    points: [{ value: 64 }],
+    recursive: [{ value: { value: 64 } }],
+    complex_nested: {
+      "one": [{ value: 1.0 }],
+      "two": [{ value: 2.0 }],
+    },
+    optional_timestamp: "1970-01-01T00:00:00Z",
+  }), {
+    list: [0, 64],
+    points: [{ value: 64 }],
+    recursive: [{ value: { value: 64 } }],
+    complex_nested: {
+      "een": [{ value: 1.0 }],
+      "twee": [{ value: 2.0 }],
+    },
+    optional_timestamp: "1970-01-01T00:00:00Z",
+  });
+});*/
+
+Deno.test("property renaming", async () => {
   const plugin = await loadExamplePlugin();
 
   assertEquals(plugin.exportFpFlatten?.({ foo: "Hello, 🇳🇱!", bar: -64 }), {
