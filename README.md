@@ -311,7 +311,7 @@ simply be interpreted as meaning the plugin is at version 1.
 
 Do you want help using `fp-bindgen`? Want to discuss new features?
 
-Please come visit us in the `#fp-bindgen` channel on our [Discord](https://discord.gg/59ZANEFm).
+Please come visit us in the `#fp-bindgen` channel on our [Discord](https://discord.gg/fAt2xgMSGS).
 
 ## Contributing
 
