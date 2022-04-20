@@ -4,7 +4,7 @@ import {
   fail,
 } from "https://deno.land/std@0.135.0/testing/asserts.ts";
 import { loadPlugin } from "./loader.ts";
-import type { Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
+import type { Exports, Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
 import type {
   FpAdjacentlyTagged,
   FpFlatten,
@@ -189,8 +189,8 @@ const imports: Imports = {
   },
 
   importString: (arg: string): string => {
-    assertEquals(arg, "Hello, plugin!");
-    return "Hello, world!";
+    assertEquals(arg, "Hello, world!");
+    return "Hello, plugin!";
   },
 
   importTimestamp: (arg: string): string => {
@@ -234,14 +234,24 @@ const imports: Imports = {
   },
 };
 
-Deno.test("test primitives", async () => {
-  const plugin = await loadPlugin(
-    "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
-    imports,
-  );
+let examplePlugin: Exports | null = null;
+async function loadExamplePlugin() {
+  if (!examplePlugin) {
+    examplePlugin = await loadPlugin(
+      "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
+      imports,
+    )
+  }
+
+  return examplePlugin;
+}
+
+Deno.test("primitives", async () => {
+  const plugin = await loadExamplePlugin();
 
   assertEquals(plugin.exportPrimitiveBool?.(true), true);
   assertEquals(plugin.exportPrimitiveBool?.(false), false);
+
   assertEquals(plugin.exportPrimitiveU8?.(8), 8);
   assertEquals(plugin.exportPrimitiveU16?.(16), 16);
   assertEquals(plugin.exportPrimitiveU32?.(32), 32);
@@ -250,15 +260,21 @@ Deno.test("test primitives", async () => {
   assertEquals(plugin.exportPrimitiveI16?.(-16), -16);
   assertEquals(plugin.exportPrimitiveI32?.(-32), -32);
   assertEquals(plugin.exportPrimitiveI64?.(-64n), -64n);
+
+  assertEquals(plugin.exportMultiplePrimitives?.(-8, "Hello, 🇳🇱!"), -64n);
+
   assertAlmostEquals(plugin.exportPrimitiveF32?.(3.1415926535) ?? 0, 3.1415926535);
   assertAlmostEquals(plugin.exportPrimitiveF64?.(2.718281828459) ?? 0, 2.718281828459);
 });
 
-Deno.test("test flattened structs", async () => {
-  const plugin = await loadPlugin(
-    "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
-    imports,
-  );
+Deno.test("string", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportString?.("Hello, plugin!"), "Hello, world!");
+});
+
+Deno.test("flattened structs", async () => {
+  const plugin = await loadExamplePlugin();
 
   assertEquals(plugin.exportFpFlatten?.({ foo: "Hello, 🇳🇱!", bar: -64 }), {
     foo: "Hello, 🇩🇪!",
@@ -269,4 +285,34 @@ Deno.test("test flattened structs", async () => {
     foo: "Hello, 🇩🇪!",
     bar: -64,
   });
+});
+
+Deno.test("tagged enums", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportFpAdjacentlyTagged?.({ type: "Bar", payload: "Hello, plugin!" }), {
+    type: "Baz",
+    payload: { a: -8, b: 64 }
+  });
+
+  assertEquals(plugin.exportFpInternallyTagged?.({ type: "Foo" }), {
+    type: "Baz",
+    a: -8,
+    b: 64
+  });
+
+  assertEquals(plugin.exportFpUntagged?.("Hello, plugin!"), { a: -8, b: 64 });
+
+  assertEquals(plugin.exportSerdeAdjacentlyTagged?.({ type: "Bar", payload: "Hello, plugin!" }), {
+    type: "Baz",
+    payload: { a: -8, b: 64 }
+  });
+
+  assertEquals(plugin.exportSerdeInternallyTagged?.({ type: "Foo" }), {
+    type: "Baz",
+    a: -8,
+    b: 64
+  });
+
+  assertEquals(plugin.exportSerdeUntagged?.("Hello, plugin!"), { a: -8, b: 64 });
 });
