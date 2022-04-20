@@ -22,13 +22,13 @@ enabling tight integration with existing crates from the Rust ecosystem.
 
 The following table is intended to highlight the major differences between the different tools:
 
-| Feature                                                   |       `fp-bindgen`       | `wasm-bindgen` |           `wit-bindgen`            |
-| --------------------------------------------------------- | :----------------------: | :------------: | :--------------------------------: |
-| Host environments                                         | Wasmer (Rust), browser\* |    Browser     | Wasmtime (Rust, Python), browser\* |
-| Guest languages                                           |          Rust\*          |      Rust      |             Rust, C\*              |
-| Protocol format                                           |   Rust (using macros)    |      N/A       |                .wit                |
-| Serialization format                                      |       MessagePack        |      JSON      |               Custom               |
-| [Can use existing Rust types](#using-existing-rust-types) |         &#9989;          |    &#10060;    |              &#10060;              |
+| Feature                                                   |         `fp-bindgen`        | `wasm-bindgen` |         `wit-bindgen`           |
+| --------------------------------------------------------- | :-------------------------: | :------------: | :-----------------------------: |
+| Host environments                                         | Rust (Wasmer), TypeScript\* |     JS/TS      | Rust/Python (Wasmtime), JS/TS\* |
+| Guest languages                                           |            Rust\*           |      Rust      |           Rust, C\*             |
+| Protocol format                                           |     Rust (using macros)     |      N/A       |              .wit               |
+| Serialization format                                      |         MessagePack         |      JSON      |             Custom              |
+| [Can use existing Rust types](#using-existing-rust-types) |           &#9989;           |    &#10060;    |            &#10060;             |
 
 \*) These are only the _currently supported_ options. More may be added in the future.
 
@@ -205,36 +205,34 @@ our `example-protocol/` (do note this plugin only builds after you've run `cargo
 
 The generator for our Rust Wasmer runtime works a bit differently. Instead of generating a crate,
 it generates two files: `bindings.rs` and `types.rs`. These can be placed in a module of your
-choosing (we chose a module named `spec` in the `example-runtime/`).
+choosing (we chose a module named `spec` in the `example-rust-runtime/`).
 
 As the implementor of the runtime, it is then your responsibility to implement the `fp_import!`
 functions within the same module as you've placed the generated files. You can see an example of
-this in `example-runtime/spec/mod.rs` (do note the example runtime only builds after you've run
+this in `example-rust-runtime/spec/mod.rs` (do note the example runtime only builds after you've run
 `cargo run` inside the `example-protocol/` directory).
 
 Finally, the `bindings.rs` file contains a constructor (`Runtime::new()`) that you can use to
 instantiate Wasmer runtimes with the Wasm module provided as a blob. The `fp_export!` functions are
 provided on the `Runtime` instance as methods. Please be aware that implementation of the
-`fp_export!` functions is always at the discretion of the plugin, and an attempt to invoke a missing implementation can fail with an `InvocationError::FunctionNotExported` error.
+`fp_export!` functions is always at the discretion of the plugin, and an attempt to invoke a missing
+implementation can fail with an `InvocationError::FunctionNotExported` error.
 
 ### Using the TypeScript runtime bindings
 
-The generator for the TypeScript runtime works similarly to that for the Wasmer runtime, but it
-generates an `index.ts` and a `types.ts`. `types.ts` contains the type definitions for all the data
-structures, while the `index.ts` exports a `createRuntime()` function that you can use for
-instantiating the runtime. Upon instantiation, you are expected to provide implementations for all
-the `fp_import!` functions, while the returned `Promise` will give you an object with all the
-`fp_export!` functions the provided plugin has implemented.
+The TypeScript runtime generator can work with browsers, Node.js and Deno.
+
+It works similarly to that for the Wasmer runtime, but it generates an `index.ts` and a `types.ts`.
+`types.ts` contains the type definitions for all the data structures, while the `index.ts` exports a
+`createRuntime()` function that you can use for instantiating the runtime. Upon instantiation, you
+are expected to provide implementations for all the `fp_import!` functions, while the returned
+`Promise` will give you an object with all the `fp_export!` functions the provided plugin has
+implemented.
 
 ## Examples
 
-For examples, please look at the `example-protocol/` folder. This contains various examples on how
-to use the macros. You can generate the bindings from the protocol using `cargo run`. Running
-`cargo test` in the same folder will verify the generated bindings match the output we expect.
-
-There are also `example-plugin/` and `example-runtime/` directories, which are compiled against the
-bindings generated by the `example-protocol`. This way, you can see how the bindings are expected
-to be used, and we verify that the generated bindings actually compile.
+Please have a look at [`examples/README.md`](examples/README.md) for various examples on how to use
+`fp-bindgen`.
 
 ## Specification
 
@@ -249,6 +247,11 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 - Data types may only contain value types. References are currently unsupported.
 - Referencing types using their full module path is prone to cause mismatches during type
   discovery. Please import types using a `use` statement and refer to them by their name only.
+- TypeScript bindings handle 64-bit integers somewhat inconsistently. When passed as primitives (as
+  plain function arguments or return values) they will be encoded using the `BigInt` type. But when
+  they're part of a MessagePack-encoded data type, they will be encoded using `number`, which
+  effectively limits them to a maximum size of `2^53 - 1`. For more information, see:
+  https://github.com/msgpack/msgpack-javascript/issues/115
 
 ## FAQ
 
@@ -257,7 +260,8 @@ If that is you, please have a look at [`docs/SPEC.md`](docs/SPEC.md).
 Are you using the type in one of the `fp_import!` or `fp_export!` functions? Deriving `Serializable`
 makes it possible to use the type as part of your protocol, but it won't become part of the
 generated bindings until it is actually referenced. Note that types can be either referenced
-directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is already in use.
+directly by one of the `fp_import!` or `fp_export!` functions, or indirectly by another type that is
+already in use.
 
 If a type is not referenced either directly or indirectly by any of the functions that are part of
 your protocol, you can force inclusion by adding a `use` statement referencing the type to either

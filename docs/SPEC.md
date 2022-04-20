@@ -8,7 +8,7 @@ guest module (plugin).
 The WebAssembly module is run in its own sandbox and won't have access to memory of the host. It
 will instead have its own memory, sometimes referred to as linear memory. The guest has full access
 to this memory and so does the host. For this reason, we use the guest's linear memory to pass
-back-and-forth data structures in both direction.
+back-and-forth data structures in both directions.
 
 Because we are using memory to pass along data structures we also need to allocate and free memory
 on both sides. While the host has access to the guest's memory, it should not make assumptions about

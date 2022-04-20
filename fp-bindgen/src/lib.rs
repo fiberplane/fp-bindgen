@@ -16,5 +16,6 @@ primitive_impls!();
 
 #[cfg(feature = "generators")]
 pub use generators::{
-    generate_bindings, BindingConfig, BindingsType, RustPluginConfig, TsRuntimeConfig,
+    generate_bindings, BindingConfig, BindingsType, RustPluginConfig, TsExtendedRuntimeConfig,
+    TsRuntimeConfig,
 };

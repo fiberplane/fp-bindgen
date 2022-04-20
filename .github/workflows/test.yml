@@ -49,7 +49,7 @@ jobs:
 
       - name: Verify example-protocol can be compiled
         run: |
-          pushd example/example-protocol
+          pushd examples/example-protocol
           cargo run
           popd
 
@@ -58,12 +58,23 @@ jobs:
 
       - name: Verify example-plugin builds
         run: |
-          pushd example/example-plugin
+          pushd examples/example-plugin
           cargo build
           popd
 
-      - name: Verify example-runtime builds
+      - name: Install Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Run end-to-end tests in Deno runtime
         run: |
-          pushd example/example-runtime
-          cargo build
+          pushd examples/example-deno-runtime
+          deno test --allow-read tests.ts
           popd
+
+#      - name: Verify example-rust-runtime builds
+#        run: |
+#          pushd examples/example-rust-runtime
+#          cargo build
+#          popd

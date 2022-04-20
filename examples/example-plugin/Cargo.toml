@@ -1,0 +1,16 @@
+[package]
+authors = ["Fiberplane <info@fiberplane.com>"]
+edition = "2018"
+name = "example-plugin"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+example-bindings = {path = "../example-protocol/bindings/rust-plugin"}
+http = {version = "0.2"}
+once_cell = {version = "1.10"}
+redux-example = {path = "../redux-example"}
+serde_bytes = {version = "0.11"}
+time = {version = "0.3", features = ["serde-human-readable"]}

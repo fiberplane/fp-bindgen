@@ -1,0 +1,9 @@
+[package]
+authors = ["Fiberplane <info@fiberplane.dev>"]
+edition = "2018"
+name = "redux-example"
+version = "0.1.0"
+
+[dependencies]
+fp-bindgen = {path = "../../fp-bindgen"}
+serde = {version = "1.0", features = ["derive", "rc"]}
