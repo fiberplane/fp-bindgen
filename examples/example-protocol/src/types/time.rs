@@ -6,7 +6,9 @@ use time::OffsetDateTime;
 // For these types it is important that you serialize them using a string
 // representation if you want to be able to use them from TypeScript. RFC3339
 // is recommended because you can pass these directly to the JavaScript `Date`
-// constructor. The Serde attributes to enable
+// constructor. The Serde attributes to enable RFC3339 formatting are inserted
+// automatically by the bindings generator, but you may have to add them
+// yourself if you using annotations such as `#[fp(rust_plugin_module)]`.
 //
 // If you do not use RFC3339 formatting, you should expect your date/time types
 // to only work from Rust to Rust.
