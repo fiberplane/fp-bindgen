@@ -82,7 +82,7 @@ pub fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
 pub fn export_string(arg: String) -> String;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_timestamp(arg: time::OffsetDateTime) -> time::OffsetDateTime;
+pub fn export_timestamp(arg: MyDateTime) -> MyDateTime;
 
 #[fp_bindgen_support::fp_export_signature]
 pub fn export_void_function();

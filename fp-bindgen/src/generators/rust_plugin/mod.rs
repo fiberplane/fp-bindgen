@@ -419,6 +419,12 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
 }
 
 fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
+    let is_tuple_struct = ty
+        .fields
+        .first()
+        .map(|field| field.name.is_none())
+        .unwrap_or_default();
+
     let fields = format_struct_fields(&ty.fields, types)
         .iter()
         .flat_map(|field| field.split('\n'))
@@ -427,7 +433,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
                 line.to_owned()
             } else {
                 format!(
-                    "    {}{}",
+                    "{}{}",
                     if line.starts_with('#') || line.starts_with("///") {
                         ""
                     } else {
@@ -437,8 +443,21 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
                 )
             }
         })
-        .collect::<Vec<_>>()
-        .join("\n");
+        .collect::<Vec<_>>();
+    let fields = if fields.len() > 1 || !is_tuple_struct {
+        fields
+            .into_iter()
+            .map(|line| {
+                if line.is_empty() {
+                    line
+                } else {
+                    format!("    {}", line)
+                }
+            })
+            .collect::<Vec<_>>()
+    } else {
+        fields
+    };
 
     let serde_annotation = {
         let attrs = ty.options.to_serde_attrs();
@@ -449,16 +468,36 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
         }
     };
 
-    format!(
-        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n{}\
-        pub struct {} {{\n\
-            {}\n\
-        }}",
+    let annotations = format!(
+        "{}#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]\n{}",
         format_docs(&ty.doc_lines),
-        serde_annotation,
-        ty.ident,
-        fields.trim_start_matches('\n')
-    )
+        serde_annotation
+    );
+
+    if is_tuple_struct {
+        if fields.len() > 1 {
+            format!(
+                "{}pub struct {}(\n{}\n);",
+                annotations,
+                ty.ident,
+                fields.join("\n").trim_start_matches('\n')
+            )
+        } else {
+            format!(
+                "{}pub struct {}({});",
+                annotations,
+                ty.ident,
+                fields.join(" ")
+            )
+        }
+    } else {
+        format!(
+            "{}pub struct {} {{\n{}\n}}",
+            annotations,
+            ty.ident,
+            fields.join("\n").trim_start_matches('\n')
+        )
+    }
 }
 
 fn format_docs(doc_lines: &[String]) -> String {
@@ -519,13 +558,17 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
                 format!("#[serde({})]\n", serde_attrs.join(", "))
             };
 
-            format!(
-                "{}{}{}: {},",
-                docs,
-                annotations,
-                field.name,
-                format_ident(&field.ty, types)
-            )
+            if let Some(name) = field.name.as_ref() {
+                format!(
+                    "{}{}{}: {},",
+                    docs,
+                    annotations,
+                    name,
+                    format_ident(&field.ty, types)
+                )
+            } else {
+                format!("{}{}{},", docs, annotations, format_ident(&field.ty, types))
+            }
         })
         .collect()
 }

@@ -278,12 +278,11 @@ Deno.test("string", async () => {
   assertEquals(plugin.exportString?.("Hello, plugin!"), "Hello, world!");
 });
 
-// FIXME: Disabled pending https://github.com/fiberplane/fp-bindgen/issues/108
-/*Deno.test("timestamp", async () => {
+Deno.test("timestamp", async () => {
   const plugin = await loadExamplePlugin();
 
   assertEquals(plugin.exportTimestamp?.("2022-04-12T19:10:00Z"), "2022-04-13T12:37:00Z");
-});*/
+});
 
 Deno.test("flattened structs", async () => {
   const plugin = await loadExamplePlugin();
@@ -323,8 +322,7 @@ Deno.test("flattened structs", async () => {
   });
 });
 
-// FIXME: Disabled pending https://github.com/fiberplane/fp-bindgen/issues/108
-/*Deno.test("generics", async () => {
+Deno.test("generics", async () => {
   const plugin = await loadExamplePlugin();
 
   assertEquals(plugin.exportGenerics?.({
@@ -346,7 +344,7 @@ Deno.test("flattened structs", async () => {
     },
     optional_timestamp: "1970-01-01T00:00:00Z",
   });
-});*/
+});
 
 Deno.test("property renaming", async () => {
   const plugin = await loadExamplePlugin();

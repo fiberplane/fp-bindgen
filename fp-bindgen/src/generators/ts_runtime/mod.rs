@@ -844,28 +844,41 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
 }
 
 fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
-    let (flattened_fields, fields): (Vec<_>, Vec<_>) =
-        ty.fields.iter().partition(|field| field.attrs.flatten);
-
-    format!(
-        "{}export type {} = {{\n{}}}{};",
-        join_lines(&format_docs(&ty.doc_lines), String::to_owned),
-        ty.ident,
-        join_lines(
-            &format_struct_fields(
-                &fields.into_iter().cloned().collect::<Vec<_>>(),
-                types,
-                ty.options.field_casing
-            ),
-            |line| format!("    {}", line)
+    let is_newtype = ty.fields.len() == 1 && ty.fields.iter().any(|field| field.name.is_none());
+    if is_newtype {
+        format!(
+            "{}export type {} = {};",
+            join_lines(&format_docs(&ty.doc_lines), String::to_owned),
+            ty.ident,
+            ty.fields
+                .first()
+                .map(|field| format_ident(&field.ty, types))
+                .unwrap()
         )
-        .trim_start_matches('\n'),
-        flattened_fields
-            .iter()
-            .map(|field| format!(" & {}", field.ty))
-            .collect::<Vec<_>>()
-            .join("")
-    )
+    } else {
+        let (flattened_fields, fields): (Vec<_>, Vec<_>) =
+            ty.fields.iter().partition(|field| field.attrs.flatten);
+
+        format!(
+            "{}export type {} = {{\n{}}}{};",
+            join_lines(&format_docs(&ty.doc_lines), String::to_owned),
+            ty.ident,
+            join_lines(
+                &format_struct_fields(
+                    &fields.into_iter().cloned().collect::<Vec<_>>(),
+                    types,
+                    ty.options.field_casing
+                ),
+                |line| format!("    {}", line)
+            )
+            .trim_start_matches('\n'),
+            flattened_fields
+                .iter()
+                .map(|field| format!(" & {}", field.ty))
+                .collect::<Vec<_>>()
+                .join("")
+        )
+    }
 }
 
 fn format_docs(doc_lines: &[String]) -> Vec<String> {
@@ -1042,7 +1055,7 @@ fn get_field_name(field: &Field, casing: Casing) -> String {
     if let Some(rename) = field.attrs.rename.as_ref() {
         rename.to_owned()
     } else {
-        casing.format_string(get_variable_name(&field.name))
+        casing.format_string(get_variable_name(field.name.as_deref().unwrap_or_default()))
     }
 }
 
