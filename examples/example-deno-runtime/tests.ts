@@ -241,7 +241,7 @@ async function loadExamplePlugin() {
     examplePlugin = await loadPlugin(
       "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
       imports,
-    )
+    );
 
     const { init } = examplePlugin;
     assert(init);
