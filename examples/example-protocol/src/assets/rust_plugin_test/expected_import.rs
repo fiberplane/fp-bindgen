@@ -79,7 +79,7 @@ pub fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
 pub fn import_string(arg: String) -> String;
 
 #[fp_bindgen_support::fp_import_signature]
-pub fn import_timestamp(arg: time::OffsetDateTime) -> time::OffsetDateTime;
+pub fn import_timestamp(arg: MyDateTime) -> MyDateTime;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_void_function();

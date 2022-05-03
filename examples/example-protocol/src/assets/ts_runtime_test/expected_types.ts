@@ -116,6 +116,17 @@ export type Method =
     | "TRACE";
 
 /**
+ * Our struct for passing date time instances.
+ *
+ * We wrap the `OffsetDateTime` type in a new struct so that the Serde
+ * attributes can be inserted. These are necessary to enable RFC3339
+ * formatting. Without a wrapper type like this, we would not be able to pass
+ * date time instances directly to function arguments and we might run into
+ * trouble embedding them into certain generic types.
+ */
+export type MyDateTime = string;
+
+/**
  * A point of an arbitrary type.
  */
 export type Point<T> = {
@@ -274,5 +285,5 @@ export type StructWithGenerics<T> = {
     points: Array<Point<T>>;
     recursive: Array<Point<Point<T>>>;
     complex_nested?: Record<string, Array<FloatingPoint>>;
-    optional_timestamp?: string;
+    optional_timestamp?: MyDateTime;
 };

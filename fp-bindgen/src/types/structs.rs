@@ -32,11 +32,7 @@ pub(crate) fn parse_struct_item(item: ItemStruct) -> Struct {
         .fields
         .iter()
         .map(|field| Field {
-            name: field
-                .ident
-                .as_ref()
-                .unwrap_or_else(|| panic!("Unnamed field in struct {}", ident))
-                .to_string(),
+            name: field.ident.as_ref().map(Ident::to_string),
             ty: TypeIdent::try_from(&field.ty)
                 .unwrap_or_else(|_| panic!("Invalid field type in struct {}", ident)),
             doc_lines: get_doc_lines(&field.attrs),
@@ -158,7 +154,7 @@ impl Parse for StructOptions {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Field {
-    pub name: String,
+    pub name: Option<String>,
     pub ty: TypeIdent,
     pub doc_lines: Vec<String>,
     pub attrs: FieldAttrs,

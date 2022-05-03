@@ -19,5 +19,8 @@ pub use renaming::*;
 mod tagged_enums;
 pub use tagged_enums::*;
 
+mod time;
+pub use self::time::*;
+
 mod use_statements;
 pub use use_statements::*;

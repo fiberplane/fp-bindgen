@@ -24,6 +24,7 @@ import type {
     GroupImportedType2,
     HttpResult,
     Int64,
+    MyDateTime,
     Point,
     ReduxAction,
     Request,
@@ -69,7 +70,7 @@ export type Imports = {
     importSerdeStruct: (arg: SerdePropertyRenaming) => SerdePropertyRenaming;
     importSerdeUntagged: (arg: SerdeUntagged) => SerdeUntagged;
     importString: (arg: string) => string;
-    importTimestamp: (arg: string) => string;
+    importTimestamp: (arg: MyDateTime) => MyDateTime;
     importVoidFunction: () => void;
     log: (message: string) => void;
     makeHttpRequest: (request: Request) => Promise<HttpResult>;
@@ -103,7 +104,7 @@ export type Exports = {
     exportSerdeStruct?: (arg: SerdePropertyRenaming) => SerdePropertyRenaming;
     exportSerdeUntagged?: (arg: SerdeUntagged) => SerdeUntagged;
     exportString?: (arg: string) => string;
-    exportTimestamp?: (arg: string) => string;
+    exportTimestamp?: (arg: MyDateTime) => MyDateTime;
     exportVoidFunction?: () => void;
     fetchData?: (rType: string) => Promise<Result<string, string>>;
     init?: () => void;
@@ -338,7 +339,7 @@ export async function createRuntime(
                 return serializeObject(importFunctions.importString(arg));
             },
             __fp_gen_import_timestamp: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<string>(arg_ptr);
+                const arg = parseObject<MyDateTime>(arg_ptr);
                 return serializeObject(importFunctions.importTimestamp(arg));
             },
             __fp_gen_import_void_function: () => {
@@ -565,9 +566,9 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_export_timestamp as any;
             if (!export_fn) return;
 
-            return (arg: string) => {
+            return (arg: MyDateTime) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<string>(export_fn(arg_ptr));
+                return parseObject<MyDateTime>(export_fn(arg_ptr));
             };
         })(),
         exportVoidFunction: instance.exports.__fp_gen_export_void_function as any,

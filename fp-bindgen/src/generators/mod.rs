@@ -1,8 +1,12 @@
 use crate::{
     functions::FunctionList,
-    types::{CargoDependency, TypeMap},
+    types::{CargoDependency, Type, TypeIdent, TypeMap},
 };
-use std::{collections::BTreeMap, fmt::Display, fs};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Display,
+    fs,
+};
 
 pub mod rust_plugin;
 pub mod rust_wasmer_runtime;
@@ -121,6 +125,8 @@ pub fn generate_bindings(
 ) {
     fs::create_dir_all(config.path).expect("Could not create output directory");
 
+    display_warnings(&import_functions, &export_functions, &types);
+
     match config.bindings_type {
         BindingsType::RustPlugin(plugin_config) => rust_plugin::generate_bindings(
             import_functions,
@@ -153,4 +159,87 @@ pub fn generate_bindings(
             config.path,
         ),
     };
+}
+
+fn display_warnings(
+    import_functions: &FunctionList,
+    export_functions: &FunctionList,
+    types: &TypeMap,
+) {
+    let all_functions = import_functions.iter().chain(export_functions.iter());
+    let all_function_signature_types = all_functions.flat_map(|func| {
+        func.args
+            .iter()
+            .map(|arg| &arg.ty)
+            .chain(func.return_type.iter())
+    });
+    warn_about_custom_serializer_usage(
+        all_function_signature_types.clone(),
+        "function signature",
+        types,
+    );
+
+    // Finding usages as generic arguments is more tricky, because we need to
+    // find all places where generic arguments can be used.
+    let all_idents = all_function_signature_types
+        .chain(
+            types
+                .values()
+                .filter_map(|ty| match ty {
+                    Type::Struct(ty) => Some(ty),
+                    _ => None,
+                })
+                .flat_map(|ty| ty.fields.iter().map(|field| &field.ty)),
+        )
+        .chain(
+            types
+                .values()
+                .filter_map(|ty| match ty {
+                    Type::Enum(ty) => Some(ty),
+                    _ => None,
+                })
+                .flat_map(|ty| ty.variants.iter())
+                .filter_map(|variant| match &variant.ty {
+                    Type::Struct(ty) => Some(ty),
+                    _ => None,
+                })
+                .flat_map(|ty| ty.fields.iter().map(|field| &field.ty)),
+        );
+    warn_about_custom_serializer_usage(
+        all_idents.flat_map(|ident| ident.generic_args.iter()),
+        "generic argument",
+        types,
+    );
+}
+
+fn warn_about_custom_serializer_usage<'a, T>(idents: T, context: &str, types: &TypeMap)
+where
+    T: Iterator<Item = &'a TypeIdent>,
+{
+    let mut idents_with_custom_serializers = BTreeSet::new();
+
+    for ident in idents {
+        let ty = types.get(ident);
+        if let Some(Type::Custom(ty)) = ty {
+            if ty.serde_attrs.iter().any(|attr| {
+                attr.starts_with("with = ")
+                    || attr.starts_with("serialize_with = ")
+                    || attr.starts_with("deserialize_with = ")
+            }) {
+                idents_with_custom_serializers.insert(ident);
+            }
+        }
+    }
+
+    for ident in idents_with_custom_serializers {
+        println!(
+            "WARNING: Type `{}` is used directly in a {}, but relies on a custom Serde \
+            (de)serializer. This (de)serializer is NOT used when using the type directly \
+            in a {}. This may result in unexpected (de)serialization issues, for instance \
+            when passing data between Rust and TypeScript.\n\
+            You may wish to create a newtype to avoid this warning.\n\
+            See `examples/example-protocol/src/types/time.rs` for an example.",
+            ident, context, context
+        );
+    }
 }

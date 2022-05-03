@@ -618,7 +618,7 @@ impl Runtime {
         Ok(result)
     }
 
-    pub fn export_timestamp(&self, arg: OffsetDateTime) -> Result<OffsetDateTime, InvocationError> {
+    pub fn export_timestamp(&self, arg: MyDateTime) -> Result<MyDateTime, InvocationError> {
         let arg = serialize_to_vec(&arg);
         let result = self.export_timestamp_raw(arg);
         let result = result.map(|ref data| deserialize_from_slice(data));
@@ -907,7 +907,7 @@ pub fn _import_string(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 }
 
 pub fn _import_timestamp(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
-    let arg = import_from_guest::<OffsetDateTime>(env, arg);
+    let arg = import_from_guest::<MyDateTime>(env, arg);
     let result = super::import_timestamp(arg);
     export_to_guest(env, &result)
 }

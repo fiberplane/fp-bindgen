@@ -112,6 +112,19 @@ pub type HttpResult = Result<Response, RequestError>;
 
 pub type Int64 = u64;
 
+/// Our struct for passing date time instances.
+///
+/// We wrap the `OffsetDateTime` type in a new struct so that the Serde
+/// attributes can be inserted. These are necessary to enable RFC3339
+/// formatting. Without a wrapper type like this, we would not be able to pass
+/// date time instances directly to function arguments and we might run into
+/// trouble embedding them into certain generic types.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct MyDateTime(
+    #[serde(with = "time::serde::rfc3339")]
+    pub time::OffsetDateTime,
+);
+
 /// A point of an arbitrary type.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Point<T> {
@@ -239,5 +252,5 @@ pub struct StructWithGenerics<T> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub optional_timestamp: Option<time::OffsetDateTime>,
+    pub optional_timestamp: Option<MyDateTime>,
 }

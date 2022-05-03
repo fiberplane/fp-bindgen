@@ -4,7 +4,6 @@ use fp_bindgen::{prelude::*, types::CargoDependency};
 use once_cell::sync::Lazy;
 use redux_example::{ReduxAction, StateUpdate};
 use std::collections::{BTreeMap, BTreeSet};
-use time::OffsetDateTime;
 
 // Referencing types using their full module path can be problematic in some
 // edge cases. If you want to use types from other modules in your protocol,
@@ -60,7 +59,7 @@ fp_import! {
     fn import_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
     // Integration with the `time` crate:
-    fn import_timestamp(arg: OffsetDateTime) -> OffsetDateTime;
+    fn import_timestamp(arg: MyDateTime) -> MyDateTime;
 
     // Passing custom types with flattened properties.
     //
@@ -131,7 +130,7 @@ fp_export! {
     fn export_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
     // Integration with the `time` crate:
-    fn export_timestamp(arg: OffsetDateTime) -> OffsetDateTime;
+    fn export_timestamp(arg: MyDateTime) -> MyDateTime;
 
     // Passing custom types with flattened properties.
     //

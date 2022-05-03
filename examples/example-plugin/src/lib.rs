@@ -104,9 +104,9 @@ fn export_multiple_primitives(arg1: i8, arg2: String) -> i64 {
 }
 
 #[fp_export_impl(example_bindings)]
-fn export_timestamp(arg: OffsetDateTime) -> OffsetDateTime {
-    assert_eq!(arg, datetime!(2022-04-12 19:10 UTC));
-    datetime!(2022-04-13 12:37 UTC)
+fn export_timestamp(arg: MyDateTime) -> MyDateTime {
+    assert_eq!(arg, MyDateTime(datetime!(2022-04-12 19:10 UTC)));
+    MyDateTime(datetime!(2022-04-13 12:37 UTC))
 }
 
 #[fp_export_impl(example_bindings)]
@@ -161,7 +161,7 @@ fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
                 ("one".to_owned(), vec![Point { value: 1.0 }]),
                 ("two".to_owned(), vec![Point { value: 2.0 }])
             ])),
-            optional_timestamp: Some(OffsetDateTime::UNIX_EPOCH)
+            optional_timestamp: Some(MyDateTime(OffsetDateTime::UNIX_EPOCH))
         }
     );
     StructWithGenerics {
@@ -174,7 +174,7 @@ fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
             ("een".to_owned(), vec![Point { value: 1.0 }]),
             ("twee".to_owned(), vec![Point { value: 2.0 }]),
         ])),
-        optional_timestamp: Some(OffsetDateTime::UNIX_EPOCH),
+        optional_timestamp: Some(MyDateTime(OffsetDateTime::UNIX_EPOCH)),
     }
 }
 

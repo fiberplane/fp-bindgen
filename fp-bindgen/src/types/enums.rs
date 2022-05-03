@@ -69,7 +69,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                         }
 
                         Field {
-                            name,
+                            name: Some(name),
                             ty: TypeIdent::try_from(&field.ty)
                                 .unwrap_or_else(|_| panic!("Invalid field type in enum {}", ident)),
                             doc_lines: get_doc_lines(&field.attrs),
