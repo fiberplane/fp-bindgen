@@ -64,6 +64,13 @@ style and you can use this command locally to verify your changes before
 pushing. In addition, we use `cargo clippy` to detect common issues with the
 code itself.
 
+## Documentation
+
+- Do not edit `README.md` directly
+- Make modifications to `fp-bindgen/src/lib.rs`
+- Make sure `cargo-rdme` is installed: `cargo install cargo-rdme`
+- Run `cargo-rdme` to recompile `README.md`
+
 ## References
 
 This document was adapted from the contribution guidelines for
