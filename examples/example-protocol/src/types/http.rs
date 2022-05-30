@@ -1,7 +1,6 @@
 use super::Body;
 use fp_bindgen::prelude::Serializable;
 use http::{Method, Uri};
-use std::collections::HashMap;
 
 // This example shows how HTTP requests and responses could be communicated
 // while integrating the `http` crate.
@@ -16,10 +15,7 @@ pub struct Request {
     pub method: Method,
 
     /// HTTP headers to submit with the request.
-    ///
-    /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
-    pub headers: HashMap<String, String>,
+    pub headers: http::HeaderMap,
 
     /// The body to submit with the request.
     #[fp(skip_serializing_if = "Option::is_none")]
@@ -35,10 +31,7 @@ pub struct Response {
     pub body: Body,
 
     /// HTTP headers that were part of the response.
-    ///
-    /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
-    pub headers: HashMap<String, String>,
+    pub headers: http::HeaderMap,
 
     /// HTTP status code.
     pub status_code: u16,

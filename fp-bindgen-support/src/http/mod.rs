@@ -1,8 +1,23 @@
+/*!
+HTTP support for fp-bindgen.
+
+Enables making HTTP requests from within the runtime.
+(De)serializes various relevant data models like Methods, Headers, etc.
+ */
+
+use std::{collections::HashMap, str::FromStr};
+
 use http::{
+    header::HeaderName,
     uri::{Scheme, Uri},
     Method,
 };
-use serde::{de, Deserialize, Deserializer, Serializer};
+use serde::{
+    de::{self},
+    ser::SerializeMap,
+    Deserialize, Deserializer, Serializer,
+};
+use serde_bytes::ByteBuf;
 
 pub fn serialize_http_method<S>(method: &Method, serializer: S) -> Result<S::Ok, S::Error>
 where
@@ -82,6 +97,34 @@ where
     D: Deserializer<'de>,
 {
     SchemeDef::deserialize(deserializer).map(Scheme::from)
+}
+
+pub fn serialize_header_map<S>(headers: &http::HeaderMap, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let mut map = serializer.serialize_map(None)?;
+
+    for (key, value) in headers.clone().iter() {
+        let val = serde_bytes::ByteBuf::from(value.as_bytes());
+        map.serialize_entry(key.as_str(), &val)?;
+    }
+    map.end()
+}
+
+pub fn deserialize_header_map<'de, D>(deserializer: D) -> Result<http::HeaderMap, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let mut header_map = http::HeaderMap::new();
+    let hashmap: HashMap<String, ByteBuf> = HashMap::deserialize(deserializer)?;
+    for (key, value) in hashmap {
+        let header_name = HeaderName::from_str(&key).map_err(|e| {
+            serde::de::Error::custom(format!("Unable to parse header {}: {}", key, e))
+        })?;
+        header_map.insert(header_name, http::HeaderValue::from_bytes(&value).unwrap());
+    }
+    Ok(header_map)
 }
 
 #[non_exhaustive]
