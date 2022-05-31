@@ -56,12 +56,12 @@ be called by the runtime and _may_ be implemented by the plugin.
 
 **Example:**
 
-```
-fp_import! {
+```ignore
+fp_bindgen::prelude::fp_import! {
     fn my_imported_function(a: u32, b: u32) -> u32;
 }
 
-fp_export! {
+fp_bindgen::prelude::fp_export! {
     fn my_exported_function(a: u32, b: u32) -> u32;
 }
 ```
@@ -78,14 +78,14 @@ only for types that implement `Serializable`.
 
 **Example:**
 
-```
-#[derive(Serializable)]
+```ignore
+#[derive(fp_bindgen::prelude::Serializable)]
 pub struct MyStruct {
     pub foo: i32,
     pub bar: String,
 }
 
-fp_import! {
+fp_bindgen::prelude::fp_import! {
     fn my_function(data: MyStruct) -> MyStruct;
 }
 ```
@@ -99,8 +99,8 @@ Functions can also be `async`, which works as you would expect:
 
 **Example:**
 
-```
-fp_import! {
+```ignore
+fp_bindgen::prelude::fp_import! {
     async fn my_async_function(data: MyStruct) -> Result<MyStruct, MyError>;
 }
 ```
@@ -115,9 +115,10 @@ definition instead of generating a new one:
 **Example:**
 
 ```
-#[derive(Deserialize, Serialize, Serializable)]
+use fp_bindgen::prelude::Serializable;
+
+#[derive(Serializable)]
 #[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
-#[serde(rename_all = "camelCase")]
 pub struct MyStruct {
     pub foo: i32,
     pub bar_qux: String,
@@ -155,9 +156,10 @@ To generate bindings based on your protocol, you first need to create a function
 them for you. Creating this function is easy, because its implementation can be created for you
 using the `fp_bindgen` macro:
 
-```
-let bindings_type = BindingsType::RustWasmerRuntime;
-fp_bindgen!(BindingConfig {
+```ignore
+let bindings_type = fp_bindgen::BindingsType::RustWasmerRuntime;
+
+fp_bindgen::prelude::fp_bindgen!(fp_bindgen::BindingConfig {
     bindings_type,
     path: &format!("bindings/{}", bindings_type)
 });
@@ -184,8 +186,8 @@ and call them like any other functions.
 In order to export the functions that are defined in the `fp_export!` block, it can use the exported
 `fp_export_impl` macro, like so:
 
-```rust
-#[fp_export_impl(bindings_crate_path)]
+```ignore
+#[fp_bindgen_macros::fp_export_impl(bindings_crate_path)]
 fn my_exported_function(a: u32, b: u32) -> u32 {
     /* ... */
 }
@@ -268,8 +270,8 @@ If a type is not referenced either directly or indirectly by any of the function
 your protocol, you can force inclusion by adding a `use` statement referencing the type to either
 the `fp_import!` or `fp_export!` section:
 
-```
-fp_import! {
+```ignore
+fp_bindgen::prelude::fp_import! {
     use MyType;
 }
 ```
@@ -282,8 +284,8 @@ Are you referencing the type and it is still not included in your bindings? Plea
 Yes, but because aliases cannot have a derive macro, please repeat the alias in either the
 `fp_import!` or `fp_export!` section:
 
-```
-fp_import! {
+```ignore
+fp_bindgen::prelude::fp_import! {
   type MyType = SomeOtherType;
 }
 ```

@@ -69,7 +69,7 @@ code itself.
 - Do not edit `README.md` directly
 - Make modifications to `fp-bindgen/src/lib.rs`
 - Make sure `cargo-rdme` is installed: `cargo install cargo-rdme`
-- Run `cargo-rdme` to recompile `README.md`
+- Run `cargo-rdme` in the `fp-bindgen` folder to recompile `README.md`
 
 ## References
 
