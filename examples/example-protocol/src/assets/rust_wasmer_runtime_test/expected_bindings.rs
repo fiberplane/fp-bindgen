@@ -1,6 +1,6 @@
 use super::types::*;
 use fp_bindgen_support::{
-    common::mem::FatPtr,
+    common::{abi::WasmAbi, mem::FatPtr},
     host::{
         errors::{InvocationError, RuntimeError},
         mem::{
@@ -61,9 +61,11 @@ impl Runtime {
         let arg1 = export_to_guest_raw(&env, arg1);
         let function = instance
             .exports
-            .get_native_function::<(FatPtr, u64), FatPtr>("__fp_gen_export_async_struct")
+            .get_native_function::<(FatPtr, <u64 as WasmAbi>::AbiType), FatPtr>(
+                "__fp_gen_export_async_struct",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg1, arg2)?;
+        let result = function.call(arg1.to_abi(), arg2.to_abi())?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
         Ok(result)
     }
@@ -90,7 +92,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_adjacently_tagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -114,7 +116,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_enum")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -135,7 +137,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_flatten")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -162,7 +164,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_internally_tagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -186,7 +188,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_struct")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -207,7 +209,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_fp_untagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -231,7 +233,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_generics")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -257,9 +259,12 @@ impl Runtime {
         let arg2 = export_to_guest_raw(&env, arg2);
         let function = instance
             .exports
-            .get_native_function::<(i8, FatPtr), i64>("__fp_gen_export_multiple_primitives")
+            .get_native_function::<(<i8 as WasmAbi>::AbiType, FatPtr), <i64 as WasmAbi>::AbiType>(
+                "__fp_gen_export_multiple_primitives",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg1, arg2)?;
+        let result = function.call(arg1.to_abi(), arg2.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -274,9 +279,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(bool), bool>("__fp_gen_export_primitive_bool")
+            .get_native_function::<(<bool as WasmAbi>::AbiType), <bool as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_bool",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -291,9 +299,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(f32), f32>("__fp_gen_export_primitive_f32")
+            .get_native_function::<(<f32 as WasmAbi>::AbiType), <f32 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_f32",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -308,9 +319,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(f64), f64>("__fp_gen_export_primitive_f64")
+            .get_native_function::<(<f64 as WasmAbi>::AbiType), <f64 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_f64",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -325,9 +339,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(i16), i16>("__fp_gen_export_primitive_i16")
+            .get_native_function::<(<i16 as WasmAbi>::AbiType), <i16 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_i16",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -342,9 +359,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(i32), i32>("__fp_gen_export_primitive_i32")
+            .get_native_function::<(<i32 as WasmAbi>::AbiType), <i32 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_i32",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -359,9 +379,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(i64), i64>("__fp_gen_export_primitive_i64")
+            .get_native_function::<(<i64 as WasmAbi>::AbiType), <i64 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_i64",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -376,9 +399,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(i8), i8>("__fp_gen_export_primitive_i8")
+            .get_native_function::<(<i8 as WasmAbi>::AbiType), <i8 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_i8",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -393,9 +419,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(u16), u16>("__fp_gen_export_primitive_u16")
+            .get_native_function::<(<u16 as WasmAbi>::AbiType), <u16 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_u16",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -410,9 +439,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(u32), u32>("__fp_gen_export_primitive_u32")
+            .get_native_function::<(<u32 as WasmAbi>::AbiType), <u32 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_u32",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -427,9 +459,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(u64), u64>("__fp_gen_export_primitive_u64")
+            .get_native_function::<(<u64 as WasmAbi>::AbiType), <u64 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_u64",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -444,9 +479,12 @@ impl Runtime {
         env.init_with_instance(&instance).unwrap();
         let function = instance
             .exports
-            .get_native_function::<(u8), u8>("__fp_gen_export_primitive_u8")
+            .get_native_function::<(<u8 as WasmAbi>::AbiType), <u8 as WasmAbi>::AbiType>(
+                "__fp_gen_export_primitive_u8",
+            )
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -472,7 +510,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_adjacently_tagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -496,7 +534,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_enum")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -517,7 +555,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_flatten")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -544,7 +582,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_internally_tagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -568,7 +606,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_struct")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -592,7 +630,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_serde_untagged")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -613,7 +651,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_string")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -634,7 +672,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_export_timestamp")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(arg)?;
+        let result = function.call(arg.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -653,6 +691,7 @@ impl Runtime {
             .get_native_function::<(), ()>("__fp_gen_export_void_function")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call()?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -677,7 +716,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(r#type)?;
+        let result = function.call(r#type.to_abi())?;
         let result = ModuleRawFuture::new(env.clone(), result).await;
         Ok(result)
     }
@@ -697,6 +736,7 @@ impl Runtime {
             .get_native_function::<(), ()>("__fp_gen_init")
             .map_err(|_| InvocationError::FunctionNotExported)?;
         let result = function.call()?;
+        let result = WasmAbi::from_abi(result);
         Ok(result)
     }
 
@@ -717,7 +757,7 @@ impl Runtime {
             .exports
             .get_native_function::<(FatPtr), FatPtr>("__fp_gen_reducer_bridge")
             .map_err(|_| InvocationError::FunctionNotExported)?;
-        let result = function.call(action)?;
+        let result = function.call(action.to_abi())?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
     }
@@ -803,65 +843,114 @@ pub fn _import_generics(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     export_to_guest(env, &result)
 }
 
-pub fn _import_multiple_primitives(env: &RuntimeInstanceData, arg1: i8, arg2: FatPtr) -> i64 {
+pub fn _import_multiple_primitives(
+    env: &RuntimeInstanceData,
+    arg1: <i8 as WasmAbi>::AbiType,
+    arg2: FatPtr,
+) -> <i64 as WasmAbi>::AbiType {
+    let arg1 = WasmAbi::from_abi(arg1);
     let arg2 = import_from_guest::<String>(env, arg2);
     let result = super::import_multiple_primitives(arg1, arg2);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_bool(env: &RuntimeInstanceData, arg: bool) -> bool {
+pub fn _import_primitive_bool(
+    env: &RuntimeInstanceData,
+    arg: <bool as WasmAbi>::AbiType,
+) -> <bool as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_bool(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_f32(env: &RuntimeInstanceData, arg: f32) -> f32 {
+pub fn _import_primitive_f32(
+    env: &RuntimeInstanceData,
+    arg: <f32 as WasmAbi>::AbiType,
+) -> <f32 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_f32(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_f64(env: &RuntimeInstanceData, arg: f64) -> f64 {
+pub fn _import_primitive_f64(
+    env: &RuntimeInstanceData,
+    arg: <f64 as WasmAbi>::AbiType,
+) -> <f64 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_f64(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_i16(env: &RuntimeInstanceData, arg: i16) -> i16 {
+pub fn _import_primitive_i16(
+    env: &RuntimeInstanceData,
+    arg: <i16 as WasmAbi>::AbiType,
+) -> <i16 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_i16(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_i32(env: &RuntimeInstanceData, arg: i32) -> i32 {
+pub fn _import_primitive_i32(
+    env: &RuntimeInstanceData,
+    arg: <i32 as WasmAbi>::AbiType,
+) -> <i32 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_i32(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_i64(env: &RuntimeInstanceData, arg: i64) -> i64 {
+pub fn _import_primitive_i64(
+    env: &RuntimeInstanceData,
+    arg: <i64 as WasmAbi>::AbiType,
+) -> <i64 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_i64(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_i8(env: &RuntimeInstanceData, arg: i8) -> i8 {
+pub fn _import_primitive_i8(
+    env: &RuntimeInstanceData,
+    arg: <i8 as WasmAbi>::AbiType,
+) -> <i8 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_i8(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_u16(env: &RuntimeInstanceData, arg: u16) -> u16 {
+pub fn _import_primitive_u16(
+    env: &RuntimeInstanceData,
+    arg: <u16 as WasmAbi>::AbiType,
+) -> <u16 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_u16(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_u32(env: &RuntimeInstanceData, arg: u32) -> u32 {
+pub fn _import_primitive_u32(
+    env: &RuntimeInstanceData,
+    arg: <u32 as WasmAbi>::AbiType,
+) -> <u32 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_u32(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_u64(env: &RuntimeInstanceData, arg: u64) -> u64 {
+pub fn _import_primitive_u64(
+    env: &RuntimeInstanceData,
+    arg: <u64 as WasmAbi>::AbiType,
+) -> <u64 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_u64(arg);
-    result
+    result.to_abi()
 }
 
-pub fn _import_primitive_u8(env: &RuntimeInstanceData, arg: u8) -> u8 {
+pub fn _import_primitive_u8(
+    env: &RuntimeInstanceData,
+    arg: <u8 as WasmAbi>::AbiType,
+) -> <u8 as WasmAbi>::AbiType {
+    let arg = WasmAbi::from_abi(arg);
     let result = super::import_primitive_u8(arg);
-    result
+    result.to_abi()
 }
 
 pub fn _import_serde_adjacently_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
@@ -914,13 +1003,11 @@ pub fn _import_timestamp(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 
 pub fn _import_void_function(env: &RuntimeInstanceData) {
     let result = super::import_void_function();
-    ()
 }
 
 pub fn _log(env: &RuntimeInstanceData, message: FatPtr) {
     let message = import_from_guest::<String>(env, message);
     let result = super::log(message);
-    ()
 }
 
 pub fn _make_http_request(env: &RuntimeInstanceData, request: FatPtr) -> FatPtr {

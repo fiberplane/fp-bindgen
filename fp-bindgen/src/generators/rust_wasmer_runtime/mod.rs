@@ -65,7 +65,7 @@ struct WasmType<'a>(&'a TypeIdent);
 impl ToTokens for WasmType<'_> {
     fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
         if let Ok(p) = Primitive::from_str(&self.0.name) {
-            quote! { #p }
+            quote! { <#p as WasmAbi>::AbiType }
         } else {
             quote! { FatPtr }
         }
@@ -176,7 +176,10 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                 },
             )
         } else {
-            (TokenStream::default(), TokenStream::default())
+            (
+                quote! {let result = WasmAbi::from_abi(result);},
+                TokenStream::default(),
+            )
         };
 
         let return_type = match return_type {
@@ -209,7 +212,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
                     .get_native_function::<(#(#wasm_arg_types),*), #wasm_return_type>(#fp_gen_name)
                     .map_err(|_| InvocationError::FunctionNotExported)?;
 
-                let result = function.call(#(#arg_names),*)?;
+                let result = function.call(#(#arg_names.to_abi()),*)?;
 
                 #raw_return_wrapper
 
@@ -219,6 +222,26 @@ impl ToTokens for RuntimeImportedFunction<'_> {
             #newline
             #newline
         })
+        .to_tokens(tokens)
+    }
+}
+
+struct RuntimeArgImport<'a>(&'a FunctionArg);
+
+impl ToTokens for RuntimeArgImport<'_> {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let name = format_ident!("{}", self.0.name);
+        let ty_name = &self.0.ty;
+
+        let importer = if self.0.ty.is_primitive() {
+            quote! { WasmAbi::from_abi(#name) }
+        } else {
+            quote! { import_from_guest::<#ty_name>(env, #name) }
+        };
+
+        quote! {
+            let #name = #importer;
+        }
         .to_tokens(tokens)
     }
 }
@@ -249,15 +272,7 @@ impl ToTokens for RuntimeExportedFunction<'_> {
             }
         };
 
-        let complex_args = args
-            .iter()
-            .filter(|arg| !arg.ty.is_primitive())
-            .collect::<Vec<_>>();
-        let complex_types = complex_args.iter().map(|a| &a.ty);
-        let complex_idents = complex_args
-            .iter()
-            .map(|arg| format_ident!("{}", arg.name))
-            .collect::<Vec<_>>();
+        let import_args = args.iter().map(RuntimeArgImport);
 
         let impl_func_name = format_ident!("{}", name);
         let arg_idents = args.iter().map(|a| format_ident!("{}", a.name));
@@ -277,8 +292,8 @@ impl ToTokens for RuntimeExportedFunction<'_> {
             }
         } else {
             match return_type {
-                None => quote! { () },
-                Some(ty) if ty.is_primitive() => quote! { result },
+                None => TokenStream::default(),
+                Some(ty) if ty.is_primitive() => quote! { result.to_abi() },
                 _ => quote! { export_to_guest(env, &result) },
             }
         };
@@ -287,7 +302,7 @@ impl ToTokens for RuntimeExportedFunction<'_> {
 
         (quote! {
             pub fn #underscore_name(env: &RuntimeInstanceData #(,#input_args)*) #wrapper_return_type {
-                #(let #complex_idents = import_from_guest::<#complex_types>(env, #complex_idents);)*
+                #(#import_args)*
 
                 let result = #func_call;
                 #wrapper
@@ -312,7 +327,7 @@ fn generate_function_bindings(
     let full = rustfmt_wrapper::rustfmt(quote! {
         use super::types::*;
         use fp_bindgen_support::{
-            common::mem::FatPtr,
+            common::{mem::FatPtr, abi::WasmAbi},
             host::{
                 errors::{InvocationError, RuntimeError},
                 mem::{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw, deserialize_from_slice, serialize_to_vec},
