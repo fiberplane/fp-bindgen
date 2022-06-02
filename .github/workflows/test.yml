@@ -75,8 +75,8 @@ jobs:
           deno test --allow-read tests.ts
           popd
 
-#      - name: Verify example-rust-runtime builds
-#        run: |
-#          pushd examples/example-rust-runtime
-#          cargo build
-#          popd
+      - name: Run end-to-end tests in wasmer runtime
+        run: |
+          pushd examples/example-rust-runtime
+          cargo test
+          popd

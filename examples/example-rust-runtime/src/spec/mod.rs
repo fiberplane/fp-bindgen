@@ -1,48 +1,115 @@
-mod bindings;
-mod types;
+pub mod bindings;
+pub mod types;
 
+use std::collections::HashMap;
+
+use serde_bytes::ByteBuf;
 use time::OffsetDateTime;
 use types::*;
+
+fn import_void_function() {}
+
+fn import_primitive_bool(arg: bool) -> bool {
+    todo!()
+}
+fn import_primitive_f32(arg: f32) -> f32 {
+    todo!()
+}
+fn import_primitive_f64(arg: f64) -> f64 {
+    todo!()
+}
+fn import_primitive_i8(arg: i8) -> i8 {
+    todo!()
+}
+fn import_primitive_i16(arg: i16) -> i16 {
+    todo!()
+}
+fn import_primitive_i32(arg: i32) -> i32 {
+    todo!()
+}
+fn import_primitive_i64(arg: i64) -> i64 {
+    todo!()
+}
+fn import_primitive_u8(arg: u8) -> u8 {
+    todo!()
+}
+fn import_primitive_u16(arg: u16) -> u16 {
+    todo!()
+}
+fn import_primitive_u32(arg: u32) -> u32 {
+    todo!()
+}
+fn import_primitive_u64(arg: u64) -> u64 {
+    todo!()
+}
+
+fn import_string(arg: String) -> String {
+    todo!()
+}
+
+fn import_multiple_primitives(arg1: i8, arg2: String) -> i64 {
+    todo!()
+}
+
+fn import_timestamp(arg: MyDateTime) -> MyDateTime {
+    todo!()
+}
+
+fn import_fp_flatten(arg: FpFlatten) -> FpFlatten {
+    todo!()
+}
+fn import_serde_flatten(arg: SerdeFlatten) -> SerdeFlatten {
+    todo!()
+}
+
+fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
+    todo!()
+}
+
+fn import_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming {
+    todo!()
+}
+fn import_fp_enum(arg: FpVariantRenaming) -> FpVariantRenaming {
+    todo!()
+}
+fn import_serde_struct(arg: SerdePropertyRenaming) -> SerdePropertyRenaming {
+    todo!()
+}
+fn import_serde_enum(arg: SerdeVariantRenaming) -> SerdeVariantRenaming {
+    todo!()
+}
+
+fn import_fp_internally_tagged(arg: FpInternallyTagged) -> FpInternallyTagged {
+    todo!()
+}
+fn import_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged {
+    todo!()
+}
+fn import_fp_untagged(arg: FpUntagged) -> FpUntagged {
+    todo!()
+}
+fn import_serde_internally_tagged(arg: SerdeInternallyTagged) -> SerdeInternallyTagged {
+    todo!()
+}
+fn import_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged {
+    todo!()
+}
+fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
+    todo!()
+}
+
+/* async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming {
+    todo!()
+} */
 
 fn log(msg: String) {
     println!("Provider log: {}", msg);
 }
 
-fn my_complex_imported_function(a: ComplexAlias) -> ComplexHostToGuest {
-    make_host_to_guest()
-}
-
-fn my_plain_imported_function(a: u32, b: u32) -> u32 {
-    a + b
-}
-
-fn count_words(string: String) -> Result<u16, String> {
-    Ok(1337)
-}
-
-async fn my_async_imported_function() -> ComplexHostToGuest {
-    make_host_to_guest()
-}
-
-fn make_host_to_guest() -> ComplexHostToGuest {
-    ComplexHostToGuest {
-        simple: Simple {
-            bar: "asd".to_owned(),
-            foo: 0,
-        },
-        list: vec![],
-        points: vec![],
-        recursive: vec![],
-        complex_nested: None,
-        timestamp: OffsetDateTime::now_utc(),
-        renamed: None,
-        r#type: "Foobar".to_owned(),
-        value: Value::Integer(1),
-    }
-}
-
-async fn make_request(opts: RequestOptions) -> Result<Response, RequestError> {
-    Err(RequestError::Other {
-        reason: "Not yet implemented".to_owned(),
+async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
+    Ok(Response {
+        body: ByteBuf::from(r#"status: "confirmed"#.to_string()),
+        headers: HashMap::from([("Content-Type".to_string(), "application/json".to_string())]),
+        status_code: 200,
     })
 }
