@@ -12,8 +12,8 @@ const WASM_BYTES: &'static [u8] =
 fn primitives() -> Result<()> {
     let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
 
-    //assert_eq!(rt.export_primitive_bool(true)?, true);
-    //assert_eq!(rt.export_primitive_bool(false)?, false);
+    assert_eq!(rt.export_primitive_bool(true)?, true);
+    assert_eq!(rt.export_primitive_bool(false)?, false);
 
     assert_eq!(rt.export_primitive_u8(8)?, 8);
     assert_eq!(rt.export_primitive_u16(16)?, 16);

@@ -98,10 +98,6 @@ fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
     todo!()
 }
 
-/* async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming {
-    todo!()
-} */
-
 fn log(msg: String) {
     println!("Provider log: {}", msg);
 }
