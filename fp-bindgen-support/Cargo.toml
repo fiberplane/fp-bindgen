@@ -9,6 +9,9 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 license = "Apache-2.0"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 fp-bindgen-macros = { version = "1.0.0", path = "../macros" }
 http = { version = "0.2", optional = true }
