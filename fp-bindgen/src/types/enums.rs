@@ -281,7 +281,7 @@ pub struct VariantAttrs {
     /// Optional name to use in the serialized format
     /// (only used if different than the variant name itself).
     ///
-    /// See also: https://serde.rs/variant-attrs.html#rename
+    /// See also: <https://serde.rs/variant-attrs.html#rename>
     pub rename: Option<String>,
 }
 
