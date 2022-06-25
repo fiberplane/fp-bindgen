@@ -27,6 +27,7 @@ impl<'a> Display for BindingsType<'a> {
         f.write_str(match self {
             BindingsType::RustPlugin { .. } => "rust-plugin",
             BindingsType::RustWasmerRuntime { .. } => "rust-wasmer-runtime",
+            #[allow(deprecated)]
             BindingsType::TsRuntime { .. } => "ts-runtime",
             BindingsType::TsRuntimeWithExtendedConfig { .. } => "ts-runtime",
         })
@@ -141,6 +142,7 @@ pub fn generate_bindings(
             types,
             config.path,
         ),
+        #[allow(deprecated)]
         BindingsType::TsRuntime(runtime_config) => ts_runtime::generate_bindings(
             import_functions,
             export_functions,
