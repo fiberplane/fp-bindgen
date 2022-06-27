@@ -145,7 +145,7 @@ pub struct Request {
     /// HTTP headers to submit with the request.
     ///
     /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: https://github.com/fiberplane/fp-bindgen/issues/102
+    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
     pub headers: HashMap<String, String>,
 
     /// The body to submit with the request.
@@ -186,7 +186,7 @@ pub struct Response {
     /// HTTP headers that were part of the response.
     ///
     /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: https://github.com/fiberplane/fp-bindgen/issues/102
+    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
     pub headers: HashMap<String, String>,
 
     /// HTTP status code.

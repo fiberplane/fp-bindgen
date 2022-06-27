@@ -165,31 +165,31 @@ pub struct FieldAttrs {
     /// Optional path to a function that will produce the default value in case
     /// the field is omitted from the serialized representation.
     ///
-    /// See also: https://serde.rs/field-attrs.html#default--path
+    /// See also: <https://serde.rs/field-attrs.html#default--path>
     ///
     /// An empty string may be used as value, in which case `Default::default`
-    /// is assumed. See also: https://serde.rs/field-attrs.html#default
+    /// is assumed. See also: <https://serde.rs/field-attrs.html#default>
     pub default: Option<String>,
 
     /// Optional Serde dependency used for deserialization.
     ///
-    /// See: https://serde.rs/field-attrs.html#deserialize_with
+    /// See: <https://serde.rs/field-attrs.html#deserialize_with>
     pub deserialize_with: Option<String>,
 
     /// Determines whether the field should be flattened into the parent struct.
     ///
-    /// See: https://serde.rs/attr-flatten.html
+    /// See: <https://serde.rs/attr-flatten.html>
     pub flatten: bool,
 
     /// Optional name to use in the serialized format
     /// (only used if different than the field name itself).
     ///
-    /// See also: https://serde.rs/field-attrs.html#rename
+    /// See also: <https://serde.rs/field-attrs.html#rename>
     pub rename: Option<String>,
 
     /// Optional Serde dependency used for serialization.
     ///
-    /// See also: https://serde.rs/field-attrs.html#serialize_with
+    /// See also: <https://serde.rs/field-attrs.html#serialize_with>
     pub serialize_with: Option<String>,
 
     /// Optional path to a function to determine whether serialized should be
@@ -198,7 +198,7 @@ pub struct FieldAttrs {
     /// E.g.: can be used to omit `Option`s by specifying
     /// `skip_serializing_if = "Option::is_none"`.
     ///
-    /// See also: https://serde.rs/field-attrs.html#skip_serializing_if
+    /// See also: <https://serde.rs/field-attrs.html#skip_serializing_if>
     pub skip_serializing_if: Option<String>,
 }
 
