@@ -1,6 +1,6 @@
 #![allow(unused_imports)]
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, collections::HashMap, rc::Rc};
+use std::{collections::BTreeMap, rc::Rc};
 
 pub use redux_example::ReduxAction;
 pub use redux_example::StateUpdate;
@@ -143,10 +143,8 @@ pub struct Request {
     pub method: http::Method,
 
     /// HTTP headers to submit with the request.
-    ///
-    /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
-    pub headers: HashMap<String, String>,
+    #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_header_map", serialize_with = "fp_bindgen_support::http::serialize_header_map")]
+    pub headers: http::HeaderMap,
 
     /// The body to submit with the request.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -184,10 +182,8 @@ pub struct Response {
     pub body: Body,
 
     /// HTTP headers that were part of the response.
-    ///
-    /// Note: We currently do not support the `Headers` type from the `http`
-    ///       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
-    pub headers: HashMap<String, String>,
+    #[serde(deserialize_with = "fp_bindgen_support::http::deserialize_header_map", serialize_with = "fp_bindgen_support::http::serialize_header_map")]
+    pub headers: http::HeaderMap,
 
     /// HTTP status code.
     pub status_code: u16,

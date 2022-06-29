@@ -76,6 +76,27 @@ impl Serializable for http::uri::Uri {
     }
 }
 
+impl Serializable for http::HeaderMap {
+    fn ident() -> TypeIdent {
+        TypeIdent::from("http::HeaderMap")
+    }
+
+    fn ty() -> Type {
+        Type::Custom(CustomType {
+            ident: Self::ident(),
+            rs_ty: "http::HeaderMap".to_owned(),
+            rs_dependencies: http_dependencies(),
+            serde_attrs: vec![
+                "serialize_with = \"fp_bindgen_support::http::serialize_header_map\"".to_owned(),
+                "deserialize_with = \"fp_bindgen_support::http::deserialize_header_map\""
+                    .to_owned(),
+            ],
+            ts_ty: "HeaderMap".to_owned(),
+            ts_declaration: Some(r#"{ [key: string]: Uint8Array }"#.into()),
+        })
+    }
+}
+
 fn http_dependencies() -> BTreeMap<&'static str, CargoDependency> {
     BTreeMap::from([
         (

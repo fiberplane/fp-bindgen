@@ -215,7 +215,7 @@ const imports: Imports = {
       url: "https://fiberplane.dev/",
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "content-type": encoder.encode("application/json"),
       },
       body: encoder.encode(
         JSON.stringify({ "country": "🇳🇱", "type": "sign-up" }),
@@ -227,7 +227,7 @@ const imports: Imports = {
           JSON.stringify({ "status": "confirmed" }),
         ),
         headers: {
-          "Content-Type": "application/json",
+          "content-type": encoder.encode("application/json"),
         },
         status_code: 200,
       },

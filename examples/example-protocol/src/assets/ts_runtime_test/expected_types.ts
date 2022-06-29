@@ -156,11 +156,8 @@ export type Request = {
 
     /**
      * HTTP headers to submit with the request.
-     *
-     * Note: We currently do not support the `Headers` type from the `http`
-     *       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
      */
-    headers: Record<string, string>;
+    headers: HeaderMap;
 
     /**
      * The body to submit with the request.
@@ -210,11 +207,8 @@ export type Response = {
 
     /**
      * HTTP headers that were part of the response.
-     *
-     * Note: We currently do not support the `Headers` type from the `http`
-     *       crate. See: <https://github.com/fiberplane/fp-bindgen/issues/102>
      */
-    headers: Record<string, string>;
+    headers: HeaderMap;
 
     /**
      * HTTP status code.
@@ -287,3 +281,5 @@ export type StructWithGenerics<T> = {
     complex_nested?: Record<string, Array<FloatingPoint>>;
     optional_timestamp?: MyDateTime;
 };
+
+export type HeaderMap = { [key: string]: Uint8Array };

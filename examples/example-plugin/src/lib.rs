@@ -1,7 +1,7 @@
 use ::http::{Method, Uri};
 use example_bindings::*;
 use serde_bytes::ByteBuf;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use std::panic;
 use time::{macros::datetime, OffsetDateTime};
 
@@ -286,10 +286,17 @@ async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyR
 
 #[fp_export_impl(example_bindings)]
 async fn fetch_data(r#type: String) -> Result<String, String> {
+
+    let mut headers = ::http::HeaderMap::new();
+    headers.insert(
+        ::http::header::CONTENT_TYPE,
+        ::http::header::HeaderValue::from_static("application/json"),
+    );
+
     let result = make_http_request(Request {
         url: Uri::from_static("https://fiberplane.dev"),
         method: Method::POST,
-        headers: HashMap::from([("Content-Type".to_owned(), "application/json".to_owned())]),
+        headers,
         body: Some(ByteBuf::from(format!(
             r#"{{"country":"🇳🇱","type":"{}"}}"#,
             r#type

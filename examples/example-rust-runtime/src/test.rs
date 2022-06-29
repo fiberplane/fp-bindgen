@@ -233,8 +233,10 @@ async fn async_struct() -> Result<()> {
 async fn fetch_async_data() -> Result<()> {
     let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
 
+    let response = rt.fetch_data("sign-up".to_string()).await?;
+
     assert_eq!(
-        rt.fetch_data("sign-up".to_string()).await?,
+        response,
         Ok(r#"status: "confirmed"#.to_string())
     );
     Ok(())
