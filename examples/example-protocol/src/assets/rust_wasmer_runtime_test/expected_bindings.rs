@@ -795,6 +795,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
            "__fp_gen_import_string" => Function :: new_native_with_env (store , env . clone () , _import_string) ,
            "__fp_gen_import_timestamp" => Function :: new_native_with_env (store , env . clone () , _import_timestamp) ,
            "__fp_gen_import_void_function" => Function :: new_native_with_env (store , env . clone () , _import_void_function) ,
+           "__fp_gen_import_void_function_empty_return" => Function :: new_native_with_env (store , env . clone () , _import_void_function_empty_return) ,
            "__fp_gen_log" => Function :: new_native_with_env (store , env . clone () , _log) ,
            "__fp_gen_make_http_request" => Function :: new_native_with_env (store , env . clone () , _make_http_request) ,
         }
@@ -1003,6 +1004,10 @@ pub fn _import_timestamp(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 
 pub fn _import_void_function(env: &RuntimeInstanceData) {
     let result = super::import_void_function();
+}
+
+pub fn _import_void_function_empty_return(env: &RuntimeInstanceData) {
+    let result = super::import_void_function_empty_return();
 }
 
 pub fn _log(env: &RuntimeInstanceData, message: FatPtr) {

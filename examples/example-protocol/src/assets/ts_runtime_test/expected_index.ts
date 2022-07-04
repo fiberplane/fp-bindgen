@@ -72,6 +72,7 @@ export type Imports = {
     importString: (arg: string) => string;
     importTimestamp: (arg: MyDateTime) => MyDateTime;
     importVoidFunction: () => void;
+    importVoidFunctionEmptyReturn: () => void;
     log: (message: string) => void;
     makeHttpRequest: (request: Request) => Promise<HttpResult>;
 };
@@ -344,6 +345,9 @@ export async function createRuntime(
             },
             __fp_gen_import_void_function: () => {
                 importFunctions.importVoidFunction();
+            },
+            __fp_gen_import_void_function_empty_return: () => {
+                importFunctions.importVoidFunctionEmptyReturn();
             },
             __fp_gen_log: (message_ptr: FatPtr) => {
                 const message = parseObject<string>(message_ptr);

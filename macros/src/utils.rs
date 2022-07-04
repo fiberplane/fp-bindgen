@@ -3,7 +3,8 @@ use std::collections::VecDeque;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use syn::{
-    punctuated::Punctuated, Generics, Item, ItemUse, Path, PathArguments, PathSegment, Type,
+    punctuated::Punctuated, Generics, Item, ItemUse, Path, PathArguments, PathSegment, ReturnType,
+    Type,
 };
 
 pub(crate) fn extract_path_from_type(ty: &Type) -> Option<Path> {
@@ -79,4 +80,19 @@ pub(crate) fn flatten_using_statement(using: ItemUse) -> impl Iterator<Item = Pa
     }
 
     result.into_iter()
+}
+
+pub(crate) fn normalize_return_type(ty: &ReturnType) -> Option<&Type> {
+    match ty {
+        ReturnType::Default => None,
+        ReturnType::Type(_, ty) => {
+            match ty.as_ref() {
+                Type::Tuple(tuple) if tuple.elems.is_empty() => {
+                    /* An empty '-> ()' return value */
+                    None
+                }
+                r => Some(r),
+            }
+        }
+    }
 }

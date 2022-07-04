@@ -342,6 +342,7 @@ mod serializable;
 pub mod prelude;
 pub mod primitives;
 pub mod types;
+mod utils;
 
 use fp_bindgen_macros::primitive_impls;
 use prelude::*;
