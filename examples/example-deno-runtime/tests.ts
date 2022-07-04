@@ -206,7 +206,7 @@ const imports: Imports = {
 
   importVoidFunctionEmptyResult: (): Result<void, number> => {
     return {
-      Err: 123
+      Ok: undefined
     };
   },
 

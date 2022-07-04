@@ -8,6 +8,10 @@ use time::OffsetDateTime;
 use types::*;
 
 fn import_void_function() {}
+fn import_void_function_empty_result() -> Result<(), u32> {
+    Ok(())
+}
+fn import_void_function_empty_return() -> () {}
 
 fn import_primitive_bool(arg: bool) -> bool {
     todo!()
@@ -103,7 +107,6 @@ fn log(msg: String) {
 }
 
 async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
-
     Ok(Response {
         body: ByteBuf::from(r#"status: "confirmed"#.to_string()),
         headers: opts.headers,
