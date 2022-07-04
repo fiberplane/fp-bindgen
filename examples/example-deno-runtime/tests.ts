@@ -23,6 +23,7 @@ import type {
   SerdeVariantRenaming,
   StructWithGenerics,
 } from "../example-protocol/bindings/ts-runtime/types.ts";
+import {Result} from "../example-protocol/bindings/ts-runtime/types.ts";
 
 let voidFunctionCalled = false;
 
@@ -201,6 +202,15 @@ const imports: Imports = {
 
   importVoidFunction: (): void => {
     voidFunctionCalled = true;
+  },
+
+  importVoidFunctionEmptyResult: (): Result<void, number> => {
+    return {
+      Err: 123
+    };
+  },
+
+  importVoidFunctionEmptyReturn: (): void => {
   },
 
   log: (message: string): void => {

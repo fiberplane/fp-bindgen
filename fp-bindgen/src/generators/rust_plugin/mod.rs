@@ -261,7 +261,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Type::Unit => "void".to_owned(),
+        Type::Unit => "()".to_owned(),
         _ => ident.to_string(),
     }
 }

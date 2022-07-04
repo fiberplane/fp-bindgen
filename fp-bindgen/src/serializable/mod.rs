@@ -215,7 +215,7 @@ where
                 Variant {
                     name: "Ok".to_owned(),
                     ty: Type::Tuple(vec![TypeIdent::from("T")]),
-                    doc_lines: vec![" Represents a succesful result.".to_owned()],
+                    doc_lines: vec![" Represents a successful result.".to_owned()],
                     attrs: VariantAttrs::default(),
                 },
                 Variant {
@@ -226,7 +226,7 @@ where
                 },
             ],
             doc_lines: vec![
-                " A result that can be either successful (`Ok)` or represent an error (`Err`)."
+                " A result that can be either successful (`Ok`) or represent an error (`Err`)."
                     .to_owned(),
             ],
             options: EnumOptions::default(),
@@ -237,6 +237,16 @@ where
         types.entry(Self::ident()).or_insert_with(Self::ty);
         T::collect_types(types);
         E::collect_types(types);
+    }
+}
+
+impl Serializable for () {
+    fn ident() -> TypeIdent {
+        TypeIdent::from("()")
+    }
+
+    fn ty() -> Type {
+        Type::Unit
     }
 }
 
