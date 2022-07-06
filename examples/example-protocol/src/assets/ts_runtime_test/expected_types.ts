@@ -217,11 +217,11 @@ export type Response = {
 };
 
 /**
- * A result that can be either successful (`Ok)` or represent an error (`Err`).
+ * A result that can be either successful (`Ok`) or represent an error (`Err`).
  */
 export type Result<T, E> =
     /**
-     * Represents a succesful result.
+     * Represents a successful result.
      */
     | { Ok: T }
     /**

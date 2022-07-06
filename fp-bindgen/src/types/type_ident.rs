@@ -6,7 +6,7 @@ use std::{
     fmt::Display,
     str::FromStr,
 };
-use syn::{PathArguments, TypePath};
+use syn::{PathArguments, TypePath, TypeTuple};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct TypeIdent {
@@ -111,30 +111,43 @@ impl TryFrom<&syn::Type> for TypeIdent {
 
     fn try_from(ty: &syn::Type) -> Result<Self, Self::Error> {
         match ty {
-            syn::Type::Path(TypePath { path, qself }) if qself.is_none() => Ok(Self {
-                name: path
-                    .segments
-                    .iter()
-                    .map(|segment| segment.ident.to_string())
-                    .collect::<Vec<_>>()
-                    .join("::"),
-                generic_args: path
-                    .segments
-                    .last()
-                    .and_then(|segment| match &segment.arguments {
-                        PathArguments::AngleBracketed(args) => Some(
-                            args.args
-                                .iter()
-                                .flat_map(|arg| match arg {
-                                    syn::GenericArgument::Type(ty) => TypeIdent::try_from(ty),
-                                    arg => Err(format!("Unsupported generic argument: {:?}", arg)),
-                                })
-                                .collect(),
-                        ),
-                        _ => None,
-                    })
-                    .unwrap_or_default(),
-            }),
+            syn::Type::Path(TypePath { path, qself }) if qself.is_none() => {
+                let mut generic_args = vec![];
+                if let Some(segment) = path.segments.last() {
+                    match &segment.arguments {
+                        PathArguments::AngleBracketed(args) => {
+                            for arg in &args.args {
+                                match arg {
+                                    syn::GenericArgument::Type(ty) => {
+                                        generic_args.push(TypeIdent::try_from(ty)?);
+                                    }
+                                    arg => {
+                                        return Err(format!(
+                                            "Unsupported generic argument: {:?}",
+                                            arg
+                                        ));
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                Ok(Self {
+                    name: path
+                        .segments
+                        .iter()
+                        .map(|segment| segment.ident.to_string())
+                        .collect::<Vec<_>>()
+                        .join("::"),
+                    generic_args,
+                })
+            }
+            syn::Type::Tuple(TypeTuple {
+                elems,
+                paren_token: _,
+            }) if elems.is_empty() => Ok(TypeIdent::from("()")),
             ty => Err(format!("Unsupported type: {:?}", ty)),
         }
     }

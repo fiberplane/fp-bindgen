@@ -84,6 +84,12 @@ pub fn import_timestamp(arg: MyDateTime) -> MyDateTime;
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_void_function();
 
+#[fp_bindgen_support::fp_import_signature]
+pub fn import_void_function_empty_result() -> Result<(), u32>;
+
+#[fp_bindgen_support::fp_import_signature]
+pub fn import_void_function_empty_return();
+
 /// Logs a message to the (development) console.
 #[fp_bindgen_support::fp_import_signature]
 pub fn log(message: String);

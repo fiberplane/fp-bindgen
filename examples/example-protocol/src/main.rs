@@ -39,6 +39,12 @@ fp_import! {
     // No arguments, no return type:
     fn import_void_function();
 
+    // No arguments, empty return type:
+    fn import_void_function_empty_return() -> ();
+
+    // No arguments, generic empty result type:
+    fn import_void_function_empty_result() -> Result<(), u32>;
+
     // Passing primitives:
     fn import_primitive_bool(arg: bool) -> bool;
     fn import_primitive_f32(arg: f32) -> f32;

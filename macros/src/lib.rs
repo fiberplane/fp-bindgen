@@ -10,7 +10,7 @@ use syn::{
     AttributeArgs, FnArg, ForeignItemFn, GenericParam, ItemFn, ItemType, ItemUse, Pat, PatPath,
     Path, PathArguments, PathSegment, ReturnType,
 };
-use utils::flatten_using_statement;
+use utils::{flatten_using_statement, normalize_return_type};
 
 mod primitives;
 mod serializable;
@@ -128,19 +128,14 @@ fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
                         }
                     }
 
-                    match &function.sig.output {
-                        ReturnType::Default => { /* No return value. */ }
-                        ReturnType::Type(_, ty) => {
-                            type_paths.insert(extract_path_from_type(ty.as_ref()).unwrap_or_else(
-                                || {
-                                    panic!(
-                                        "Only value types are supported. \
+                    if let Some(ty) = normalize_return_type(&function.sig.output) {
+                        type_paths.insert(extract_path_from_type(ty).unwrap_or_else(|| {
+                            panic!(
+                                "Only value types are supported. \
                                             Incompatible return type in function declaration: {:?}",
-                                        function.sig
-                                    )
-                                },
-                            ));
-                        }
+                                function.sig
+                            )
+                        }));
                     }
 
                     functions.push(function.into_token_stream().to_string());

@@ -1,7 +1,8 @@
+use crate::utils::normalize_return_type;
 use crate::{docs::get_doc_lines, types::TypeIdent};
 use quote::{format_ident, quote, ToTokens};
 use std::{collections::BTreeSet, convert::TryFrom};
-use syn::{token::Async, FnArg, ForeignItemFn, ReturnType};
+use syn::{token::Async, FnArg, ForeignItemFn};
 
 /// Maps from function name to the stringified function declaration.
 #[derive(Debug, Default)]
@@ -71,13 +72,10 @@ impl Function {
                 },
             })
             .collect();
-        let return_type = match &item.sig.output {
-            ReturnType::Default => None,
-            ReturnType::Type(_, return_type) => Some(
-                TypeIdent::try_from(return_type.as_ref())
-                    .unwrap_or_else(|_| panic!("Invalid return type for function {}", name)),
-            ),
-        };
+        let return_type = normalize_return_type(&item.sig.output).map(|return_type| {
+            TypeIdent::try_from(return_type)
+                .unwrap_or_else(|_| panic!("Invalid return type for function {}", name))
+        });
         let is_async = item.sig.asyncness.is_some();
 
         Self {
