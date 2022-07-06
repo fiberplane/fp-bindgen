@@ -1,7 +1,7 @@
 use crate::utils::{extract_path_from_type, parse_type_item};
 use proc_macro::TokenStream;
 use quote::quote;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use syn::punctuated::Punctuated;
 use syn::{Path, TypeParamBound};
 
@@ -56,7 +56,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     // Remove any bounds from the generic types and store them separately.
     // Otherwise, collect_types will be called like `Foo::<T: MyTrait>::collect_types()` and where clauses
     // will be incorrect, too.
-    let mut bounds = HashMap::new();
+    let mut bounds = BTreeMap::new();
     for param in generics.type_params_mut() {
         // For every parameter we want to either extract the existing trait bounds, or, if there
         // were no existing bounds, we will mark the parameter as having no bounds.
