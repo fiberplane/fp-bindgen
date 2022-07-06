@@ -43,6 +43,13 @@ export type DocExampleStruct = {
 };
 
 /**
+ * A point of an arbitrary type, with an explicit 'Serializable' bound.
+ */
+export type ExplicitBoundPoint<T> = {
+    value: T;
+};
+
+/**
  * This struct is also not referenced by any function or data structure, but
  * it will show up because there is an explicit `use` statement for it in the
  * `fp_import!` macro.

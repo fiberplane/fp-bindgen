@@ -13,6 +13,9 @@ fn import_void_function_empty_result() -> Result<(), u32> {
 }
 fn import_void_function_empty_return() -> () {}
 
+fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>) {
+    todo!()
+}
 fn import_primitive_bool(arg: bool) -> bool {
     todo!()
 }

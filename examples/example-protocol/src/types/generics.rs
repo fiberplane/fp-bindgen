@@ -13,6 +13,12 @@ pub struct Point<T> {
     pub value: T,
 }
 
+/// A point of an arbitrary type, with an explicit 'Serializable' bound.
+#[derive(Serializable)]
+pub struct ExplicitBoundPoint<T: Serializable> {
+    pub value: T,
+}
+
 #[derive(Serializable)]
 pub struct StructWithGenerics<T> {
     pub list: Vec<T>,

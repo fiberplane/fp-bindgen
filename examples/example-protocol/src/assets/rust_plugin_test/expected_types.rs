@@ -31,6 +31,12 @@ pub struct DocExampleStruct {
     pub r#type: String,
 }
 
+/// A point of an arbitrary type, with an explicit 'Serializable' bound.
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct ExplicitBoundPoint<T> {
+    pub value: T,
+}
+
 /// This struct is also not referenced by any function or data structure, but
 /// it will show up because there is an explicit `use` statement for it in the
 /// `fp_import!` macro.

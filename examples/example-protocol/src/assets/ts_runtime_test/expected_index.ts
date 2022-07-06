@@ -11,6 +11,7 @@ import type {
     Body,
     DocExampleEnum,
     DocExampleStruct,
+    ExplicitBoundPoint,
     ExplicitedlyImportedType,
     FlattenedStruct,
     FloatingPoint,
@@ -44,6 +45,7 @@ import type {
 type FatPtr = bigint;
 
 export type Imports = {
+    importExplicitBoundPoint: (arg: ExplicitBoundPoint<number>) => void;
     importFpAdjacentlyTagged: (arg: FpAdjacentlyTagged) => FpAdjacentlyTagged;
     importFpEnum: (arg: FpVariantRenaming) => FpVariantRenaming;
     importFpFlatten: (arg: FpFlatten) => FpFlatten;
@@ -247,6 +249,10 @@ export async function createRuntime(
 
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
+            __fp_gen_import_explicit_bound_point: (arg_ptr: FatPtr) => {
+                const arg = parseObject<ExplicitBoundPoint<number>>(arg_ptr);
+                importFunctions.importExplicitBoundPoint(arg);
+            },
             __fp_gen_import_fp_adjacently_tagged: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<FpAdjacentlyTagged>(arg_ptr);
                 return serializeObject(importFunctions.importFpAdjacentlyTagged(arg));
