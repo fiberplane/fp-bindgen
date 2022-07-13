@@ -43,7 +43,7 @@ export type DocExampleStruct = {
 };
 
 /**
- * A point of an arbitrary type, with an explicit 'Serializable' bound.
+ * A point of an arbitrary type, with explicit trait bounds.
  */
 export type ExplicitBoundPoint<T> = {
     value: T;

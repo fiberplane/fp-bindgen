@@ -38,21 +38,6 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         _ => HashSet::default(),
     };
 
-    let ident = {
-        let item_name = item_name.to_string();
-        if generics.params.is_empty() {
-            quote! { fp_bindgen::prelude::TypeIdent::from(#item_name) }
-        } else {
-            let params = generics.type_params().map(|param| param.ident.to_string());
-            quote! {
-                fp_bindgen::prelude::TypeIdent {
-                    name: #item_name.to_owned(),
-                    generic_args: vec![#( fp_bindgen::prelude::TypeIdent::from(#params) ),*],
-                }
-            }
-        }
-    };
-
     // Remove any bounds from the generic types and store them separately.
     // Otherwise, collect_types will be called like `Foo::<T: MyTrait>::collect_types()` and where clauses
     // will be incorrect, too.
@@ -63,7 +48,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
 
         param.bounds = if param.bounds.is_empty() {
             // No existing bound found, so mark this parameter as having 'None' as a bound
-            bounds.insert(param.ident.clone(), None);
+            bounds.insert(param.ident.clone(), vec![]);
             Punctuated::new()
         } else {
             param
@@ -74,7 +59,10 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
                     match &bound {
                         TypeParamBound::Trait(tr) => {
                             // Extract the bound and remove it from the param
-                            bounds.insert(param.ident.clone(), Some(tr.clone()));
+                            bounds
+                                .entry(param.ident.clone())
+                                .or_insert_with(Vec::new)
+                                .push(tr.clone());
                             false
                         }
                         // Ignore other bound types (lifetimes) for now
@@ -85,6 +73,27 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         };
     }
 
+    let ident = {
+        let item_name = item_name.to_string();
+        if generics.params.is_empty() {
+            quote! { fp_bindgen::prelude::TypeIdent::from(#item_name) }
+        } else {
+            let params = generics.type_params().map(|param| param.ident.to_string());
+            let param_bounds = generics.type_params().map(|param| {
+                bounds
+                    .get(&param.ident)
+                    .cloned()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|bound| path_to_string(&bound.path))
+                    .collect::<Vec<_>>()
+            });
+            quote! {
+                fp_bindgen::prelude::TypeIdent::new(#item_name.to_owned(), vec![#( (fp_bindgen::prelude::TypeIdent::from(#params), vec![#(#param_bounds.into()),*]) ),*])
+            }
+        }
+    };
+
     let where_clause = if bounds.is_empty() {
         quote! {}
     } else {
@@ -92,9 +101,12 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
 
         // Add the appropriate bounds to the where clause
         // If no existing bounds were present, we will add the 'Serializable' bound.
-        let param_bounds = bounds.values().map(|bound| match bound {
-            Some(bound) => quote! { : #bound },
-            None => quote! { : Serializable },
+        let param_bounds = bounds.values().map(|ident_bounds| {
+            if ident_bounds.is_empty() {
+                quote! { : fp_bindgen::prelude::Serializable }
+            } else {
+                quote! { : #(#ident_bounds)+* }
+            }
         });
         quote! {
             where
@@ -134,4 +146,12 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     };
 
     implementation.into()
+}
+
+fn path_to_string(path: &syn::Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
 }

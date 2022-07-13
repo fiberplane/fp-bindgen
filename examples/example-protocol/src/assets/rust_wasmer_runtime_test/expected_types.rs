@@ -31,9 +31,9 @@ pub struct DocExampleStruct {
     pub r#type: String,
 }
 
-/// A point of an arbitrary type, with an explicit 'Serializable' bound.
+/// A point of an arbitrary type, with explicit trait bounds.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct ExplicitBoundPoint<T> {
+pub struct ExplicitBoundPoint<T: std::fmt::Debug + std::fmt::Display> {
     pub value: T,
 }
 
