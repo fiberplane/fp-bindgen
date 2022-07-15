@@ -133,7 +133,14 @@ impl ToTokens for RuntimeImportedFunction<'_> {
             .filter(|arg| !&arg.ty.is_primitive())
             .map(|arg| format_ident!("{}", arg.name))
             .collect();
-        let wasm_arg_types = args.iter().map(|arg| WasmType(&arg.ty));
+        let wasm_arg_types: Vec<_> = args.iter().map(|arg| WasmType(&arg.ty)).collect();
+        let wasm_arg_types = match wasm_arg_types.len() {
+            1 => {
+                let wasm_arg_type = &wasm_arg_types[0];
+                quote! { #wasm_arg_type }
+            }
+            _ => quote! { (#(#wasm_arg_types),*) },
+        };
         let wasm_return_type = match return_type {
             Some(ty) => {
                 let ty = WasmType(ty);
@@ -209,7 +216,7 @@ impl ToTokens for RuntimeImportedFunction<'_> {
 
                 let function = instance
                     .exports
-                    .get_native_function::<(#(#wasm_arg_types),*), #wasm_return_type>(#fp_gen_name)
+                    .get_native_function::<#wasm_arg_types, #wasm_return_type>(#fp_gen_name)
                     .map_err(|_| InvocationError::FunctionNotExported)?;
 
                 let result = function.call(#(#arg_names.to_abi()),*)?;
