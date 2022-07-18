@@ -228,38 +228,36 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
 }
 
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
+    let format_name_with_args = |name: &str, maybe_num_expected_args: Option<usize>| {
+        let generic_args: Vec<_> = ident
+            .generic_args
+            .iter()
+            .map(|(arg, bounds)| format!("{}{}", format_ident(arg, types), format_bounds(bounds)))
+            .collect();
+        if let Some(num_expected_args) = maybe_num_expected_args {
+            if generic_args.len() != num_expected_args {
+                panic!(
+                    "Expected {} generic arguments, but found {}",
+                    num_expected_args,
+                    generic_args.len()
+                );
+            }
+        }
+
+        if generic_args.is_empty() {
+            name.to_owned()
+        } else {
+            format!("{}<{}>", name, generic_args.join(", "))
+        }
+    };
+
     match ty {
         Type::Alias(name, _) => name.clone(),
-        Type::Container(name, _) | Type::List(name, _) => {
-            let (arg, bounds) = ident
-                .generic_args
-                .first()
-                .expect("Identifier was expected to contain a generic argument");
-            format!(
-                "{}<{}{}>",
-                name,
-                format_ident(arg, types),
-                format_bounds(bounds)
-            )
-        }
+        Type::Container(name, _) | Type::List(name, _) => format_name_with_args(name, Some(1)),
         Type::Custom(custom) => custom.rs_ty.clone(),
-        Type::Map(name, _, _) => {
-            let (arg1, bounds1) = ident.generic_args.first().expect(
-                "Identifier was expected to contain two generic arguments, but none were provided",
-            );
-            let (arg2, bounds2) = ident
-                .generic_args
-                .get(1)
-                .expect("Identifier was expected to contain two generic arguments, but only one was provided");
-            format!(
-                "{}<{}{}, {}{}>",
-                name,
-                format_ident(arg1, types),
-                format_bounds(bounds1),
-                format_ident(arg2, types),
-                format_bounds(bounds2),
-            )
-        }
+        Type::Enum(Enum { ident, .. }) => format_name_with_args(&ident.name, None),
+        Type::Map(name, _, _) => format_name_with_args(name, Some(2)),
+        Type::Struct(Struct { ident, .. }) => format_name_with_args(&ident.name, None),
         Type::Tuple(items) => format!(
             "[{}]",
             items

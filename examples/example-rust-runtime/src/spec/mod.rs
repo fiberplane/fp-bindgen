@@ -73,6 +73,10 @@ fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
     todo!()
 }
 
+fn import_get_bytes() -> Result<serde_bytes::ByteBuf, String> {
+    todo!()
+}
+
 fn import_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming {
     todo!()
 }

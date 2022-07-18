@@ -20,6 +20,7 @@ export type Imports = {
     importFpStruct: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
     importFpUntagged: (arg: types.FpUntagged) => types.FpUntagged;
     importGenerics: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
+    importGetBytes: () => types.Result<ArrayBuffer, string>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
     importPrimitiveBool: (arg: boolean) => boolean;
     importPrimitiveF32: (arg: number) => number;
@@ -247,6 +248,9 @@ export async function createRuntime(
             __fp_gen_import_generics: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<types.StructWithGenerics<number>>(arg_ptr);
                 return serializeObject(importFunctions.importGenerics(arg));
+            },
+            __fp_gen_import_get_bytes: (): FatPtr => {
+                return serializeObject(importFunctions.importGetBytes());
             },
             __fp_gen_import_multiple_primitives: (arg1: number, arg2_ptr: FatPtr): bigint => {
                 const arg2 = parseObject<string>(arg2_ptr);

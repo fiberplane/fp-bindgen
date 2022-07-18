@@ -96,6 +96,10 @@ const imports: Imports = {
     };
   },
 
+  importGetBytes: (): Result<ArrayBuffer, string> => {
+    return { Ok: new TextEncoder().encode("Hello, world!") };
+  },
+
   importMultiplePrimitives: (arg1: number, arg2: string): bigint => {
     assertEquals(arg1, -8);
     assertEquals(arg2, "Hello, 🇳🇱!");

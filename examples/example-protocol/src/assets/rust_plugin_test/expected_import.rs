@@ -25,6 +25,9 @@ pub fn import_fp_untagged(arg: FpUntagged) -> FpUntagged;
 pub fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
 
 #[fp_bindgen_support::fp_import_signature]
+pub fn import_get_bytes() -> Result<serde_bytes::ByteBuf, String>;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
 #[fp_bindgen_support::fp_import_signature]

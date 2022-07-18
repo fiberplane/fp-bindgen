@@ -3,6 +3,7 @@
 use fp_bindgen::{prelude::*, types::CargoDependency};
 use once_cell::sync::Lazy;
 use redux_example::{ReduxAction, StateUpdate};
+use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap, BTreeSet};
 
 // Referencing types using their full module path can be problematic in some
@@ -78,6 +79,9 @@ fp_import! {
     // See `types/generics.rs` for more info.
     fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
     fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
+
+    // Custom type in a generic position.
+    fn import_get_bytes() -> Result<ByteBuf, String>;
 
     // Passing custom types with property/variant renaming.
     //
