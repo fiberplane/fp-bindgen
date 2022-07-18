@@ -2,6 +2,7 @@ use super::{
     structs::{Field, Struct, StructOptions},
     Type, TypeIdent,
 };
+use crate::types::format_bounds;
 use crate::{casing::Casing, docs::get_doc_lines, primitives::Primitive, types::FieldAttrs};
 use quote::ToTokens;
 use std::{collections::BTreeMap, convert::TryFrom, str::FromStr};
@@ -26,7 +27,9 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
             .params
             .iter()
             .filter_map(|param| match param {
-                GenericParam::Type(ty) => Some(TypeIdent::from(ty.ident.to_string())),
+                GenericParam::Type(ty) => {
+                    Some((TypeIdent::from(ty.ident.to_string()), format_bounds(ty)))
+                }
                 _ => None,
             })
             .collect(),

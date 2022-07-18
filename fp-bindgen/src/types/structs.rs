@@ -1,4 +1,5 @@
 use super::TypeIdent;
+use crate::types::format_bounds;
 use crate::{casing::Casing, docs::get_doc_lines};
 use quote::ToTokens;
 use std::{collections::BTreeMap, convert::TryFrom};
@@ -23,7 +24,9 @@ pub(crate) fn parse_struct_item(item: ItemStruct) -> Struct {
             .params
             .iter()
             .filter_map(|param| match param {
-                GenericParam::Type(ty) => Some(TypeIdent::from(ty.ident.to_string())),
+                GenericParam::Type(ty) => {
+                    Some((TypeIdent::from(ty.ident.to_string()), format_bounds(ty)))
+                }
                 _ => None,
             })
             .collect(),

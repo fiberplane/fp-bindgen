@@ -22,7 +22,7 @@ impl Serializable for rmpv::Value {
                 },
             )]),
             serde_attrs: Vec::new(),
-            ts_ty: "string".to_owned(),
+            ts_ty: "any".to_owned(),
             ts_declaration: None,
         })
     }
