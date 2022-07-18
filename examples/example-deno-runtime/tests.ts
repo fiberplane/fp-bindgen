@@ -7,6 +7,7 @@ import {
 import { loadPlugin } from "./loader.ts";
 import type { Exports, Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
 import type {
+  ExplicitBoundPoint,
   FpAdjacentlyTagged,
   FpFlatten,
   FpInternallyTagged,
@@ -28,6 +29,10 @@ import {Result} from "../example-protocol/bindings/ts-runtime/types.ts";
 let voidFunctionCalled = false;
 
 const imports: Imports = {
+  importExplicitBoundPoint: (arg: ExplicitBoundPoint<number>) => {
+    assertEquals(arg.value, 123);
+  },
+
   importFpAdjacentlyTagged: (arg: FpAdjacentlyTagged): FpAdjacentlyTagged => {
     assertEquals(arg, { type: "Bar", payload: "Hello, plugin!" });
     return { type: "Baz", payload: { a: -8, b: 64 } };

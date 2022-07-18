@@ -1,3 +1,4 @@
+use crate::types::is_runtime_bound;
 use crate::{
     functions::FunctionList,
     types::{CargoDependency, Enum, Field, Struct, Type, TypeIdent, TypeMap},
@@ -231,7 +232,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
         let generic_args: Vec<_> = ident
             .generic_args
             .iter()
-            .map(|arg| format_ident(arg, types))
+            .map(|(arg, bounds)| format!("{}{}", format_ident(arg, types), format_bounds(bounds)))
             .collect();
         if let Some(num_expected_args) = maybe_num_expected_args {
             if generic_args.len() != num_expected_args {
@@ -268,6 +269,15 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
         Type::Unit => "()".to_owned(),
         _ => ident.to_string(),
     }
+}
+
+fn format_bounds(bounds: &[String]) -> String {
+    bounds
+        .iter()
+        .filter(|bound| is_runtime_bound(bound))
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" + ")
 }
 
 fn generate_imported_function_bindings(
@@ -478,27 +488,24 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
         serde_annotation
     );
 
+    // Format ident, include bounds and skip compile-time only bounds
+    let ident = ty.ident.format(true);
     if is_tuple_struct {
         if fields.len() > 1 {
             format!(
                 "{}pub struct {}(\n{}\n);",
                 annotations,
-                ty.ident,
+                ident,
                 fields.join("\n").trim_start_matches('\n')
             )
         } else {
-            format!(
-                "{}pub struct {}({});",
-                annotations,
-                ty.ident,
-                fields.join(" ")
-            )
+            format!("{}pub struct {}({});", annotations, ident, fields.join(" "))
         }
     } else {
         format!(
             "{}pub struct {} {{\n{}\n}}",
             annotations,
-            ty.ident,
+            ident,
             fields.join("\n").trim_start_matches('\n')
         )
     }

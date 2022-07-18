@@ -767,6 +767,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
     imports! {
        "fp" => {
            "__fp_host_resolve_async_value" => Function :: new_native_with_env (store , env . clone () , resolve_async_value) ,
+           "__fp_gen_import_explicit_bound_point" => Function :: new_native_with_env (store , env . clone () , _import_explicit_bound_point) ,
            "__fp_gen_import_fp_adjacently_tagged" => Function :: new_native_with_env (store , env . clone () , _import_fp_adjacently_tagged) ,
            "__fp_gen_import_fp_enum" => Function :: new_native_with_env (store , env . clone () , _import_fp_enum) ,
            "__fp_gen_import_fp_flatten" => Function :: new_native_with_env (store , env . clone () , _import_fp_flatten) ,
@@ -802,6 +803,11 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
            "__fp_gen_make_http_request" => Function :: new_native_with_env (store , env . clone () , _make_http_request) ,
         }
     }
+}
+
+pub fn _import_explicit_bound_point(env: &RuntimeInstanceData, arg: FatPtr) {
+    let arg = import_from_guest::<ExplicitBoundPoint<u64>>(env, arg);
+    let result = super::import_explicit_bound_point(arg);
 }
 
 pub fn _import_fp_adjacently_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {

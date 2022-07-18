@@ -17,3 +17,8 @@
 - Various smaller bugfixes.
 - **Deprecation**: `BindingsType::TsRuntime` is now deprecated in favor of
   `BindingsType::TsRuntimeWithExtendedConfig`.
+- Fix #88: Bounds are propagated correctly to generated types (with the
+  exception of the compile-time only `Serializable` bound).
+- Fix #88: Deal with the Unit (`()`) type.
+- Use `any` type in TypeScript to represent `rmpv::Value`.
+- Fix issue when TypeScript types conflicted with built-in JavaScript globals.

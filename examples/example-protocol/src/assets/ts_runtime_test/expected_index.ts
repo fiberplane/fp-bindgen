@@ -7,51 +7,20 @@
 
 import { encode, decode } from "https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts";
 
-import type {
-    Body,
-    DocExampleEnum,
-    DocExampleStruct,
-    ExplicitedlyImportedType,
-    FlattenedStruct,
-    FloatingPoint,
-    FpAdjacentlyTagged,
-    FpFlatten,
-    FpInternallyTagged,
-    FpPropertyRenaming,
-    FpUntagged,
-    FpVariantRenaming,
-    GroupImportedType1,
-    GroupImportedType2,
-    HttpResult,
-    Int64,
-    MyDateTime,
-    Point,
-    ReduxAction,
-    Request,
-    RequestError,
-    Response,
-    Result,
-    SerdeAdjacentlyTagged,
-    SerdeFlatten,
-    SerdeInternallyTagged,
-    SerdePropertyRenaming,
-    SerdeUntagged,
-    SerdeVariantRenaming,
-    StateUpdate,
-    StructWithGenerics,
-} from "./types.ts";
+import type * as types from "./types.ts";
 
 type FatPtr = bigint;
 
 export type Imports = {
-    importFpAdjacentlyTagged: (arg: FpAdjacentlyTagged) => FpAdjacentlyTagged;
-    importFpEnum: (arg: FpVariantRenaming) => FpVariantRenaming;
-    importFpFlatten: (arg: FpFlatten) => FpFlatten;
-    importFpInternallyTagged: (arg: FpInternallyTagged) => FpInternallyTagged;
-    importFpStruct: (arg: FpPropertyRenaming) => FpPropertyRenaming;
-    importFpUntagged: (arg: FpUntagged) => FpUntagged;
-    importGenerics: (arg: StructWithGenerics<number>) => StructWithGenerics<number>;
-    importGetBytes: () => Result<ArrayBuffer, string>;
+    importExplicitBoundPoint: (arg: types.ExplicitBoundPoint<number>) => void;
+    importFpAdjacentlyTagged: (arg: types.FpAdjacentlyTagged) => types.FpAdjacentlyTagged;
+    importFpEnum: (arg: types.FpVariantRenaming) => types.FpVariantRenaming;
+    importFpFlatten: (arg: types.FpFlatten) => types.FpFlatten;
+    importFpInternallyTagged: (arg: types.FpInternallyTagged) => types.FpInternallyTagged;
+    importFpStruct: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
+    importFpUntagged: (arg: types.FpUntagged) => types.FpUntagged;
+    importGenerics: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
+    importGetBytes: () => types.Result<ArrayBuffer, string>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
     importPrimitiveBool: (arg: boolean) => boolean;
     importPrimitiveF32: (arg: number) => number;
@@ -64,30 +33,30 @@ export type Imports = {
     importPrimitiveU32: (arg: number) => number;
     importPrimitiveU64: (arg: bigint) => bigint;
     importPrimitiveU8: (arg: number) => number;
-    importSerdeAdjacentlyTagged: (arg: SerdeAdjacentlyTagged) => SerdeAdjacentlyTagged;
-    importSerdeEnum: (arg: SerdeVariantRenaming) => SerdeVariantRenaming;
-    importSerdeFlatten: (arg: SerdeFlatten) => SerdeFlatten;
-    importSerdeInternallyTagged: (arg: SerdeInternallyTagged) => SerdeInternallyTagged;
-    importSerdeStruct: (arg: SerdePropertyRenaming) => SerdePropertyRenaming;
-    importSerdeUntagged: (arg: SerdeUntagged) => SerdeUntagged;
+    importSerdeAdjacentlyTagged: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
+    importSerdeEnum: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
+    importSerdeFlatten: (arg: types.SerdeFlatten) => types.SerdeFlatten;
+    importSerdeInternallyTagged: (arg: types.SerdeInternallyTagged) => types.SerdeInternallyTagged;
+    importSerdeStruct: (arg: types.SerdePropertyRenaming) => types.SerdePropertyRenaming;
+    importSerdeUntagged: (arg: types.SerdeUntagged) => types.SerdeUntagged;
     importString: (arg: string) => string;
-    importTimestamp: (arg: MyDateTime) => MyDateTime;
+    importTimestamp: (arg: types.MyDateTime) => types.MyDateTime;
     importVoidFunction: () => void;
-    importVoidFunctionEmptyResult: () => Result<void, number>;
+    importVoidFunctionEmptyResult: () => types.Result<void, number>;
     importVoidFunctionEmptyReturn: () => void;
     log: (message: string) => void;
-    makeHttpRequest: (request: Request) => Promise<HttpResult>;
+    makeHttpRequest: (request: types.Request) => Promise<types.HttpResult>;
 };
 
 export type Exports = {
-    exportAsyncStruct?: (arg1: FpPropertyRenaming, arg2: bigint) => Promise<FpPropertyRenaming>;
-    exportFpAdjacentlyTagged?: (arg: FpAdjacentlyTagged) => FpAdjacentlyTagged;
-    exportFpEnum?: (arg: FpVariantRenaming) => FpVariantRenaming;
-    exportFpFlatten?: (arg: FpFlatten) => FpFlatten;
-    exportFpInternallyTagged?: (arg: FpInternallyTagged) => FpInternallyTagged;
-    exportFpStruct?: (arg: FpPropertyRenaming) => FpPropertyRenaming;
-    exportFpUntagged?: (arg: FpUntagged) => FpUntagged;
-    exportGenerics?: (arg: StructWithGenerics<number>) => StructWithGenerics<number>;
+    exportAsyncStruct?: (arg1: types.FpPropertyRenaming, arg2: bigint) => Promise<types.FpPropertyRenaming>;
+    exportFpAdjacentlyTagged?: (arg: types.FpAdjacentlyTagged) => types.FpAdjacentlyTagged;
+    exportFpEnum?: (arg: types.FpVariantRenaming) => types.FpVariantRenaming;
+    exportFpFlatten?: (arg: types.FpFlatten) => types.FpFlatten;
+    exportFpInternallyTagged?: (arg: types.FpInternallyTagged) => types.FpInternallyTagged;
+    exportFpStruct?: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
+    exportFpUntagged?: (arg: types.FpUntagged) => types.FpUntagged;
+    exportGenerics?: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
     exportPrimitiveBool?: (arg: boolean) => boolean;
     exportPrimitiveF32?: (arg: number) => number;
@@ -100,18 +69,18 @@ export type Exports = {
     exportPrimitiveU32?: (arg: number) => number;
     exportPrimitiveU64?: (arg: bigint) => bigint;
     exportPrimitiveU8?: (arg: number) => number;
-    exportSerdeAdjacentlyTagged?: (arg: SerdeAdjacentlyTagged) => SerdeAdjacentlyTagged;
-    exportSerdeEnum?: (arg: SerdeVariantRenaming) => SerdeVariantRenaming;
-    exportSerdeFlatten?: (arg: SerdeFlatten) => SerdeFlatten;
-    exportSerdeInternallyTagged?: (arg: SerdeInternallyTagged) => SerdeInternallyTagged;
-    exportSerdeStruct?: (arg: SerdePropertyRenaming) => SerdePropertyRenaming;
-    exportSerdeUntagged?: (arg: SerdeUntagged) => SerdeUntagged;
+    exportSerdeAdjacentlyTagged?: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
+    exportSerdeEnum?: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
+    exportSerdeFlatten?: (arg: types.SerdeFlatten) => types.SerdeFlatten;
+    exportSerdeInternallyTagged?: (arg: types.SerdeInternallyTagged) => types.SerdeInternallyTagged;
+    exportSerdeStruct?: (arg: types.SerdePropertyRenaming) => types.SerdePropertyRenaming;
+    exportSerdeUntagged?: (arg: types.SerdeUntagged) => types.SerdeUntagged;
     exportString?: (arg: string) => string;
-    exportTimestamp?: (arg: MyDateTime) => MyDateTime;
+    exportTimestamp?: (arg: types.MyDateTime) => types.MyDateTime;
     exportVoidFunction?: () => void;
-    fetchData?: (rType: string) => Promise<Result<string, string>>;
+    fetchData?: (rType: string) => Promise<types.Result<string, string>>;
     init?: () => void;
-    reducerBridge?: (action: ReduxAction) => StateUpdate;
+    reducerBridge?: (action: types.ReduxAction) => types.StateUpdate;
     exportAsyncStructRaw?: (arg1: Uint8Array, arg2: bigint) => Promise<Uint8Array>;
     exportFpAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportFpEnumRaw?: (arg: Uint8Array) => Uint8Array;
@@ -248,32 +217,36 @@ export async function createRuntime(
 
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
+            __fp_gen_import_explicit_bound_point: (arg_ptr: FatPtr) => {
+                const arg = parseObject<types.ExplicitBoundPoint<number>>(arg_ptr);
+                importFunctions.importExplicitBoundPoint(arg);
+            },
             __fp_gen_import_fp_adjacently_tagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpAdjacentlyTagged>(arg_ptr);
+                const arg = parseObject<types.FpAdjacentlyTagged>(arg_ptr);
                 return serializeObject(importFunctions.importFpAdjacentlyTagged(arg));
             },
             __fp_gen_import_fp_enum: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpVariantRenaming>(arg_ptr);
+                const arg = parseObject<types.FpVariantRenaming>(arg_ptr);
                 return serializeObject(importFunctions.importFpEnum(arg));
             },
             __fp_gen_import_fp_flatten: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpFlatten>(arg_ptr);
+                const arg = parseObject<types.FpFlatten>(arg_ptr);
                 return serializeObject(importFunctions.importFpFlatten(arg));
             },
             __fp_gen_import_fp_internally_tagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpInternallyTagged>(arg_ptr);
+                const arg = parseObject<types.FpInternallyTagged>(arg_ptr);
                 return serializeObject(importFunctions.importFpInternallyTagged(arg));
             },
             __fp_gen_import_fp_struct: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpPropertyRenaming>(arg_ptr);
+                const arg = parseObject<types.FpPropertyRenaming>(arg_ptr);
                 return serializeObject(importFunctions.importFpStruct(arg));
             },
             __fp_gen_import_fp_untagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<FpUntagged>(arg_ptr);
+                const arg = parseObject<types.FpUntagged>(arg_ptr);
                 return serializeObject(importFunctions.importFpUntagged(arg));
             },
             __fp_gen_import_generics: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<StructWithGenerics<number>>(arg_ptr);
+                const arg = parseObject<types.StructWithGenerics<number>>(arg_ptr);
                 return serializeObject(importFunctions.importGenerics(arg));
             },
             __fp_gen_import_get_bytes: (): FatPtr => {
@@ -317,27 +290,27 @@ export async function createRuntime(
                 return importFunctions.importPrimitiveU8(arg);
             },
             __fp_gen_import_serde_adjacently_tagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdeAdjacentlyTagged>(arg_ptr);
+                const arg = parseObject<types.SerdeAdjacentlyTagged>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeAdjacentlyTagged(arg));
             },
             __fp_gen_import_serde_enum: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdeVariantRenaming>(arg_ptr);
+                const arg = parseObject<types.SerdeVariantRenaming>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeEnum(arg));
             },
             __fp_gen_import_serde_flatten: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdeFlatten>(arg_ptr);
+                const arg = parseObject<types.SerdeFlatten>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeFlatten(arg));
             },
             __fp_gen_import_serde_internally_tagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdeInternallyTagged>(arg_ptr);
+                const arg = parseObject<types.SerdeInternallyTagged>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeInternallyTagged(arg));
             },
             __fp_gen_import_serde_struct: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdePropertyRenaming>(arg_ptr);
+                const arg = parseObject<types.SerdePropertyRenaming>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeStruct(arg));
             },
             __fp_gen_import_serde_untagged: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<SerdeUntagged>(arg_ptr);
+                const arg = parseObject<types.SerdeUntagged>(arg_ptr);
                 return serializeObject(importFunctions.importSerdeUntagged(arg));
             },
             __fp_gen_import_string: (arg_ptr: FatPtr): FatPtr => {
@@ -345,7 +318,7 @@ export async function createRuntime(
                 return serializeObject(importFunctions.importString(arg));
             },
             __fp_gen_import_timestamp: (arg_ptr: FatPtr): FatPtr => {
-                const arg = parseObject<MyDateTime>(arg_ptr);
+                const arg = parseObject<types.MyDateTime>(arg_ptr);
                 return serializeObject(importFunctions.importTimestamp(arg));
             },
             __fp_gen_import_void_function: () => {
@@ -362,7 +335,7 @@ export async function createRuntime(
                 importFunctions.log(message);
             },
             __fp_gen_make_http_request: (request_ptr: FatPtr): FatPtr => {
-                const request = parseObject<Request>(request_ptr);
+                const request = parseObject<types.Request>(request_ptr);
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.makeHttpRequest(request)
                     .then((result) => {
@@ -398,72 +371,72 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_export_async_struct as any;
             if (!export_fn) return;
 
-            return (arg1: FpPropertyRenaming, arg2: bigint) => {
+            return (arg1: types.FpPropertyRenaming, arg2: bigint) => {
                 const arg1_ptr = serializeObject(arg1);
-                return promiseFromPtr(export_fn(arg1_ptr, arg2)).then((ptr) => parseObject<FpPropertyRenaming>(ptr));
+                return promiseFromPtr(export_fn(arg1_ptr, arg2)).then((ptr) => parseObject<types.FpPropertyRenaming>(ptr));
             };
         })(),
         exportFpAdjacentlyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_adjacently_tagged as any;
             if (!export_fn) return;
 
-            return (arg: FpAdjacentlyTagged) => {
+            return (arg: types.FpAdjacentlyTagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpAdjacentlyTagged>(export_fn(arg_ptr));
+                return parseObject<types.FpAdjacentlyTagged>(export_fn(arg_ptr));
             };
         })(),
         exportFpEnum: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_enum as any;
             if (!export_fn) return;
 
-            return (arg: FpVariantRenaming) => {
+            return (arg: types.FpVariantRenaming) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpVariantRenaming>(export_fn(arg_ptr));
+                return parseObject<types.FpVariantRenaming>(export_fn(arg_ptr));
             };
         })(),
         exportFpFlatten: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_flatten as any;
             if (!export_fn) return;
 
-            return (arg: FpFlatten) => {
+            return (arg: types.FpFlatten) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpFlatten>(export_fn(arg_ptr));
+                return parseObject<types.FpFlatten>(export_fn(arg_ptr));
             };
         })(),
         exportFpInternallyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_internally_tagged as any;
             if (!export_fn) return;
 
-            return (arg: FpInternallyTagged) => {
+            return (arg: types.FpInternallyTagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpInternallyTagged>(export_fn(arg_ptr));
+                return parseObject<types.FpInternallyTagged>(export_fn(arg_ptr));
             };
         })(),
         exportFpStruct: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_struct as any;
             if (!export_fn) return;
 
-            return (arg: FpPropertyRenaming) => {
+            return (arg: types.FpPropertyRenaming) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpPropertyRenaming>(export_fn(arg_ptr));
+                return parseObject<types.FpPropertyRenaming>(export_fn(arg_ptr));
             };
         })(),
         exportFpUntagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_fp_untagged as any;
             if (!export_fn) return;
 
-            return (arg: FpUntagged) => {
+            return (arg: types.FpUntagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<FpUntagged>(export_fn(arg_ptr));
+                return parseObject<types.FpUntagged>(export_fn(arg_ptr));
             };
         })(),
         exportGenerics: (() => {
             const export_fn = instance.exports.__fp_gen_export_generics as any;
             if (!export_fn) return;
 
-            return (arg: StructWithGenerics<number>) => {
+            return (arg: types.StructWithGenerics<number>) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<StructWithGenerics<number>>(export_fn(arg_ptr));
+                return parseObject<types.StructWithGenerics<number>>(export_fn(arg_ptr));
             };
         })(),
         exportMultiplePrimitives: (() => {
@@ -515,54 +488,54 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_export_serde_adjacently_tagged as any;
             if (!export_fn) return;
 
-            return (arg: SerdeAdjacentlyTagged) => {
+            return (arg: types.SerdeAdjacentlyTagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdeAdjacentlyTagged>(export_fn(arg_ptr));
+                return parseObject<types.SerdeAdjacentlyTagged>(export_fn(arg_ptr));
             };
         })(),
         exportSerdeEnum: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_enum as any;
             if (!export_fn) return;
 
-            return (arg: SerdeVariantRenaming) => {
+            return (arg: types.SerdeVariantRenaming) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdeVariantRenaming>(export_fn(arg_ptr));
+                return parseObject<types.SerdeVariantRenaming>(export_fn(arg_ptr));
             };
         })(),
         exportSerdeFlatten: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_flatten as any;
             if (!export_fn) return;
 
-            return (arg: SerdeFlatten) => {
+            return (arg: types.SerdeFlatten) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdeFlatten>(export_fn(arg_ptr));
+                return parseObject<types.SerdeFlatten>(export_fn(arg_ptr));
             };
         })(),
         exportSerdeInternallyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_internally_tagged as any;
             if (!export_fn) return;
 
-            return (arg: SerdeInternallyTagged) => {
+            return (arg: types.SerdeInternallyTagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdeInternallyTagged>(export_fn(arg_ptr));
+                return parseObject<types.SerdeInternallyTagged>(export_fn(arg_ptr));
             };
         })(),
         exportSerdeStruct: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_struct as any;
             if (!export_fn) return;
 
-            return (arg: SerdePropertyRenaming) => {
+            return (arg: types.SerdePropertyRenaming) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdePropertyRenaming>(export_fn(arg_ptr));
+                return parseObject<types.SerdePropertyRenaming>(export_fn(arg_ptr));
             };
         })(),
         exportSerdeUntagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_untagged as any;
             if (!export_fn) return;
 
-            return (arg: SerdeUntagged) => {
+            return (arg: types.SerdeUntagged) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<SerdeUntagged>(export_fn(arg_ptr));
+                return parseObject<types.SerdeUntagged>(export_fn(arg_ptr));
             };
         })(),
         exportString: (() => {
@@ -578,9 +551,9 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_export_timestamp as any;
             if (!export_fn) return;
 
-            return (arg: MyDateTime) => {
+            return (arg: types.MyDateTime) => {
                 const arg_ptr = serializeObject(arg);
-                return parseObject<MyDateTime>(export_fn(arg_ptr));
+                return parseObject<types.MyDateTime>(export_fn(arg_ptr));
             };
         })(),
         exportVoidFunction: instance.exports.__fp_gen_export_void_function as any,
@@ -590,7 +563,7 @@ export async function createRuntime(
 
             return (rType: string) => {
                 const type_ptr = serializeObject(rType);
-                return promiseFromPtr(export_fn(type_ptr)).then((ptr) => parseObject<Result<string, string>>(ptr));
+                return promiseFromPtr(export_fn(type_ptr)).then((ptr) => parseObject<types.Result<string, string>>(ptr));
             };
         })(),
         init: instance.exports.__fp_gen_init as any,
@@ -598,9 +571,9 @@ export async function createRuntime(
             const export_fn = instance.exports.__fp_gen_reducer_bridge as any;
             if (!export_fn) return;
 
-            return (action: ReduxAction) => {
+            return (action: types.ReduxAction) => {
                 const action_ptr = serializeObject(action);
-                return parseObject<StateUpdate>(export_fn(action_ptr));
+                return parseObject<types.StateUpdate>(export_fn(action_ptr));
             };
         })(),
         exportAsyncStructRaw: (() => {
