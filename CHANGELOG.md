@@ -1,6 +1,13 @@
 # CHANGELOG
 
-## main
+## 2.0.0
+
+### Breaking changes
+
+- The `TypeIdent` struct has been altered. If you have custom `Serializable`
+  implementations you likely need to update those.
+
+### Other changes
 
 - Added Deno support for the TypeScript runtime.
 - Reorganized examples and improved documentation.
