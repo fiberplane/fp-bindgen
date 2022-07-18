@@ -77,6 +77,7 @@ fp_import! {
     //
     // See `types/generics.rs` for more info.
     fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
+    fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
 
     // Passing custom types with property/variant renaming.
     //

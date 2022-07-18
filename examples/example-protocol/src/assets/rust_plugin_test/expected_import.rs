@@ -1,6 +1,9 @@
 use crate::types::*;
 
 #[fp_bindgen_support::fp_import_signature]
+pub fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged;
 
 #[fp_bindgen_support::fp_import_signature]

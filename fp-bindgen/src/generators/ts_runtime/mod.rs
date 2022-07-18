@@ -838,7 +838,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
     format!(
         "{}export type {} =\n{};",
         join_lines(&format_docs(&ty.doc_lines), String::to_owned),
-        ty.ident,
+        ty.ident.format(false),
         variants.trim_end()
     )
 }
@@ -862,7 +862,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
         format!(
             "{}export type {} = {{\n{}}}{};",
             join_lines(&format_docs(&ty.doc_lines), String::to_owned),
-            ty.ident,
+            ty.ident.format(false),
             join_lines(
                 &format_struct_fields(
                     &fields.into_iter().cloned().collect::<Vec<_>>(),
@@ -904,7 +904,7 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
             let field_decl = match types.get(&field.ty) {
                 Some(Type::Container(name, _)) => {
                     let optional = if name == "Option" { "?" } else { "" };
-                    let arg = field
+                    let (arg, _) = field
                         .ty
                         .generic_args
                         .first()
@@ -955,7 +955,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
     match ty {
         Type::Alias(name, _) => name.clone(),
         Type::Container(name, _) => {
-            let arg = ident
+            let (arg, _) = ident
                 .generic_args
                 .first()
                 .expect("Identifier was expected to contain a generic argument");
@@ -971,7 +971,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
             let args: Vec<_> = ident
                 .generic_args
                 .iter()
-                .map(|arg| format_ident(arg, types))
+                .map(|(arg, _)| format_ident(arg, types))
                 .collect();
             if args.is_empty() {
                 ident.name.clone()
@@ -980,18 +980,18 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
             }
         }
         Type::List(_, _) => {
-            let arg = ident
+            let (arg, _) = ident
                 .generic_args
                 .first()
                 .expect("Identifier was expected to contain a generic argument");
             format!("Array<{}>", format_ident(arg, types))
         }
         Type::Map(_, _, _) => {
-            let arg1 = ident
+            let (arg1, _) = ident
                 .generic_args
                 .first()
                 .expect("Identifier was expected to contain a generic argument");
-            let arg2 = ident
+            let (arg2, _) = ident
                 .generic_args
                 .get(1)
                 .expect("Identifier was expected to contain two arguments");

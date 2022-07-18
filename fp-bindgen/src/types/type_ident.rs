@@ -1,40 +1,68 @@
 use crate::primitives::Primitive;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::{
     convert::{Infallible, TryFrom},
     fmt::Display,
     str::FromStr,
 };
-use syn::{PathArguments, TypePath, TypeTuple};
+use syn::{PathArguments, TypeParamBound, TypePath, TypeTuple};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[non_exhaustive]
 pub struct TypeIdent {
     pub name: String,
-    pub generic_args: Vec<TypeIdent>,
+    pub generic_args: Vec<(TypeIdent, Vec<String>)>,
 }
 
 impl TypeIdent {
+    pub fn new(name: impl Into<String>, generic_args: Vec<(TypeIdent, Vec<String>)>) -> Self {
+        Self {
+            name: name.into(),
+            generic_args,
+        }
+    }
+
     pub fn is_primitive(&self) -> bool {
         Primitive::from_str(&self.name).is_ok()
+    }
+
+    pub fn format(&self, include_bounds: bool) -> String {
+        if self.generic_args.is_empty() {
+            self.name.clone()
+        } else {
+            format_args!(
+                "{}<{}>",
+                self.name,
+                self.generic_args
+                    .iter()
+                    .map(|(arg, bounds)| {
+                        if bounds.is_empty() || !include_bounds {
+                            format!("{}", arg)
+                        } else {
+                            format!(
+                                "{}: {}",
+                                arg,
+                                bounds
+                                    .iter()
+                                    .filter(|b| is_runtime_bound(b))
+                                    .cloned()
+                                    .collect::<Vec<_>>()
+                                    .join(" + ")
+                            )
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+            .to_string()
+        }
     }
 }
 
 impl Display for TypeIdent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.generic_args.is_empty() {
-            f.write_str(&self.name)
-        } else {
-            f.write_fmt(format_args!(
-                "{}<{}>",
-                self.name,
-                self.generic_args
-                    .iter()
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ))
-        }
+        f.write_str(&self.format(true))
     }
 }
 
@@ -57,8 +85,17 @@ impl FromStr for TypeIdent {
                 generic_args: string[start_index + 1..end_index]
                     .split(',')
                     .into_iter()
-                    .map(|arg| Self::from_str(arg.trim()))
-                    .collect::<Result<Vec<Self>, Self::Err>>()?,
+                    .map(|arg| {
+                        let (arg, bounds) = arg.split_once(':').unwrap_or((arg, ""));
+                        let ident = Self::from_str(arg.trim());
+                        let bounds = bounds
+                            .split('+')
+                            .map(|b| b.trim().to_string())
+                            .filter(|b| !b.is_empty())
+                            .collect();
+                        ident.map(|ident| (ident, bounds))
+                    })
+                    .collect::<Result<Vec<(Self, Vec<String>)>, Self::Err>>()?,
             })
         } else {
             Ok(Self::from(string))
@@ -99,8 +136,27 @@ impl ToTokens for TypeIdent {
         if self.generic_args.is_empty() {
             quote! { #name }
         } else {
-            let args = &self.generic_args;
-            quote! { #name<#(#args),*> }
+            let args = self
+                .generic_args
+                .iter()
+                .map(|(arg, _)| arg)
+                .collect::<Vec<_>>();
+            let bounds = self
+                .generic_args
+                .iter()
+                .map(|(_, bounds)| {
+                    let ident_bounds = bounds
+                        .iter()
+                        .map(|b| Ident::new(b, Span::call_site()))
+                        .collect::<Vec<_>>();
+                    if ident_bounds.is_empty() {
+                        quote! {}
+                    } else {
+                        quote! { : #(#ident_bounds)+* }
+                    }
+                })
+                .collect::<Vec<_>>();
+            quote! { #name<#(#args#bounds),*> }
         }
         .to_tokens(tokens)
     }
@@ -114,33 +170,48 @@ impl TryFrom<&syn::Type> for TypeIdent {
             syn::Type::Path(TypePath { path, qself }) if qself.is_none() => {
                 let mut generic_args = vec![];
                 if let Some(segment) = path.segments.last() {
-                    match &segment.arguments {
-                        PathArguments::AngleBracketed(args) => {
-                            for arg in &args.args {
-                                match arg {
-                                    syn::GenericArgument::Type(ty) => {
-                                        generic_args.push(TypeIdent::try_from(ty)?);
-                                    }
-                                    arg => {
-                                        return Err(format!(
-                                            "Unsupported generic argument: {:?}",
-                                            arg
-                                        ));
+                    if let PathArguments::AngleBracketed(args) = &segment.arguments {
+                        for arg in &args.args {
+                            let generic_arg_ident;
+                            let mut generic_arg_bounds = vec![];
+                            match arg {
+                                syn::GenericArgument::Type(ty) => {
+                                    generic_arg_ident = Some(TypeIdent::try_from(ty)?);
+                                }
+                                syn::GenericArgument::Constraint(cons) => {
+                                    generic_arg_ident =
+                                        Some(TypeIdent::new(cons.ident.to_string(), vec![]));
+
+                                    let bounds = cons
+                                        .bounds
+                                        .iter()
+                                        .map(|bound| match bound {
+                                            TypeParamBound::Trait(tr) => {
+                                                Ok(path_to_string(&tr.path))
+                                            }
+                                            TypeParamBound::Lifetime(_) => Err(format!(
+                                                "Lifecycle bounds are not supported: {:?}",
+                                                bound
+                                            )),
+                                        })
+                                        .collect::<Vec<_>>();
+                                    for bound in bounds {
+                                        generic_arg_bounds.push(bound?);
                                     }
                                 }
+                                arg => {
+                                    return Err(format!("Unsupported generic argument: {:?}", arg));
+                                }
+                            }
+                            if let Some(ident) = generic_arg_ident {
+                                generic_args.push((ident, generic_arg_bounds));
                             }
                         }
-                        _ => {}
                     }
                 }
 
                 Ok(Self {
-                    name: path
-                        .segments
-                        .iter()
-                        .map(|segment| segment.ident.to_string())
-                        .collect::<Vec<_>>()
-                        .join("::"),
+                    name: path_to_string(path),
                     generic_args,
                 })
             }
@@ -150,5 +221,133 @@ impl TryFrom<&syn::Type> for TypeIdent {
             }) if elems.is_empty() => Ok(TypeIdent::from("()")),
             ty => Err(format!("Unsupported type: {:?}", ty)),
         }
+    }
+}
+
+fn path_to_string(path: &syn::Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+// Used to remove the 'Serializable' bound from generated types, since this trait only exists in fp-bindgen
+// and doesn't exist at runtime.
+fn is_runtime_bound(bound: &str) -> bool {
+    // Filtering by string is a bit dangerous since users may have their own 'Serializable' trait :(
+    bound != "Serializable" && bound != "fp_bindgen::prelude::Serializable"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn type_ident_to_tokens() {
+        let t = TypeIdent::new("foo", vec![]);
+        assert_eq!(format!("{}", quote! { #t }), "foo");
+
+        let t = TypeIdent::new("foo", vec![(TypeIdent::new("T", vec![]), vec![])]);
+        assert_eq!(format!("{}", quote! { #t }), "foo < T >");
+
+        let t = TypeIdent::new(
+            "foo",
+            vec![(TypeIdent::new("T", vec![]), vec!["Debug".into()])],
+        );
+        assert_eq!(format!("{}", quote! { #t }), "foo < T : Debug >");
+
+        let t = TypeIdent::new(
+            "foo",
+            vec![(
+                TypeIdent::new("T", vec![]),
+                vec!["Debug".into(), "Display".into()],
+            )],
+        );
+        assert_eq!(format!("{}", quote! { #t }), "foo < T : Debug + Display >");
+
+        let t = TypeIdent::new(
+            "foo",
+            vec![
+                (TypeIdent::new("K", vec![]), vec!["Debug".into()]),
+                (TypeIdent::new("V", vec![]), vec!["Display".into()]),
+            ],
+        );
+        assert_eq!(
+            format!("{}", quote! { #t }),
+            "foo < K : Debug , V : Display >"
+        );
+    }
+
+    #[test]
+    fn type_ident_from_syn_type() {
+        let ty = syn::parse_str::<syn::Type>("u32").unwrap();
+        let t = TypeIdent::try_from(&ty).unwrap();
+        assert_eq!(t.name, "u32");
+        assert!(t.generic_args.is_empty());
+
+        let ty = syn::parse_str::<syn::Type>("Vec<u32>").unwrap();
+        let t = TypeIdent::try_from(&ty).unwrap();
+        assert_eq!(t.name, "Vec");
+        assert_eq!(
+            t.generic_args,
+            vec![(TypeIdent::new("u32", vec![]), vec![])]
+        );
+
+        let ty = syn::parse_str::<syn::Type>("BTreeMap<K, V>").unwrap();
+        let t = TypeIdent::try_from(&ty).unwrap();
+        assert_eq!(t.name, "BTreeMap");
+        assert_eq!(
+            t.generic_args,
+            vec![
+                (TypeIdent::new("K", vec![]), vec![]),
+                (TypeIdent::new("V", vec![]), vec![])
+            ]
+        );
+
+        let ty = syn::parse_str::<syn::Type>("Vec<T: Debug + Display>").unwrap();
+        let t = TypeIdent::try_from(&ty).unwrap();
+        assert_eq!(t.name, "Vec");
+        assert_eq!(
+            t.generic_args,
+            vec![(
+                TypeIdent::new("T", vec![]),
+                vec!["Debug".into(), "Display".into()]
+            )]
+        );
+    }
+
+    #[test]
+    fn type_ident_from_str() {
+        let t = TypeIdent::from_str("u32").unwrap();
+        assert_eq!(t.name, "u32");
+        assert!(t.generic_args.is_empty());
+
+        let t = TypeIdent::from_str("Vec<u32>").unwrap();
+        assert_eq!(t.name, "Vec");
+        assert_eq!(
+            t.generic_args,
+            vec![(TypeIdent::new("u32", vec![]), vec![])]
+        );
+
+        let t = TypeIdent::from_str("BTreeMap<K, V>").unwrap();
+        assert_eq!(t.name, "BTreeMap");
+        assert_eq!(
+            t.generic_args,
+            vec![
+                (TypeIdent::new("K", vec![]), vec![]),
+                (TypeIdent::new("V", vec![]), vec![])
+            ]
+        );
+
+        let t = TypeIdent::from_str("Vec<T: Debug + Display>").unwrap();
+        assert_eq!(t.name, "Vec");
+        assert_eq!(
+            t.generic_args,
+            vec![(
+                TypeIdent::new("T", vec![]),
+                vec!["Debug".into(), "Display".into()]
+            )]
+        );
     }
 }
