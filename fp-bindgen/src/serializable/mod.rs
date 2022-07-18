@@ -44,7 +44,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "Box".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 
@@ -66,7 +66,10 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "BTreeMap".to_owned(),
-            generic_args: vec![TypeIdent::from("K"), TypeIdent::from("V")],
+            generic_args: vec![
+                (TypeIdent::from("K"), vec![]),
+                (TypeIdent::from("V"), vec![]),
+            ],
         }
     }
 
@@ -92,7 +95,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "BTreeSet".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 
@@ -114,7 +117,10 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "HashMap".to_owned(),
-            generic_args: vec![TypeIdent::from("K"), TypeIdent::from("V")],
+            generic_args: vec![
+                (TypeIdent::from("K"), vec![]),
+                (TypeIdent::from("V"), vec![]),
+            ],
         }
     }
 
@@ -140,7 +146,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "HashSet".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 
@@ -161,7 +167,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "Option".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 
@@ -182,7 +188,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "Rc".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 
@@ -204,7 +210,10 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "Result".to_owned(),
-            generic_args: vec![TypeIdent::from("T"), TypeIdent::from("E")],
+            generic_args: vec![
+                (TypeIdent::from("T"), vec![]),
+                (TypeIdent::from("E"), vec![]),
+            ],
         }
     }
 
@@ -267,7 +276,7 @@ where
     fn ident() -> TypeIdent {
         TypeIdent {
             name: "Vec".to_owned(),
-            generic_args: vec![TypeIdent::from("T")],
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
         }
     }
 

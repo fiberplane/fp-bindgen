@@ -1,7 +1,7 @@
 use crate::primitives::Primitive;
 use quote::{quote, ToTokens};
 use std::{collections::BTreeMap, hash::Hash};
-use syn::Item;
+use syn::{Item, TypeParam, TypeParamBound};
 
 mod cargo_dependency;
 mod custom_type;
@@ -94,4 +94,29 @@ impl ToTokens for Type {
         })
         .to_tokens(tokens)
     }
+}
+
+pub(crate) fn format_bounds(ty: &TypeParam) -> Vec<String> {
+    ty.bounds
+        .iter()
+        .filter_map(|bound| match bound {
+            TypeParamBound::Trait(tr) => Some(path_to_string(&tr.path)),
+            _ => None,
+        })
+        .collect()
+}
+
+fn path_to_string(path: &syn::Path) -> String {
+    path.segments
+        .iter()
+        .map(|segment| segment.ident.to_string())
+        .collect::<Vec<_>>()
+        .join("::")
+}
+
+// Used to remove the 'Serializable' bound from generated types, since this trait only exists in fp-bindgen
+// and doesn't exist at runtime.
+pub(crate) fn is_runtime_bound(bound: &str) -> bool {
+    // Filtering by string is a bit dangerous since users may have their own 'Serializable' trait :(
+    bound != "Serializable" && bound != "fp_bindgen::prelude::Serializable"
 }

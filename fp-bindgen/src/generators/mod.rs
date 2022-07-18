@@ -208,7 +208,7 @@ fn display_warnings(
                 .flat_map(|ty| ty.fields.iter().map(|field| &field.ty)),
         );
     warn_about_custom_serializer_usage(
-        all_idents.flat_map(|ident| ident.generic_args.iter()),
+        all_idents.flat_map(|ident| ident.generic_args.iter().map(|(arg, _)| arg)),
         "generic argument",
         types,
     );
