@@ -42,16 +42,6 @@ pub(crate) fn generate_bindings(
         Vec::new()
     };
 
-    let type_names = types
-        .into_iter()
-        .filter_map(|(_, ty)| match ty {
-            Type::Alias(name, _) => Some(name),
-            Type::Enum(ty) => Some(ty.ident.name),
-            Type::Struct(ty) => Some(ty.ident.name),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-
     let contents = format!(
         "// ============================================= //
 // WebAssembly runtime for TypeScript            //
@@ -62,8 +52,7 @@ pub(crate) fn generate_bindings(
 
 import {{ encode, decode }} from \"{}\";
 
-import type {{
-{}}} from \"./types{}\";
+import type * as types from \"./types{}\";
 
 type FatPtr = bigint;
 
@@ -214,7 +203,6 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
 }}
 ",
         config.msgpack_module,
-        join_lines(&type_names, |line| format!("    {},", line)),
         // HACK: Import paths in TypeScript are a bit of a mess. Usually, you
         // shouldn't need an extension, but with some configurations you do.
         // For now, we just try to detect Deno users by looking at the
@@ -274,7 +262,7 @@ fn format_function_declarations(
                 format!(
                     " => Promise<{}>",
                     match &function.return_type {
-                        Some(ty) => format_ident(ty, types),
+                        Some(ty) => format_ident(ty, types, "types."),
                         None => "void".to_owned(),
                     }
                 )
@@ -388,7 +376,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                         Some(format!(
                             "const {} = parseObject<{}>({});",
                             arg.name.to_camel_case(),
-                            format_ident(&arg.ty, types),
+                            format_ident(&arg.ty, types, "types."),
                             get_pointer_name(&arg.name)
                         ))
                     }
@@ -535,7 +523,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                     function
                         .return_type
                         .as_ref()
-                        .map(|ty| format_ident(ty, types))
+                        .map(|ty| format_ident(ty, types, "types."))
                         .unwrap_or_else(|| "void".to_owned()),
                 )
             } else {
@@ -547,7 +535,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                     ),
                     Some(ty) => format!(
                         "return parseObject<{}>(export_fn({}));",
-                        format_ident(ty, types),
+                        format_ident(ty, types, "types."),
                         call_args
                     ),
                 }
@@ -676,7 +664,7 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
                 // both cases:
                 match ty.name.as_str() {
                     "i64" | "u64" => "number | bigint".to_owned(),
-                    _ => format_ident(ty, types),
+                    _ => format_ident(ty, types, ""),
                 }
             )),
             Type::Custom(CustomType {
@@ -785,7 +773,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                 Type::Tuple(items) if items.len() == 1 => {
                     let item = items.first().unwrap();
                     if ty.options.untagged {
-                        format!("| {}", format_ident(item, types))
+                        format!("| {}", format_ident(item, types, ""))
                     } else {
                         match (&ty.options.tag_prop_name, &ty.options.content_prop_name) {
                             (Some(tag), Some(content)) => {
@@ -794,7 +782,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                                     tag,
                                     variant_name,
                                     content,
-                                    format_ident(item, types)
+                                    format_ident(item, types, "")
                                 )
                             }
                             (Some(tag), None) => {
@@ -802,11 +790,15 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                                     "| {{ {}: \"{}\" }} & {}",
                                     tag,
                                     variant_name,
-                                    format_ident(item, types)
+                                    format_ident(item, types, "")
                                 )
                             }
                             (None, _) => {
-                                format!("| {{ {}: {} }}", variant_name, format_ident(item, types))
+                                format!(
+                                    "| {{ {}: {} }}",
+                                    variant_name,
+                                    format_ident(item, types, "")
+                                )
                             }
                         }
                     }
@@ -852,7 +844,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
             ty.ident,
             ty.fields
                 .first()
-                .map(|field| format_ident(&field.ty, types))
+                .map(|field| format_ident(&field.ty, types, ""))
                 .unwrap()
         )
     } else {
@@ -913,13 +905,13 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
                         "{}{}: {};",
                         get_field_name(field, casing),
                         optional,
-                        format_ident(arg, types)
+                        format_ident(arg, types, "")
                     )
                 }
                 _ => format!(
                     "{}: {};",
                     get_field_name(field, casing),
-                    format_ident(&field.ty, types)
+                    format_ident(&field.ty, types, "")
                 ),
             };
             if field.doc_lines.is_empty() {
@@ -943,17 +935,17 @@ fn format_raw_type(ty: &TypeIdent) -> &str {
 }
 
 /// Formats a type so it's valid TypeScript.
-fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+fn format_ident(ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match types.get(ident) {
-        Some(ty) => format_type_with_ident(ty, ident, types),
+        Some(ty) => format_type_with_ident(ty, ident, types, scope),
         None => ident.to_string(), // Must be a generic.
     }
 }
 
 /// Formats a type so it's valid TypeScript.
-fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> String {
+fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match ty {
-        Type::Alias(name, _) => name.clone(),
+        Type::Alias(name, _) => format!("{}{}", scope, name),
         Type::Container(name, _) => {
             let (arg, _) = ident
                 .generic_args
@@ -961,9 +953,9 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
                 .expect("Identifier was expected to contain a generic argument");
 
             if name == "Option" {
-                format!("{} | null", format_ident(arg, types))
+                format!("{} | null", format_ident(arg, types, scope))
             } else {
-                format_ident(arg, types)
+                format_ident(arg, types, scope)
             }
         }
         Type::Custom(custom) => custom.ts_ty.clone(),
@@ -971,12 +963,12 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
             let args: Vec<_> = ident
                 .generic_args
                 .iter()
-                .map(|(arg, _)| format_ident(arg, types))
+                .map(|(arg, _)| format_ident(arg, types, scope))
                 .collect();
             if args.is_empty() {
-                ident.name.clone()
+                format!("{}{}", scope, ident.name)
             } else {
-                format!("{}<{}>", ident.name, args.join(", "))
+                format!("{}{}<{}>", scope, ident.name, args.join(", "))
             }
         }
         Type::List(_, _) => {
@@ -984,7 +976,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
                 .generic_args
                 .first()
                 .expect("Identifier was expected to contain a generic argument");
-            format!("Array<{}>", format_ident(arg, types))
+            format!("Array<{}>", format_ident(arg, types, scope))
         }
         Type::Map(_, _, _) => {
             let (arg1, _) = ident
@@ -997,8 +989,8 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
                 .expect("Identifier was expected to contain two arguments");
             format!(
                 "Record<{}, {}>",
-                format_ident(arg1, types),
-                format_ident(arg2, types)
+                format_ident(arg1, types, scope),
+                format_ident(arg2, types, scope)
             )
         }
         Type::Primitive(primitive) => format_encoded_primitive(*primitive).to_owned(),
@@ -1007,7 +999,7 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap) -> Stri
             "[{}]",
             items
                 .iter()
-                .map(|item| format_ident(item, types))
+                .map(|item| format_ident(item, types, scope))
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -1035,7 +1027,7 @@ fn format_plain_primitive_or_ident(ident: &TypeIdent, types: &TypeMap) -> String
     if let Ok(primitive) = Primitive::from_str(&ident.name) {
         format_plain_primitive(primitive).to_owned()
     } else {
-        format_ident(ident, types)
+        format_ident(ident, types, "types.")
     }
 }
 

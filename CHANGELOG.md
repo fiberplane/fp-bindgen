@@ -21,3 +21,4 @@
   exception of the compile-time only `Serializable` bound).
 - Fix #88: Deal with the Unit (`()`) type.
 - Use `any` type in TypeScript to represent `rmpv::Value`.
+- Fix issue when TypeScript types conflicted with built-in JavaScript globals.
