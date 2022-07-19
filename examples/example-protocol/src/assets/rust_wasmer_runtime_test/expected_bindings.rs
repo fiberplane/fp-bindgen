@@ -238,6 +238,27 @@ impl Runtime {
         Ok(result)
     }
 
+    pub fn export_get_bytes(
+        &self,
+    ) -> Result<Result<serde_bytes::ByteBuf, String>, InvocationError> {
+        let result = self.export_get_bytes_raw();
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub fn export_get_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(), FatPtr>("__fp_gen_export_get_bytes")
+            .map_err(|_| InvocationError::FunctionNotExported)?;
+        let result = function.call()?;
+        let result = import_from_guest_raw(&env, result);
+        Ok(result)
+    }
+
     pub fn export_multiple_primitives(
         &self,
         arg1: i8,
@@ -695,7 +716,7 @@ impl Runtime {
         Ok(result)
     }
 
-    #[doc = " Example how plugin could expose async data-fetching capabilities."]
+    /// Example how plugin could expose async data-fetching capabilities.
     pub async fn fetch_data(
         &self,
         r#type: String,
@@ -721,7 +742,7 @@ impl Runtime {
         Ok(result)
     }
 
-    #[doc = " Called on the plugin to give it a chance to initialize."]
+    /// Called on the plugin to give it a chance to initialize.
     pub fn init(&self) -> Result<(), InvocationError> {
         let result = self.init_raw();
         result
@@ -740,7 +761,7 @@ impl Runtime {
         Ok(result)
     }
 
-    #[doc = " Example how plugin could expose a reducer."]
+    /// Example how plugin could expose a reducer.
     pub fn reducer_bridge(&self, action: ReduxAction) -> Result<StateUpdate, InvocationError> {
         let action = serialize_to_vec(&action);
         let result = self.reducer_bridge_raw(action);
@@ -765,42 +786,42 @@ impl Runtime {
 
 fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {
     imports! {
-       "fp" => {
-           "__fp_host_resolve_async_value" => Function :: new_native_with_env (store , env . clone () , resolve_async_value) ,
-           "__fp_gen_import_explicit_bound_point" => Function :: new_native_with_env (store , env . clone () , _import_explicit_bound_point) ,
-           "__fp_gen_import_fp_adjacently_tagged" => Function :: new_native_with_env (store , env . clone () , _import_fp_adjacently_tagged) ,
-           "__fp_gen_import_fp_enum" => Function :: new_native_with_env (store , env . clone () , _import_fp_enum) ,
-           "__fp_gen_import_fp_flatten" => Function :: new_native_with_env (store , env . clone () , _import_fp_flatten) ,
-           "__fp_gen_import_fp_internally_tagged" => Function :: new_native_with_env (store , env . clone () , _import_fp_internally_tagged) ,
-           "__fp_gen_import_fp_struct" => Function :: new_native_with_env (store , env . clone () , _import_fp_struct) ,
-           "__fp_gen_import_fp_untagged" => Function :: new_native_with_env (store , env . clone () , _import_fp_untagged) ,
-           "__fp_gen_import_generics" => Function :: new_native_with_env (store , env . clone () , _import_generics) ,
-           "__fp_gen_import_get_bytes" => Function :: new_native_with_env (store , env . clone () , _import_get_bytes) ,
-           "__fp_gen_import_multiple_primitives" => Function :: new_native_with_env (store , env . clone () , _import_multiple_primitives) ,
-           "__fp_gen_import_primitive_bool" => Function :: new_native_with_env (store , env . clone () , _import_primitive_bool) ,
-           "__fp_gen_import_primitive_f32" => Function :: new_native_with_env (store , env . clone () , _import_primitive_f32) ,
-           "__fp_gen_import_primitive_f64" => Function :: new_native_with_env (store , env . clone () , _import_primitive_f64) ,
-           "__fp_gen_import_primitive_i16" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i16) ,
-           "__fp_gen_import_primitive_i32" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i32) ,
-           "__fp_gen_import_primitive_i64" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i64) ,
-           "__fp_gen_import_primitive_i8" => Function :: new_native_with_env (store , env . clone () , _import_primitive_i8) ,
-           "__fp_gen_import_primitive_u16" => Function :: new_native_with_env (store , env . clone () , _import_primitive_u16) ,
-           "__fp_gen_import_primitive_u32" => Function :: new_native_with_env (store , env . clone () , _import_primitive_u32) ,
-           "__fp_gen_import_primitive_u64" => Function :: new_native_with_env (store , env . clone () , _import_primitive_u64) ,
-           "__fp_gen_import_primitive_u8" => Function :: new_native_with_env (store , env . clone () , _import_primitive_u8) ,
-           "__fp_gen_import_serde_adjacently_tagged" => Function :: new_native_with_env (store , env . clone () , _import_serde_adjacently_tagged) ,
-           "__fp_gen_import_serde_enum" => Function :: new_native_with_env (store , env . clone () , _import_serde_enum) ,
-           "__fp_gen_import_serde_flatten" => Function :: new_native_with_env (store , env . clone () , _import_serde_flatten) ,
-           "__fp_gen_import_serde_internally_tagged" => Function :: new_native_with_env (store , env . clone () , _import_serde_internally_tagged) ,
-           "__fp_gen_import_serde_struct" => Function :: new_native_with_env (store , env . clone () , _import_serde_struct) ,
-           "__fp_gen_import_serde_untagged" => Function :: new_native_with_env (store , env . clone () , _import_serde_untagged) ,
-           "__fp_gen_import_string" => Function :: new_native_with_env (store , env . clone () , _import_string) ,
-           "__fp_gen_import_timestamp" => Function :: new_native_with_env (store , env . clone () , _import_timestamp) ,
-           "__fp_gen_import_void_function" => Function :: new_native_with_env (store , env . clone () , _import_void_function) ,
-           "__fp_gen_import_void_function_empty_result" => Function :: new_native_with_env (store , env . clone () , _import_void_function_empty_result) ,
-           "__fp_gen_import_void_function_empty_return" => Function :: new_native_with_env (store , env . clone () , _import_void_function_empty_return) ,
-           "__fp_gen_log" => Function :: new_native_with_env (store , env . clone () , _log) ,
-           "__fp_gen_make_http_request" => Function :: new_native_with_env (store , env . clone () , _make_http_request) ,
+        "fp" => {
+            "__fp_host_resolve_async_value" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
+            "__fp_gen_import_explicit_bound_point" => Function::new_native_with_env(store, env.clone(), _import_explicit_bound_point),
+            "__fp_gen_import_fp_adjacently_tagged" => Function::new_native_with_env(store, env.clone(), _import_fp_adjacently_tagged),
+            "__fp_gen_import_fp_enum" => Function::new_native_with_env(store, env.clone(), _import_fp_enum),
+            "__fp_gen_import_fp_flatten" => Function::new_native_with_env(store, env.clone(), _import_fp_flatten),
+            "__fp_gen_import_fp_internally_tagged" => Function::new_native_with_env(store, env.clone(), _import_fp_internally_tagged),
+            "__fp_gen_import_fp_struct" => Function::new_native_with_env(store, env.clone(), _import_fp_struct),
+            "__fp_gen_import_fp_untagged" => Function::new_native_with_env(store, env.clone(), _import_fp_untagged),
+            "__fp_gen_import_generics" => Function::new_native_with_env(store, env.clone(), _import_generics),
+            "__fp_gen_import_get_bytes" => Function::new_native_with_env(store, env.clone(), _import_get_bytes),
+            "__fp_gen_import_multiple_primitives" => Function::new_native_with_env(store, env.clone(), _import_multiple_primitives),
+            "__fp_gen_import_primitive_bool" => Function::new_native_with_env(store, env.clone(), _import_primitive_bool),
+            "__fp_gen_import_primitive_f32" => Function::new_native_with_env(store, env.clone(), _import_primitive_f32),
+            "__fp_gen_import_primitive_f64" => Function::new_native_with_env(store, env.clone(), _import_primitive_f64),
+            "__fp_gen_import_primitive_i16" => Function::new_native_with_env(store, env.clone(), _import_primitive_i16),
+            "__fp_gen_import_primitive_i32" => Function::new_native_with_env(store, env.clone(), _import_primitive_i32),
+            "__fp_gen_import_primitive_i64" => Function::new_native_with_env(store, env.clone(), _import_primitive_i64),
+            "__fp_gen_import_primitive_i8" => Function::new_native_with_env(store, env.clone(), _import_primitive_i8),
+            "__fp_gen_import_primitive_u16" => Function::new_native_with_env(store, env.clone(), _import_primitive_u16),
+            "__fp_gen_import_primitive_u32" => Function::new_native_with_env(store, env.clone(), _import_primitive_u32),
+            "__fp_gen_import_primitive_u64" => Function::new_native_with_env(store, env.clone(), _import_primitive_u64),
+            "__fp_gen_import_primitive_u8" => Function::new_native_with_env(store, env.clone(), _import_primitive_u8),
+            "__fp_gen_import_serde_adjacently_tagged" => Function::new_native_with_env(store, env.clone(), _import_serde_adjacently_tagged),
+            "__fp_gen_import_serde_enum" => Function::new_native_with_env(store, env.clone(), _import_serde_enum),
+            "__fp_gen_import_serde_flatten" => Function::new_native_with_env(store, env.clone(), _import_serde_flatten),
+            "__fp_gen_import_serde_internally_tagged" => Function::new_native_with_env(store, env.clone(), _import_serde_internally_tagged),
+            "__fp_gen_import_serde_struct" => Function::new_native_with_env(store, env.clone(), _import_serde_struct),
+            "__fp_gen_import_serde_untagged" => Function::new_native_with_env(store, env.clone(), _import_serde_untagged),
+            "__fp_gen_import_string" => Function::new_native_with_env(store, env.clone(), _import_string),
+            "__fp_gen_import_timestamp" => Function::new_native_with_env(store, env.clone(), _import_timestamp),
+            "__fp_gen_import_void_function" => Function::new_native_with_env(store, env.clone(), _import_void_function),
+            "__fp_gen_import_void_function_empty_result" => Function::new_native_with_env(store, env.clone(), _import_void_function_empty_result),
+            "__fp_gen_import_void_function_empty_return" => Function::new_native_with_env(store, env.clone(), _import_void_function_empty_return),
+            "__fp_gen_log" => Function::new_native_with_env(store, env.clone(), _log),
+            "__fp_gen_make_http_request" => Function::new_native_with_env(store, env.clone(), _make_http_request),
         }
     }
 }

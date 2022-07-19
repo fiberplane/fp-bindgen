@@ -154,6 +154,9 @@ fp_export! {
     // See `types/generics.rs` for more info.
     fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
 
+    // Custom type in a generic position.
+    fn export_get_bytes() -> Result<ByteBuf, String>;
+
     // Passing custom types with property/variant renaming.
     //
     // See `types/renaming.rs` for more info.

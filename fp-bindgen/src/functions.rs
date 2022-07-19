@@ -1,8 +1,8 @@
 use crate::utils::normalize_return_type;
 use crate::{docs::get_doc_lines, types::TypeIdent};
-use quote::{format_ident, quote, ToTokens};
+use quote::ToTokens;
 use std::{collections::BTreeSet, convert::TryFrom};
-use syn::{token::Async, FnArg, ForeignItemFn};
+use syn::{FnArg, ForeignItemFn};
 
 /// Maps from function name to the stringified function declaration.
 #[derive(Debug, Default)]
@@ -100,78 +100,8 @@ impl PartialOrd for Function {
     }
 }
 
-impl ToTokens for Function {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self {
-            name,
-            args,
-            doc_lines,
-            is_async,
-            return_type,
-        } = self;
-
-        let name = format_ident!("{}", name);
-
-        let asyncness = is_async.then(|| Async {
-            ..Default::default()
-        });
-
-        (quote! {
-            #(#[doc = #doc_lines])*
-            #asyncness fn #name(#(#args),*) -> #return_type
-        })
-        .to_tokens(tokens);
-    }
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct FunctionArg {
     pub name: String,
     pub ty: TypeIdent,
-}
-
-impl ToTokens for FunctionArg {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        let Self { name, ty } = self;
-        let name = format_ident!("{}", name);
-
-        (quote! { #name: #ty }).to_tokens(tokens)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::{Function, FunctionArg};
-    use crate::types::TypeIdent;
-    use quote::ToTokens;
-
-    #[test]
-    fn test_function_arg_to_tokens() {
-        let arg = FunctionArg {
-            name: "foobar".into(),
-            ty: TypeIdent::from("i64"),
-        };
-
-        let stringified = arg.into_token_stream().to_string();
-
-        pretty_assertions::assert_eq!(&stringified, "foobar : i64");
-    }
-
-    #[test]
-    fn test_function_to_tokens() {
-        let func = Function {
-            name: "foobar".into(),
-            is_async: false,
-            doc_lines: vec![],
-            return_type: Some(TypeIdent::from("String")),
-            args: vec![FunctionArg {
-                name: "a1".into(),
-                ty: TypeIdent::from("u64"),
-            }],
-        };
-
-        let string = func.into_token_stream().to_string();
-
-        pretty_assertions::assert_eq!(&string, "fn foobar (a1 : u64) -> String");
-    }
 }
