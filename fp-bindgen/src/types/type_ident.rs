@@ -1,6 +1,4 @@
 use crate::primitives::Primitive;
-use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
 use std::{
     convert::{Infallible, TryFrom},
     fmt::Display,
@@ -130,38 +128,6 @@ impl PartialOrd for TypeIdent {
     }
 }
 
-impl ToTokens for TypeIdent {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        let name = syn::parse_str::<syn::Type>(&self.name).unwrap();
-        if self.generic_args.is_empty() {
-            quote! { #name }
-        } else {
-            let args = self
-                .generic_args
-                .iter()
-                .map(|(arg, _)| arg)
-                .collect::<Vec<_>>();
-            let bounds = self
-                .generic_args
-                .iter()
-                .map(|(_, bounds)| {
-                    let ident_bounds = bounds
-                        .iter()
-                        .map(|b| Ident::new(b, Span::call_site()))
-                        .collect::<Vec<_>>();
-                    if ident_bounds.is_empty() {
-                        quote! {}
-                    } else {
-                        quote! { : #(#ident_bounds)+* }
-                    }
-                })
-                .collect::<Vec<_>>();
-            quote! { #name<#(#args#bounds),*> }
-        }
-        .to_tokens(tokens)
-    }
-}
-
 impl TryFrom<&syn::Type> for TypeIdent {
     type Error = String;
 
@@ -242,42 +208,6 @@ fn is_runtime_bound(bound: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn type_ident_to_tokens() {
-        let t = TypeIdent::new("foo", vec![]);
-        assert_eq!(format!("{}", quote! { #t }), "foo");
-
-        let t = TypeIdent::new("foo", vec![(TypeIdent::new("T", vec![]), vec![])]);
-        assert_eq!(format!("{}", quote! { #t }), "foo < T >");
-
-        let t = TypeIdent::new(
-            "foo",
-            vec![(TypeIdent::new("T", vec![]), vec!["Debug".into()])],
-        );
-        assert_eq!(format!("{}", quote! { #t }), "foo < T : Debug >");
-
-        let t = TypeIdent::new(
-            "foo",
-            vec![(
-                TypeIdent::new("T", vec![]),
-                vec!["Debug".into(), "Display".into()],
-            )],
-        );
-        assert_eq!(format!("{}", quote! { #t }), "foo < T : Debug + Display >");
-
-        let t = TypeIdent::new(
-            "foo",
-            vec![
-                (TypeIdent::new("K", vec![]), vec!["Debug".into()]),
-                (TypeIdent::new("V", vec![]), vec!["Display".into()]),
-            ],
-        );
-        assert_eq!(
-            format!("{}", quote! { #t }),
-            "foo < K : Debug , V : Display >"
-        );
-    }
 
     #[test]
     fn type_ident_from_syn_type() {

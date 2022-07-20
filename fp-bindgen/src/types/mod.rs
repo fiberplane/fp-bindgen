@@ -1,5 +1,4 @@
 use crate::primitives::Primitive;
-use quote::{quote, ToTokens};
 use std::{collections::BTreeMap, hash::Hash};
 use syn::{Item, TypeParam, TypeParamBound};
 
@@ -66,33 +65,6 @@ impl Type {
             ),
             Self::Unit => "()".to_owned(),
         }
-    }
-}
-
-impl ToTokens for Type {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        (match self {
-            Type::Alias(name, _) | Type::Custom(CustomType { rs_ty: name, .. }) => {
-                let ty = syn::parse_str::<syn::Type>(name).unwrap();
-                quote! { #ty }
-            }
-            Type::Container(name, ident) | Type::List(name, ident) => {
-                let name = syn::parse_str::<syn::Type>(name).unwrap();
-                quote! { #name<#ident> }
-            }
-            Type::Struct(Struct { ident, .. }) | Type::Enum(Enum { ident, .. }) => {
-                quote! { #ident }
-            }
-            Type::Map(name, k, v) => {
-                let name = syn::parse_str::<syn::Type>(name).unwrap();
-                quote! { #name<#k, #v> }
-            }
-            Type::Primitive(primitive) => quote! { #primitive },
-            Type::String => quote! { String },
-            Type::Tuple(items) => quote! { (#(#items),*) },
-            Type::Unit => quote! { () },
-        })
-        .to_tokens(tokens)
     }
 }
 

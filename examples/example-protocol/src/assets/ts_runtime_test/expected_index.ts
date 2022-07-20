@@ -57,6 +57,7 @@ export type Exports = {
     exportFpStruct?: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
     exportFpUntagged?: (arg: types.FpUntagged) => types.FpUntagged;
     exportGenerics?: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
+    exportGetBytes?: () => types.Result<ArrayBuffer, string>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
     exportPrimitiveBool?: (arg: boolean) => boolean;
     exportPrimitiveF32?: (arg: number) => number;
@@ -89,6 +90,7 @@ export type Exports = {
     exportFpStructRaw?: (arg: Uint8Array) => Uint8Array;
     exportFpUntaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
+    exportGetBytesRaw?: () => Uint8Array;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
     exportPrimitiveBoolRaw?: (arg: boolean) => boolean;
     exportPrimitiveI16Raw?: (arg: number) => number;
@@ -439,6 +441,12 @@ export async function createRuntime(
                 return parseObject<types.StructWithGenerics<number>>(export_fn(arg_ptr));
             };
         })(),
+        exportGetBytes: (() => {
+            const export_fn = instance.exports.__fp_gen_export_get_bytes as any;
+            if (!export_fn) return;
+
+            return () => parseObject<types.Result<ArrayBuffer, string>>(export_fn());
+        })(),
         exportMultiplePrimitives: (() => {
             const export_fn = instance.exports.__fp_gen_export_multiple_primitives as any;
             if (!export_fn) return;
@@ -647,6 +655,12 @@ export async function createRuntime(
                 const arg_ptr = exportToMemory(arg);
                 return importFromMemory(export_fn(arg_ptr));
             };
+        })(),
+        exportGetBytesRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_get_bytes as any;
+            if (!export_fn) return;
+
+            return () => importFromMemory(export_fn());
         })(),
         exportMultiplePrimitivesRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_multiple_primitives as any;

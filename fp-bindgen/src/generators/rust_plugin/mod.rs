@@ -1,3 +1,4 @@
+use crate::functions::Function;
 use crate::types::is_runtime_bound;
 use crate::{
     functions::FunctionList,
@@ -189,18 +190,25 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
     );
 }
 
+pub fn format_doc_lines(doc_lines: &[String]) -> String {
+    doc_lines
+        .iter()
+        .map(|line| format!("///{}\n", line))
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+pub fn format_modifiers(function: &Function) -> String {
+    if function.is_async { "async " } else { "" }.to_owned()
+}
+
 fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path: &str) -> String {
     export_functions
         .iter()
         .map(|func| {
             let name = &func.name;
-            let doc = func
-                .doc_lines
-                .iter()
-                .map(|line| format!("///{}\n", line))
-                .collect::<Vec<_>>()
-                .join("");
-            let modifiers = if func.is_async { "async " } else { "" };
+            let doc = format_doc_lines(&func.doc_lines);
+            let modifiers = format_modifiers(func);
             let args_with_types = func
                 .args
                 .iter()
@@ -220,7 +228,7 @@ fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path:
         .join("\n\n")
 }
 
-fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
+pub fn format_ident(ident: &TypeIdent, types: &TypeMap) -> String {
     match types.get(ident) {
         Some(ty) => format_type_with_ident(ty, ident, types),
         None => ident.to_string(), // Must be a generic.
