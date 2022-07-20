@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## main
+## 2.0.1
 
-- Fix custom types in generic positions in export function signatures.
+- Fix custom types in generic positions in export function signatures (#130).
 
 ## 2.0.0
 
