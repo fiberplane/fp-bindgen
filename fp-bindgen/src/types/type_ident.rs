@@ -97,9 +97,9 @@ impl FromStr for TypeIdent {
             let element = split[0].trim();
             let len = usize::from_str(split[1].trim()).map_err(|_| format!("Invalid array length in: {}", string))?;
 
-            // Only arrays of primitives are allowed
-            if Primitive::from_str(element).is_err() {
-                return Err(format!("Only arrays of primitives are allowed, found: {}", string));
+            let primitive = Primitive::from_str(element)?;
+            if primitive.js_array_name().is_none() {
+                return Err(format!("Only arrays of primitives supported by Javascript are allowed, found: {}", string));
             }
 
             (element, len)
@@ -311,17 +311,6 @@ mod tests {
         assert_eq!(t.name, "u32");
         assert!(t.generic_args.is_empty());
 
-        let t = TypeIdent::from_str("[u32; 8]").unwrap();
-        assert_eq!(t.name, "u32");
-        assert!(t.generic_args.is_empty());
-        assert_eq!(t.array_len, 8);
-
-        // Cannot create non-primitive arrays, and other error scenarios
-        assert!(TypeIdent::from_str("[Vec<f32>; 8]").is_err());
-        assert!(TypeIdent::from_str("[u32;]").is_err());
-        assert!(TypeIdent::from_str("[u32; foo]").is_err());
-        assert!(TypeIdent::from_str("[u32; -1]").is_err());
-
         let t = TypeIdent::from_str("Vec<u32>").unwrap();
         assert_eq!(t.name, "Vec");
         assert_eq!(
@@ -348,5 +337,22 @@ mod tests {
                 vec!["Debug".into(), "Display".into()]
             )]
         );
+    }
+
+    #[test]
+    fn type_ident_from_str_array() {
+        let t = TypeIdent::from_str("[u32; 8]").unwrap();
+        assert_eq!(t.name, "u32");
+        assert!(t.generic_args.is_empty());
+        assert_eq!(t.array_len, 8);
+
+        // Cannot create non-primitive arrays, and other error scenarios
+        assert!(TypeIdent::from_str("[Vec<f32>; 8]").is_err());
+        assert!(TypeIdent::from_str("[u32;]").is_err());
+        assert!(TypeIdent::from_str("[u32; foo]").is_err());
+        assert!(TypeIdent::from_str("[u32; -1]").is_err());
+
+        // Unsupported primitive array types
+        assert!(TypeIdent::from_str("[u64; 8]").is_err());
     }
 }

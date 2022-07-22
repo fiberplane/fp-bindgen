@@ -8,8 +8,8 @@ pub enum RuntimeError {
 
 #[derive(Debug, Error)]
 pub enum InvocationError {
-    #[error("expected function was not exported")]
-    FunctionNotExported,
+    #[error("expected function was not exported: {0}")]
+    FunctionNotExported(String),
 
     #[error("returned data did not match expected type")]
     UnexpectedReturnType,

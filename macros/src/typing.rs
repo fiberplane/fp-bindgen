@@ -24,6 +24,7 @@ pub(crate) fn is_ret_type_complex(output: &ReturnType) -> bool {
 
 pub(crate) fn is_type_complex(ty: &Type) -> bool {
     match ty {
+        Type::Array(_) => true,
         Type::Path(tp) if tp.qself.is_none() => {
             let name = tp.path.to_token_stream().to_string();
             !matches!(
