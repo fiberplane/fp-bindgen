@@ -1,13 +1,15 @@
 use crate::primitives::Primitive;
 use std::{convert::TryFrom, fmt::Display, str::FromStr};
+use std::num::NonZeroUsize;
 use syn::{PathArguments, TypeParamBound, TypePath, TypeTuple};
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Default, Debug, Eq, Hash, PartialEq)]
 #[non_exhaustive]
 pub struct TypeIdent {
     pub name: String,
     pub generic_args: Vec<(TypeIdent, Vec<String>)>,
-    pub array_len: usize,
+    /// If this TypeIdent represents an array this field will store the length
+    pub array: Option<NonZeroUsize>,
 }
 
 impl TypeIdent {
@@ -15,12 +17,12 @@ impl TypeIdent {
         Self {
             name: name.into(),
             generic_args,
-            array_len: 0,
+            array: None,
         }
     }
 
     pub fn is_array(&self) -> bool {
-        self.array_len > 0
+        self.array.is_some()
     }
 
     pub fn is_primitive(&self) -> bool {
@@ -28,7 +30,7 @@ impl TypeIdent {
     }
 
     pub fn as_primitive(&self) -> Option<Primitive> {
-        if self.array_len == 0 {
+        if self.array.is_none() {
             Primitive::from_str(&self.name).ok()
         } else {
             None
@@ -66,10 +68,9 @@ impl TypeIdent {
             .to_string()
         };
 
-        if self.array_len > 0 {
-            format!("[{}; {}]", ty, self.array_len)
-        } else {
-            ty
+        match self.array {
+            Some(len) => format!("[{}; {}]", ty, len),
+            None => ty
         }
     }
 }
@@ -91,7 +92,7 @@ impl FromStr for TypeIdent {
     type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
-        let (string, array_len) = if string.starts_with('[') {
+        let (string, array) = if string.starts_with('[') {
             // Remove brackets and split on ;
             let split = string
                 .strip_prefix('[')
@@ -112,9 +113,9 @@ impl FromStr for TypeIdent {
                 ));
             }
 
-            (element, len)
+            (element, NonZeroUsize::new(len))
         } else {
-            (string, 0)
+            (string, None)
         };
 
         if let Some(start_index) = string.find('<') {
@@ -137,13 +138,13 @@ impl FromStr for TypeIdent {
                         ident.map(|ident| (ident, bounds))
                     })
                     .collect::<Result<Vec<(Self, Vec<String>)>, Self::Err>>()?,
-                array_len,
+                array,
             })
         } else {
             Ok(Self {
                 name: string.into(),
                 generic_args: vec![],
-                array_len,
+                array,
             })
         }
     }
@@ -154,26 +155,26 @@ impl From<String> for TypeIdent {
         Self {
             name,
             generic_args: Vec::new(),
-            array_len: 0,
+            ..Default::default()
         }
     }
 }
 
 impl Ord for TypeIdent {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // We only compare the name and array_len so that any type is only included once in
+        // We only compare the name and array so that any type is only included once in
         // a map, regardless of how many concrete instances are used with
         // different generic arguments.
-        (&self.name, self.array_len).cmp(&(&other.name, other.array_len))
+        (&self.name, self.array).cmp(&(&other.name, other.array))
     }
 }
 
 impl PartialOrd for TypeIdent {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        // We only compare the name and array_len so that any type is only included once in
+        // We only compare the name and array so that any type is only included once in
         // a map, regardless of how many concrete instances are used with
         // different generic arguments.
-        (&self.name, self.array_len).partial_cmp(&(&other.name, other.array_len))
+        (&self.name, self.array).partial_cmp(&(&other.name, other.array))
     }
 }
 
@@ -187,7 +188,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                 len: syn::Expr::Lit(syn::ExprLit { lit, .. }),
                 ..
             }) => {
-                let array_size = match lit {
+                let array_len = match lit {
                     syn::Lit::Int(int) => int.base10_digits().parse::<usize>(),
                     _ => panic!(),
                 }
@@ -197,7 +198,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                 Ok(Self {
                     name: elem_ident.name,
                     generic_args: vec![],
-                    array_len: array_size,
+                    array: NonZeroUsize::new(array_len),
                 })
             }
             syn::Type::Path(TypePath { path, qself }) if qself.is_none() => {
@@ -246,7 +247,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                 Ok(Self {
                     name: path_to_string(path),
                     generic_args,
-                    array_len: 0,
+                    ..Default::default()
                 })
             }
             syn::Type::Tuple(TypeTuple {

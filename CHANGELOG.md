@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## main
 
 - Add support for arrays of primitives (#94).
 
