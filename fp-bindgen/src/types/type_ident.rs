@@ -355,7 +355,7 @@ mod tests {
         let t = TypeIdent::from_str("[u32; 8]").unwrap();
         assert_eq!(t.name, "u32");
         assert!(t.generic_args.is_empty());
-        assert_eq!(t.array_len, 8);
+        assert_eq!(t.array, NonZeroUsize::new(8));
 
         // Cannot create non-primitive arrays, and other error scenarios
         assert!(TypeIdent::from_str("[Vec<f32>; 8]").is_err());
