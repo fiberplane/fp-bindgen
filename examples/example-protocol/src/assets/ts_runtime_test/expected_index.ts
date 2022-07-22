@@ -12,6 +12,13 @@ import type * as types from "./types.ts";
 type FatPtr = bigint;
 
 export type Imports = {
+    importArrayF32: (arg: Float32Array) => Float32Array;
+    importArrayF64: (arg: Float64Array) => Float64Array;
+    importArrayI16: (arg: Int16Array) => Int16Array;
+    importArrayI32: (arg: Int32Array) => Int32Array;
+    importArrayI8: (arg: Int8Array) => Int8Array;
+    importArrayU16: (arg: Uint16Array) => Uint16Array;
+    importArrayU32: (arg: Uint32Array) => Uint32Array;
     importArrayU8: (arg: Uint8Array) => Uint8Array;
     importExplicitBoundPoint: (arg: types.ExplicitBoundPoint<number>) => void;
     importFpAdjacentlyTagged: (arg: types.FpAdjacentlyTagged) => types.FpAdjacentlyTagged;
@@ -50,6 +57,14 @@ export type Imports = {
 };
 
 export type Exports = {
+    exportArrayF32?: (arg: Float32Array) => Float32Array;
+    exportArrayF64?: (arg: Float64Array) => Float64Array;
+    exportArrayI16?: (arg: Int16Array) => Int16Array;
+    exportArrayI32?: (arg: Int32Array) => Int32Array;
+    exportArrayI8?: (arg: Int8Array) => Int8Array;
+    exportArrayU16?: (arg: Uint16Array) => Uint16Array;
+    exportArrayU32?: (arg: Uint32Array) => Uint32Array;
+    exportArrayU8?: (arg: Uint8Array) => Uint8Array;
     exportAsyncStruct?: (arg1: types.FpPropertyRenaming, arg2: bigint) => Promise<types.FpPropertyRenaming>;
     exportFpAdjacentlyTagged?: (arg: types.FpAdjacentlyTagged) => types.FpAdjacentlyTagged;
     exportFpEnum?: (arg: types.FpVariantRenaming) => types.FpVariantRenaming;
@@ -83,6 +98,14 @@ export type Exports = {
     fetchData?: (rType: string) => Promise<types.Result<string, string>>;
     init?: () => void;
     reducerBridge?: (action: types.ReduxAction) => types.StateUpdate;
+    exportArrayF32Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayF64Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayI16Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayI32Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayI8Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayU16Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayU32Raw?: (arg: Uint8Array) => Uint8Array;
+    exportArrayU8Raw?: (arg: Uint8Array) => Uint8Array;
     exportAsyncStructRaw?: (arg1: Uint8Array, arg2: bigint) => Promise<Uint8Array>;
     exportFpAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportFpEnumRaw?: (arg: Uint8Array) => Uint8Array;
@@ -220,6 +243,34 @@ export async function createRuntime(
 
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
+            __fp_gen_import_array_f32: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Float32Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayF32(arg));
+            },
+            __fp_gen_import_array_f64: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Float64Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayF64(arg));
+            },
+            __fp_gen_import_array_i16: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Int16Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayI16(arg));
+            },
+            __fp_gen_import_array_i32: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Int32Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayI32(arg));
+            },
+            __fp_gen_import_array_i8: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Int8Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayI8(arg));
+            },
+            __fp_gen_import_array_u16: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Uint16Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayU16(arg));
+            },
+            __fp_gen_import_array_u32: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Uint32Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayU32(arg));
+            },
             __fp_gen_import_array_u8: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<Uint8Array>(arg_ptr);
                 return serializeObject(importFunctions.importArrayU8(arg));
@@ -374,6 +425,78 @@ export async function createRuntime(
     const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>("__fp_guest_resolve_async_value");
 
     return {
+        exportArrayF32: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_f32 as any;
+            if (!export_fn) return;
+
+            return (arg: Float32Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Float32Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayF64: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_f64 as any;
+            if (!export_fn) return;
+
+            return (arg: Float64Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Float64Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI16: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i16 as any;
+            if (!export_fn) return;
+
+            return (arg: Int16Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Int16Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI32: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i32 as any;
+            if (!export_fn) return;
+
+            return (arg: Int32Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Int32Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI8: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i8 as any;
+            if (!export_fn) return;
+
+            return (arg: Int8Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Int8Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU16: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u16 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint16Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Uint16Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU32: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u32 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint32Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Uint32Array>(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU8: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u8 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<Uint8Array>(export_fn(arg_ptr));
+            };
+        })(),
         exportAsyncStruct: (() => {
             const export_fn = instance.exports.__fp_gen_export_async_struct as any;
             if (!export_fn) return;
@@ -587,6 +710,78 @@ export async function createRuntime(
             return (action: types.ReduxAction) => {
                 const action_ptr = serializeObject(action);
                 return parseObject<types.StateUpdate>(export_fn(action_ptr));
+            };
+        })(),
+        exportArrayF32Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_f32 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayF64Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_f64 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI16Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i16 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI32Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i32 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayI8Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_i8 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU16Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u16 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU32Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u32 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportArrayU8Raw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_array_u8 as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
             };
         })(),
         exportAsyncStructRaw: (() => {

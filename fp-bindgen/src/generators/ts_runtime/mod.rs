@@ -492,10 +492,21 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 .iter()
                 .filter(|arg| !arg.ty.is_primitive())
                 .map(|arg| {
+                    let wrapped_arg = if arg.ty.is_array() {
+                        // Arrays need to be converted from a typed array to a regular array,
+                        // otherwise msgpack decoding on the Rust side will fail (byte arrays
+                        // cannot be deserialized to Rust arrays by rmp-serde, currently).
+                        // Importing from Rust --> TS works fine though, so we don't need the
+                        // conversion there.
+                        format!("Array.from({})", arg.name.to_camel_case())
+                    } else {
+                        arg.name.to_camel_case()
+                    };
+
                     format!(
                         "const {} = serializeObject({});",
                         get_pointer_name(&arg.name),
-                        arg.name.to_camel_case()
+                        wrapped_arg
                     )
                 })
                 .collect::<Vec<_>>();
@@ -942,7 +953,12 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match ty {
         Type::Alias(name, _) => format!("{}{}", scope, name),
-        Type::Array(primitive, _) => format_array(*primitive).to_owned(),
+        Type::Array(primitive, _) => primitive.js_array_name().unwrap_or_else(|| {
+            panic!(
+                "Could not determine JS array type for primitive: {:?}",
+                primitive
+            )
+        }),
         Type::Container(name, _) => {
             let (arg, _) = ident
                 .generic_args
@@ -1001,13 +1017,6 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: 
                 .join(", ")
         ),
         Type::Unit => "void".to_owned(),
-    }
-}
-
-fn format_array(primitive: Primitive) -> &'static str {
-    match primitive {
-        Primitive::U8 => "Uint8Array",
-        _ => unimplemented!(),
     }
 }
 

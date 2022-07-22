@@ -19,6 +19,10 @@ impl TypeIdent {
         }
     }
 
+    pub fn is_array(&self) -> bool {
+        self.array_len > 0
+    }
+
     pub fn is_primitive(&self) -> bool {
         self.as_primitive().is_some()
     }
@@ -78,7 +82,8 @@ impl Display for TypeIdent {
 
 impl From<&str> for TypeIdent {
     fn from(name: &str) -> Self {
-        Self::from_str(name).unwrap_or_else(|_| panic!("Could not convert '{}' into a TypeIdent", name))
+        Self::from_str(name)
+            .unwrap_or_else(|_| panic!("Could not convert '{}' into a TypeIdent", name))
     }
 }
 
@@ -92,14 +97,19 @@ impl FromStr for TypeIdent {
                 .strip_prefix('[')
                 .and_then(|s| s.strip_suffix(']'))
                 .ok_or(format!("Invalid array syntax in: {}", string))?
-                .split(';').collect::<Vec<_>>();
+                .split(';')
+                .collect::<Vec<_>>();
 
             let element = split[0].trim();
-            let len = usize::from_str(split[1].trim()).map_err(|_| format!("Invalid array length in: {}", string))?;
+            let len = usize::from_str(split[1].trim())
+                .map_err(|_| format!("Invalid array length in: {}", string))?;
 
             let primitive = Primitive::from_str(element)?;
             if primitive.js_array_name().is_none() {
-                return Err(format!("Only arrays of primitives supported by Javascript are allowed, found: {}", string));
+                return Err(format!(
+                    "Only arrays of primitives supported by Javascript are allowed, found: {}",
+                    string
+                ));
             }
 
             (element, len)

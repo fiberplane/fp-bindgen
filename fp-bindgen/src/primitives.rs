@@ -47,8 +47,9 @@ impl Primitive {
             I32 => Some("Int32Array"),
             F32 => Some("Float32Array"),
             F64 => Some("Float64Array"),
-            _ => None
-        }.map(|s| s.to_owned())
+            _ => None,
+        }
+        .map(|s| s.to_owned())
     }
 }
 
