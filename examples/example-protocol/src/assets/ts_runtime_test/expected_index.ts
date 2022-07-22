@@ -430,7 +430,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Float32Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Float32Array>(export_fn(arg_ptr));
             };
         })(),
@@ -439,7 +439,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Float64Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Float64Array>(export_fn(arg_ptr));
             };
         })(),
@@ -448,7 +448,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Int16Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Int16Array>(export_fn(arg_ptr));
             };
         })(),
@@ -457,7 +457,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Int32Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Int32Array>(export_fn(arg_ptr));
             };
         })(),
@@ -466,7 +466,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Int8Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Int8Array>(export_fn(arg_ptr));
             };
         })(),
@@ -475,7 +475,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Uint16Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Uint16Array>(export_fn(arg_ptr));
             };
         })(),
@@ -484,7 +484,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Uint32Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Uint32Array>(export_fn(arg_ptr));
             };
         })(),
@@ -493,7 +493,7 @@ export async function createRuntime(
             if (!export_fn) return;
 
             return (arg: Uint8Array) => {
-                const arg_ptr = serializeObject(arg);
+                const arg_ptr = serializeObject(Array.from(arg));
                 return parseObject<Uint8Array>(export_fn(arg_ptr));
             };
         })(),
