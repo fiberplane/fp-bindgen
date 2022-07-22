@@ -1,6 +1,6 @@
 use crate::primitives::Primitive;
-use std::{convert::TryFrom, fmt::Display, str::FromStr};
 use std::num::NonZeroUsize;
+use std::{convert::TryFrom, fmt::Display, str::FromStr};
 use syn::{PathArguments, TypeParamBound, TypePath, TypeTuple};
 
 #[derive(Clone, Default, Debug, Eq, Hash, PartialEq)]
@@ -70,7 +70,7 @@ impl TypeIdent {
 
         match self.array {
             Some(len) => format!("[{}; {}]", ty, len),
-            None => ty
+            None => ty,
         }
     }
 }
