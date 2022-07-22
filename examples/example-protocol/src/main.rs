@@ -59,6 +59,9 @@ fp_import! {
     fn import_primitive_u32(arg: u32) -> u32;
     fn import_primitive_u64(arg: u64) -> u64;
 
+    // Passing arrays:
+    fn import_array_u8(arg: [u8; 16]) -> [u8; 16];
+
     // Passing strings:
     fn import_string(arg: String) -> String;
 

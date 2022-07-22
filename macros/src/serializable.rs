@@ -1,15 +1,16 @@
 use crate::utils::{extract_path_from_type, parse_type_item};
+use crate::CollectableTypeDefinition;
 use proc_macro::TokenStream;
 use quote::quote;
 use std::collections::{BTreeMap, HashSet};
 use syn::punctuated::Punctuated;
-use syn::{Path, TypeParamBound};
+use syn::TypeParamBound;
 
 pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     let item_str = item.to_string();
     let (item_name, item, mut generics) = parse_type_item(item);
 
-    let field_types: HashSet<Path> = match item {
+    let field_types: HashSet<CollectableTypeDefinition> = match item {
         syn::Item::Enum(ty) => ty
             .variants
             .into_iter()

@@ -1,6 +1,9 @@
 use crate::types::*;
 
 #[fp_bindgen_support::fp_import_signature]
+pub fn import_array_u8(arg: [u8; 16]) -> [u8; 16];
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
 
 #[fp_bindgen_support::fp_import_signature]

@@ -1,9 +1,5 @@
 use crate::primitives::Primitive;
-use std::{
-    convert::{Infallible, TryFrom},
-    fmt::Display,
-    str::FromStr,
-};
+use std::{convert::TryFrom, fmt::Display, str::FromStr};
 use syn::{PathArguments, TypeParamBound, TypePath, TypeTuple};
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -11,6 +7,7 @@ use syn::{PathArguments, TypeParamBound, TypePath, TypeTuple};
 pub struct TypeIdent {
     pub name: String,
     pub generic_args: Vec<(TypeIdent, Vec<String>)>,
+    pub array_len: usize,
 }
 
 impl TypeIdent {
@@ -18,15 +15,24 @@ impl TypeIdent {
         Self {
             name: name.into(),
             generic_args,
+            array_len: 0,
         }
     }
 
     pub fn is_primitive(&self) -> bool {
-        Primitive::from_str(&self.name).is_ok()
+        self.as_primitive().is_some()
+    }
+
+    pub fn as_primitive(&self) -> Option<Primitive> {
+        if self.array_len == 0 {
+            Primitive::from_str(&self.name).ok()
+        } else {
+            None
+        }
     }
 
     pub fn format(&self, include_bounds: bool) -> String {
-        if self.generic_args.is_empty() {
+        let ty = if self.generic_args.is_empty() {
             self.name.clone()
         } else {
             format_args!(
@@ -54,6 +60,12 @@ impl TypeIdent {
                     .join(", ")
             )
             .to_string()
+        };
+
+        if self.array_len > 0 {
+            format!("[{}; {}]", ty, self.array_len)
+        } else {
+            ty
         }
     }
 }
@@ -66,14 +78,35 @@ impl Display for TypeIdent {
 
 impl From<&str> for TypeIdent {
     fn from(name: &str) -> Self {
-        Self::from(name.to_owned())
+        Self::from_str(name).unwrap_or_else(|_| panic!("Could not convert '{}' into a TypeIdent", name))
     }
 }
 
 impl FromStr for TypeIdent {
-    type Err = Infallible;
+    type Err = String;
 
     fn from_str(string: &str) -> Result<Self, Self::Err> {
+        let (string, array_len) = if string.starts_with('[') {
+            // Remove brackets and split on ;
+            let split = string
+                .strip_prefix('[')
+                .and_then(|s| s.strip_suffix(']'))
+                .ok_or(format!("Invalid array syntax in: {}", string))?
+                .split(';').collect::<Vec<_>>();
+
+            let element = split[0].trim();
+            let len = usize::from_str(split[1].trim()).map_err(|_| format!("Invalid array length in: {}", string))?;
+
+            // Only arrays of primitives are allowed
+            if Primitive::from_str(element).is_err() {
+                return Err(format!("Only arrays of primitives are allowed, found: {}", string));
+            }
+
+            (element, len)
+        } else {
+            (string, 0)
+        };
+
         if let Some(start_index) = string.find('<') {
             let end_index = string.rfind('>').unwrap_or(string.len());
             Ok(Self {
@@ -94,9 +127,14 @@ impl FromStr for TypeIdent {
                         ident.map(|ident| (ident, bounds))
                     })
                     .collect::<Result<Vec<(Self, Vec<String>)>, Self::Err>>()?,
+                array_len,
             })
         } else {
-            Ok(Self::from(string))
+            Ok(Self {
+                name: string.into(),
+                generic_args: vec![],
+                array_len,
+            })
         }
     }
 }
@@ -106,25 +144,26 @@ impl From<String> for TypeIdent {
         Self {
             name,
             generic_args: Vec::new(),
+            array_len: 0,
         }
     }
 }
 
 impl Ord for TypeIdent {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // We only compare the name so that any type is only included once in
+        // We only compare the name and array_len so that any type is only included once in
         // a map, regardless of how many concrete instances are used with
         // different generic arguments.
-        self.name.cmp(&other.name)
+        (&self.name, self.array_len).cmp(&(&other.name, other.array_len))
     }
 }
 
 impl PartialOrd for TypeIdent {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        // We only compare the name so that any type is only included once in
+        // We only compare the name and array_len so that any type is only included once in
         // a map, regardless of how many concrete instances are used with
         // different generic arguments.
-        self.name.partial_cmp(&other.name)
+        (&self.name, self.array_len).partial_cmp(&(&other.name, other.array_len))
     }
 }
 
@@ -133,6 +172,24 @@ impl TryFrom<&syn::Type> for TypeIdent {
 
     fn try_from(ty: &syn::Type) -> Result<Self, Self::Error> {
         match ty {
+            syn::Type::Array(syn::TypeArray {
+                elem,
+                len: syn::Expr::Lit(syn::ExprLit { lit, .. }),
+                ..
+            }) => {
+                let array_size = match lit {
+                    syn::Lit::Int(int) => int.base10_digits().parse::<usize>(),
+                    _ => panic!(),
+                }
+                .unwrap();
+                let elem_ident = TypeIdent::try_from(elem.as_ref())?;
+
+                Ok(Self {
+                    name: elem_ident.name,
+                    generic_args: vec![],
+                    array_len: array_size,
+                })
+            }
             syn::Type::Path(TypePath { path, qself }) if qself.is_none() => {
                 let mut generic_args = vec![];
                 if let Some(segment) = path.segments.last() {
@@ -179,6 +236,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                 Ok(Self {
                     name: path_to_string(path),
                     generic_args,
+                    array_len: 0,
                 })
             }
             syn::Type::Tuple(TypeTuple {
@@ -252,6 +310,17 @@ mod tests {
         let t = TypeIdent::from_str("u32").unwrap();
         assert_eq!(t.name, "u32");
         assert!(t.generic_args.is_empty());
+
+        let t = TypeIdent::from_str("[u32; 8]").unwrap();
+        assert_eq!(t.name, "u32");
+        assert!(t.generic_args.is_empty());
+        assert_eq!(t.array_len, 8);
+
+        // Cannot create non-primitive arrays, and other error scenarios
+        assert!(TypeIdent::from_str("[Vec<f32>; 8]").is_err());
+        assert!(TypeIdent::from_str("[u32;]").is_err());
+        assert!(TypeIdent::from_str("[u32; foo]").is_err());
+        assert!(TypeIdent::from_str("[u32; -1]").is_err());
 
         let t = TypeIdent::from_str("Vec<u32>").unwrap();
         assert_eq!(t.name, "Vec");

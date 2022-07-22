@@ -28,10 +28,10 @@ pub fn derive_serializable(item: TokenStream) -> TokenStream {
 pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let ParsedStatements {
         functions,
-        type_paths,
+        collectable_types,
         aliases,
     } = parse_statements(token_stream);
-    let type_paths = type_paths.iter();
+    let collectable_types = collectable_types.iter();
     let alias_keys = aliases.keys();
     let alias_paths = aliases
         .values()
@@ -40,7 +40,7 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_import_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
             let mut import_types = fp_bindgen::prelude::TypeMap::new();
-            #( #type_paths::collect_types(&mut import_types); )*
+            #( #collectable_types::collect_types(&mut import_types); )*
             #( import_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), std::str::FromStr::from_str(#alias_paths).unwrap())); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
@@ -57,10 +57,10 @@ pub fn fp_import(token_stream: TokenStream) -> TokenStream {
 pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let ParsedStatements {
         functions,
-        type_paths,
+        collectable_types,
         aliases,
     } = parse_statements(token_stream);
-    let type_paths = type_paths.iter();
+    let collectable_types = collectable_types.iter();
     let alias_keys = aliases.keys();
     let alias_paths = aliases
         .values()
@@ -69,7 +69,7 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
     let replacement = quote! {
         fn __fp_declare_export_fns() -> (fp_bindgen::prelude::FunctionList, fp_bindgen::prelude::TypeMap) {
             let mut export_types = fp_bindgen::prelude::TypeMap::new();
-            #( #type_paths::collect_types(&mut export_types); )*
+            #( #collectable_types::collect_types(&mut export_types); )*
             #( export_types.insert(TypeIdent::from(#alias_keys), Type::Alias(#alias_keys.to_owned(), std::str::FromStr::from_str(#alias_paths).unwrap())); )*
 
             let mut list = fp_bindgen::prelude::FunctionList::new();
@@ -85,8 +85,27 @@ pub fn fp_export(token_stream: TokenStream) -> TokenStream {
 /// macros.
 struct ParsedStatements {
     pub functions: Vec<String>,
-    pub type_paths: HashSet<Path>,
-    pub aliases: HashMap<String, Path>,
+    pub collectable_types: HashSet<CollectableTypeDefinition>,
+    pub aliases: HashMap<String, CollectableTypeDefinition>,
+}
+
+/// A type definition on which we can call ::collect_types()
+#[derive(Debug, Eq, PartialEq, Hash)]
+struct CollectableTypeDefinition {
+    pub path: Path,
+    pub array_len: usize,
+}
+
+impl ToTokens for CollectableTypeDefinition {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        let path = &self.path;
+        if self.array_len > 0 {
+            let len = self.array_len;
+            tokens.extend(quote! { <[#path; #len]> })
+        } else {
+            tokens.extend(quote! { #path })
+        }
+    }
 }
 
 /// Parses statements like function declarations and 'use Foobar;' and returns them in a list.
@@ -96,7 +115,7 @@ struct ParsedStatements {
 /// call the functions.
 fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
     let mut functions = Vec::new();
-    let mut type_paths = HashSet::new();
+    let mut collectable_types = HashSet::new();
     let mut aliases = HashMap::new();
 
     let mut current_item_tokens = Vec::<TokenTree>::new();
@@ -115,7 +134,7 @@ fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
                                 function.sig
                             ),
                             FnArg::Typed(arg) => {
-                                type_paths.insert(
+                                collectable_types.insert(
                                     extract_path_from_type(arg.ty.as_ref()).unwrap_or_else(|| {
                                         panic!(
                                             "Only value types are supported. \
@@ -129,7 +148,7 @@ fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
                     }
 
                     if let Some(ty) = normalize_return_type(&function.sig.output) {
-                        type_paths.insert(extract_path_from_type(ty).unwrap_or_else(|| {
+                        collectable_types.insert(extract_path_from_type(ty).unwrap_or_else(|| {
                             panic!(
                                 "Only value types are supported. \
                                             Incompatible return type in function declaration: {:?}",
@@ -141,7 +160,7 @@ fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
                     functions.push(function.into_token_stream().to_string());
                 } else if let Ok(using) = syn::parse::<ItemUse>(stream.clone()) {
                     for path in flatten_using_statement(using) {
-                        type_paths.insert(path);
+                        collectable_types.insert(CollectableTypeDefinition { path, array_len: 0 });
                     }
                 } else if let Ok(type_alias) = syn::parse::<ItemType>(stream) {
                     aliases.insert(
@@ -164,7 +183,7 @@ fn parse_statements(token_stream: TokenStream) -> ParsedStatements {
 
     ParsedStatements {
         functions,
-        type_paths,
+        collectable_types,
         aliases,
     }
 }

@@ -12,6 +12,7 @@ import type * as types from "./types.ts";
 type FatPtr = bigint;
 
 export type Imports = {
+    importArrayU8: (arg: Uint8Array) => Uint8Array;
     importExplicitBoundPoint: (arg: types.ExplicitBoundPoint<number>) => void;
     importFpAdjacentlyTagged: (arg: types.FpAdjacentlyTagged) => types.FpAdjacentlyTagged;
     importFpEnum: (arg: types.FpVariantRenaming) => types.FpVariantRenaming;
@@ -219,6 +220,10 @@ export async function createRuntime(
 
     const { instance } = await WebAssembly.instantiate(plugin, {
         fp: {
+            __fp_gen_import_array_u8: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<Uint8Array>(arg_ptr);
+                return serializeObject(importFunctions.importArrayU8(arg));
+            },
             __fp_gen_import_explicit_bound_point: (arg_ptr: FatPtr) => {
                 const arg = parseObject<types.ExplicitBoundPoint<number>>(arg_ptr);
                 importFunctions.importExplicitBoundPoint(arg);

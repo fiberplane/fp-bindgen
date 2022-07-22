@@ -6,7 +6,7 @@ use crate::{
     TsExtendedRuntimeConfig,
 };
 use inflector::Inflector;
-use std::{fs, str::FromStr};
+use std::fs;
 
 pub(crate) fn generate_bindings(
     import_functions: FunctionList,
@@ -345,7 +345,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 .args
                 .iter()
                 .map(|arg| {
-                    if let Ok(primitive) = Primitive::from_str(&arg.ty.name) {
+                    if let Some(primitive) = arg.ty.as_primitive() {
                         format!(
                             "{}: {}",
                             arg.name.to_camel_case(),
@@ -357,13 +357,9 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            let return_type = match &function
-                .return_type
-                .as_ref()
-                .map(|ty| Primitive::from_str(&ty.name))
-            {
+            let return_type = match &function.return_type.as_ref().map(|ty| ty.as_primitive()) {
                 None => "".to_owned(),
-                Some(Ok(primitive)) => format!(": {}", format_plain_primitive(*primitive)),
+                Some(Some(primitive)) => format!(": {}", format_plain_primitive(*primitive)),
                 Some(_) => ": FatPtr".to_owned(),
             };
             let import_args = function
@@ -927,7 +923,7 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
 }
 
 fn format_raw_type(ty: &TypeIdent) -> &str {
-    if let Ok(primitive) = Primitive::from_str(&ty.name) {
+    if let Some(primitive) = ty.as_primitive() {
         format_plain_primitive(primitive)
     } else {
         "Uint8Array"
@@ -946,6 +942,7 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match ty {
         Type::Alias(name, _) => format!("{}{}", scope, name),
+        Type::Array(primitive, _) => format_array(*primitive).to_owned(),
         Type::Container(name, _) => {
             let (arg, _) = ident
                 .generic_args
@@ -1007,6 +1004,13 @@ fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: 
     }
 }
 
+fn format_array(primitive: Primitive) -> &'static str {
+    match primitive {
+        Primitive::U8 => "Uint8Array",
+        _ => unimplemented!(),
+    }
+}
+
 fn format_plain_primitive(primitive: Primitive) -> &'static str {
     match primitive {
         Primitive::Bool => "boolean",
@@ -1024,7 +1028,7 @@ fn format_plain_primitive(primitive: Primitive) -> &'static str {
 }
 
 fn format_plain_primitive_or_ident(ident: &TypeIdent, types: &TypeMap) -> String {
-    if let Ok(primitive) = Primitive::from_str(&ident.name) {
+    if let Some(primitive) = ident.as_primitive() {
         format_plain_primitive(primitive).to_owned()
     } else {
         format_ident(ident, types, "types.")

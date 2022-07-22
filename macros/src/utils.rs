@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 
+use crate::CollectableTypeDefinition;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use syn::{
@@ -7,8 +8,15 @@ use syn::{
     Type,
 };
 
-pub(crate) fn extract_path_from_type(ty: &Type) -> Option<Path> {
+pub(crate) fn extract_path_from_type(ty: &Type) -> Option<CollectableTypeDefinition> {
     match ty {
+        Type::Array(array) => {
+            let def = extract_path_from_type(&array.elem).unwrap();
+            Some(CollectableTypeDefinition {
+                path: def.path,
+                array_len: 16,
+            })
+        }
         Type::Path(path) if path.qself.is_none() => {
             let mut path = path.path.clone();
             for segment in &mut path.segments {
@@ -19,7 +27,7 @@ pub(crate) fn extract_path_from_type(ty: &Type) -> Option<Path> {
                     args.colon2_token = Some(syn::parse_quote!(::));
                 }
             }
-            Some(path)
+            Some(CollectableTypeDefinition { path, array_len: 0 })
         }
         _ => None,
     }
