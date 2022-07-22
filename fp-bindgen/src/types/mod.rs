@@ -19,6 +19,7 @@ pub type TypeMap = BTreeMap<TypeIdent, Type>;
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Type {
     Alias(String, TypeIdent),
+    Array(Primitive, usize),
     Container(String, TypeIdent),
     Custom(CustomType),
     Enum(Enum),
@@ -47,6 +48,7 @@ impl Type {
     pub fn name(&self) -> String {
         match self {
             Self::Alias(name, _) => name.clone(),
+            Self::Array(primitive, size) => format!("[{}; {}]", primitive.name(), size),
             Self::Container(name, ident) => format!("{}<{}>", name, ident),
             Self::Custom(custom) => custom.ident.to_string(),
             Self::Enum(Enum { ident, .. }) => ident.to_string(),

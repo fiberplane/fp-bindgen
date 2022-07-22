@@ -91,6 +91,54 @@ fn export_primitive_u64(arg: u64) -> u64 {
 }
 
 #[fp_export_impl(example_bindings)]
+fn export_array_u8(arg: [u8; 3]) -> [u8; 3] {
+    assert_eq!(arg, [1u8, 2u8, 3u8]);
+    [1u8, 2u8, 3u8]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_u16(arg: [u16; 3]) -> [u16; 3] {
+    assert_eq!(arg, [1u16, 2u16, 3u16]);
+    [1u16, 2u16, 3u16]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_u32(arg: [u32; 3]) -> [u32; 3] {
+    assert_eq!(arg, [1u32, 2u32, 3u32]);
+    [1u32, 2u32, 3u32]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_i8(arg: [i8; 3]) -> [i8; 3] {
+    assert_eq!(arg, [1i8, 2i8, 3i8]);
+    [1i8, 2i8, 3i8]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_i16(arg: [i16; 3]) -> [i16; 3] {
+    assert_eq!(arg, [1i16, 2i16, 3i16]);
+    [1i16, 2i16, 3i16]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_i32(arg: [i32; 3]) -> [i32; 3] {
+    assert_eq!(arg, [1i32, 2i32, 3i32]);
+    [1i32, 2i32, 3i32]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_f32(arg: [f32; 3]) -> [f32; 3] {
+    assert_eq!(arg, [1.0f32, 2.0f32, 3.0f32]);
+    [1.0f32, 2.0f32, 3.0f32]
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_array_f64(arg: [f64; 3]) -> [f64; 3] {
+    assert_eq!(arg, [1.0f64, 2.0f64, 3.0f64]);
+    [1.0f64, 2.0f64, 3.0f64]
+}
+
+#[fp_export_impl(example_bindings)]
 fn export_string(arg: String) -> String {
     assert_eq!(arg, "Hello, plugin!");
     "Hello, world!".to_owned()

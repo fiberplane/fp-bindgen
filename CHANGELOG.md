@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## main
+
+- Add support for arrays of primitives (#94).
+
 ## 2.0.1
 
 - Fix custom types in generic positions in export function signatures (#130).

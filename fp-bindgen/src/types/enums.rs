@@ -33,6 +33,7 @@ pub(crate) fn parse_enum_item(item: ItemEnum) -> Enum {
                 _ => None,
             })
             .collect(),
+        ..Default::default()
     };
     let options = EnumOptions::from_attrs(&item.attrs);
     let variants = item

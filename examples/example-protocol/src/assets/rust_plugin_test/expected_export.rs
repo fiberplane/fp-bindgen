@@ -1,6 +1,30 @@
 use crate::types::*;
 
 #[fp_bindgen_support::fp_export_signature]
+pub fn export_array_f32(arg: [f32; 3]) -> [f32; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_f64(arg: [f64; 3]) -> [f64; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_i16(arg: [i16; 3]) -> [i16; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_i32(arg: [i32; 3]) -> [i32; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_i8(arg: [i8; 3]) -> [i8; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_u16(arg: [u16; 3]) -> [u16; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_u32(arg: [u32; 3]) -> [u32; 3];
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_array_u8(arg: [u8; 3]) -> [u8; 3];
+
+#[fp_bindgen_support::fp_export_signature]
 pub async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
 
 #[fp_bindgen_support::fp_export_signature]

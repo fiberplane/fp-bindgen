@@ -202,8 +202,8 @@ pub fn format_modifiers(function: &Function) -> String {
     if function.is_async { "async " } else { "" }.to_owned()
 }
 
-fn format_functions(export_functions: FunctionList, types: &TypeMap, macro_path: &str) -> String {
-    export_functions
+fn format_functions(functions: FunctionList, types: &TypeMap, macro_path: &str) -> String {
+    functions
         .iter()
         .map(|func| {
             let name = &func.name;

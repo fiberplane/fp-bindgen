@@ -6,7 +6,7 @@ use crate::{
     TsExtendedRuntimeConfig,
 };
 use inflector::Inflector;
-use std::{fs, str::FromStr};
+use std::fs;
 
 pub(crate) fn generate_bindings(
     import_functions: FunctionList,
@@ -345,7 +345,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 .args
                 .iter()
                 .map(|arg| {
-                    if let Ok(primitive) = Primitive::from_str(&arg.ty.name) {
+                    if let Some(primitive) = arg.ty.as_primitive() {
                         format!(
                             "{}: {}",
                             arg.name.to_camel_case(),
@@ -357,13 +357,9 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            let return_type = match &function
-                .return_type
-                .as_ref()
-                .map(|ty| Primitive::from_str(&ty.name))
-            {
+            let return_type = match &function.return_type.as_ref().map(|ty| ty.as_primitive()) {
                 None => "".to_owned(),
-                Some(Ok(primitive)) => format!(": {}", format_plain_primitive(*primitive)),
+                Some(Some(primitive)) => format!(": {}", format_plain_primitive(*primitive)),
                 Some(_) => ": FatPtr".to_owned(),
             };
             let import_args = function
@@ -496,10 +492,21 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 .iter()
                 .filter(|arg| !arg.ty.is_primitive())
                 .map(|arg| {
+                    let wrapped_arg = if arg.ty.is_array() {
+                        // Arrays need to be converted from a typed array to a regular array,
+                        // otherwise msgpack decoding on the Rust side will fail (byte arrays
+                        // cannot be deserialized to Rust arrays by rmp-serde, currently).
+                        // Importing from Rust --> TS works fine though, so we don't need the
+                        // conversion there.
+                        format!("Array.from({})", arg.name.to_camel_case())
+                    } else {
+                        arg.name.to_camel_case()
+                    };
+
                     format!(
                         "const {} = serializeObject({});",
                         get_pointer_name(&arg.name),
-                        arg.name.to_camel_case()
+                        wrapped_arg
                     )
                 })
                 .collect::<Vec<_>>();
@@ -927,7 +934,7 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
 }
 
 fn format_raw_type(ty: &TypeIdent) -> &str {
-    if let Ok(primitive) = Primitive::from_str(&ty.name) {
+    if let Some(primitive) = ty.as_primitive() {
         format_plain_primitive(primitive)
     } else {
         "Uint8Array"
@@ -946,6 +953,12 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match ty {
         Type::Alias(name, _) => format!("{}{}", scope, name),
+        Type::Array(primitive, _) => primitive.js_array_name().unwrap_or_else(|| {
+            panic!(
+                "Could not determine JS array type for primitive: {:?}",
+                primitive
+            )
+        }),
         Type::Container(name, _) => {
             let (arg, _) = ident
                 .generic_args
@@ -1024,7 +1037,7 @@ fn format_plain_primitive(primitive: Primitive) -> &'static str {
 }
 
 fn format_plain_primitive_or_ident(ident: &TypeIdent, types: &TypeMap) -> String {
-    if let Ok(primitive) = Primitive::from_str(&ident.name) {
+    if let Some(primitive) = ident.as_primitive() {
         format_plain_primitive(primitive).to_owned()
     } else {
         format_ident(ident, types, "types.")

@@ -30,6 +30,7 @@ pub(crate) fn parse_struct_item(item: ItemStruct) -> Struct {
                 _ => None,
             })
             .collect(),
+        ..Default::default()
     };
     let fields = item
         .fields
