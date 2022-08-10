@@ -96,8 +96,12 @@ const imports: Imports = {
     };
   },
 
-  importGetBytes: (): Result<ArrayBuffer, string> => {
-    return { Ok: new TextEncoder().encode("Hello, world!") };
+  importGetBytes: (): Result<Uint8Array, string> => {
+    return { Ok: new TextEncoder().encode("hello") };
+  },
+
+  importGetSerdeBytes: (): Result<ArrayBuffer, string> => {
+    return { Ok: new TextEncoder().encode("hello") };
   },
 
   importMultiplePrimitives: (arg1: number, arg2: string): bigint => {
@@ -433,3 +437,25 @@ Deno.test("fetch async data", async () => {
     Ok: JSON.stringify({ "status": "confirmed" })
   });
 });
+
+Deno.test("bytes", async () => {
+  const { exportGetBytes, exportGetSerdeBytes } = await loadExamplePlugin();
+  assert(exportGetBytes);
+  assert(exportGetSerdeBytes);
+
+  const encoder = new TextEncoder();
+  assertEquals(unwrap(exportGetBytes()), encoder.encode("hello, world"));
+  assertEquals(unwrap(exportGetSerdeBytes()), encoder.encode("hello, world"));
+});
+
+function isOk<T, E>(result: Result<T, E>): result is { Ok: T } {
+  return "Ok" in result;
+}
+
+function unwrap<T, E>(result: Result<T, E>): T {
+  if (!isOk(result)) {
+    throw result.Err;
+  }
+
+  return result.Ok;
+}

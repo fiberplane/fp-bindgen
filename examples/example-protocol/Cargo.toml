@@ -5,7 +5,9 @@ name = "example-protocol"
 version = "0.1.0"
 
 [dependencies]
+bytes = {version = "1", features = ["serde"]}
 fp-bindgen = {path = "../../fp-bindgen", features = [
+  "bytes-compat",
   "http-compat",
   "serde-bytes-compat",
   "time-compat",

@@ -8,6 +8,7 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
+bytes = "1"
 example-bindings = {path = "../example-protocol/bindings/rust-plugin"}
 http = {version = "0.2"}
 once_cell = {version = "1.10"}

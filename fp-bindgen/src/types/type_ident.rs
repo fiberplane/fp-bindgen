@@ -1,3 +1,4 @@
+use super::is_runtime_bound;
 use crate::primitives::Primitive;
 use std::{
     convert::{Infallible, TryFrom},
@@ -196,13 +197,6 @@ fn path_to_string(path: &syn::Path) -> String {
         .map(|segment| segment.ident.to_string())
         .collect::<Vec<_>>()
         .join("::")
-}
-
-// Used to remove the 'Serializable' bound from generated types, since this trait only exists in fp-bindgen
-// and doesn't exist at runtime.
-fn is_runtime_bound(bound: &str) -> bool {
-    // Filtering by string is a bit dangerous since users may have their own 'Serializable' trait :(
-    bound != "Serializable" && bound != "fp_bindgen::prelude::Serializable"
 }
 
 #[cfg(test)]

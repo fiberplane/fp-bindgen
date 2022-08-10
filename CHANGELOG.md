@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## main
+
+- Added the `bytes-compat` feature for compatibility with the `bytes` crate.
+
 ## 2.0.1
 
 - Fix custom types in generic positions in export function signatures (#130).

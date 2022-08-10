@@ -5,6 +5,7 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 
 [dependencies]
+bytes = { version = "1", features = ["serde"] }
 fp-bindgen-support = { path = "../../../../fp-bindgen-support", version = "2.0.1", features = ["async", "guest", "http"] }
 http = { version = "0.2" }
 once_cell = { version = "1.4" }

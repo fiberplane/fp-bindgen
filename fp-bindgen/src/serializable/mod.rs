@@ -7,6 +7,8 @@ use std::{
     rc::Rc,
 };
 
+#[cfg(feature = "bytes-compat")]
+mod bytes;
 #[cfg(feature = "http-compat")]
 mod http;
 #[cfg(feature = "rmpv-compat")]
