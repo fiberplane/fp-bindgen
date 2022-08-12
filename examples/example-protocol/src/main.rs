@@ -250,6 +250,7 @@ fn main() {
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         BindingsType::RustWasmerRuntime,
+        BindingsType::RustWasmerWasiRuntime,
         BindingsType::TsRuntimeWithExtendedConfig(
             TsExtendedRuntimeConfig::new()
                 .with_msgpack_module("https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts")
@@ -321,6 +322,27 @@ fn test_generate_rust_wasmer_runtime() {
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::RustWasmerRuntime,
         path: "bindings/rust-wasmer-runtime",
+    });
+    for (path, expected) in FILES {
+        tests::assert_file_eq(path, expected)
+    }
+}
+
+#[test]
+fn test_generate_rust_wasmer_wasi_runtime() {
+    static FILES: &[(&str, &[u8])] = &[
+        (
+            "bindings/rust-wasmer-wasi-runtime/bindings.rs",
+            include_bytes!("assets/rust_wasmer_wasi_runtime_test/expected_bindings.rs"),
+        ),
+        (
+            "bindings/rust-wasmer-wasi-runtime/types.rs",
+            include_bytes!("assets/rust_wasmer_wasi_runtime_test/expected_types.rs"),
+        ),
+    ];
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustWasmerWasiRuntime,
+        path: "bindings/rust-wasmer-wasi-runtime",
     });
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
