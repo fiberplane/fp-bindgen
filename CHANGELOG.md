@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## main
+## 2.1.0
 
 - Add support for arrays of primitives (#94).
 - Added the `bytes-compat` feature for compatibility with the `bytes` crate.
