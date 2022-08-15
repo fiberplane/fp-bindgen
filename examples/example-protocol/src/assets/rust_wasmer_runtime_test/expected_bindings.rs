@@ -442,9 +442,7 @@ impl Runtime {
         Ok(result)
     }
 
-    pub fn export_get_bytes(
-        &self,
-    ) -> Result<Result<serde_bytes::ByteBuf, String>, InvocationError> {
+    pub fn export_get_bytes(&self) -> Result<Result<bytes::Bytes, String>, InvocationError> {
         let result = self.export_get_bytes_raw();
         let result = result.map(|ref data| deserialize_from_slice(data));
         result
@@ -459,6 +457,29 @@ impl Runtime {
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_bytes")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_get_bytes".to_owned())
+            })?;
+        let result = function.call()?;
+        let result = import_from_guest_raw(&env, result);
+        Ok(result)
+    }
+
+    pub fn export_get_serde_bytes(
+        &self,
+    ) -> Result<Result<serde_bytes::ByteBuf, String>, InvocationError> {
+        let result = self.export_get_serde_bytes_raw();
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub fn export_get_serde_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(self.module.store(), &env);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(), FatPtr>("__fp_gen_export_get_serde_bytes")
+            .map_err(|_| {
+                InvocationError::FunctionNotExported("__fp_gen_export_get_serde_bytes".to_owned())
             })?;
         let result = function.call()?;
         let result = import_from_guest_raw(&env, result);
@@ -1061,6 +1082,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
             "__fp_gen_import_fp_untagged" => Function::new_native_with_env(store, env.clone(), _import_fp_untagged),
             "__fp_gen_import_generics" => Function::new_native_with_env(store, env.clone(), _import_generics),
             "__fp_gen_import_get_bytes" => Function::new_native_with_env(store, env.clone(), _import_get_bytes),
+            "__fp_gen_import_get_serde_bytes" => Function::new_native_with_env(store, env.clone(), _import_get_serde_bytes),
             "__fp_gen_import_multiple_primitives" => Function::new_native_with_env(store, env.clone(), _import_multiple_primitives),
             "__fp_gen_import_primitive_bool" => Function::new_native_with_env(store, env.clone(), _import_primitive_bool),
             "__fp_gen_import_primitive_f32" => Function::new_native_with_env(store, env.clone(), _import_primitive_f32),
@@ -1187,6 +1209,11 @@ pub fn _import_generics(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
 
 pub fn _import_get_bytes(env: &RuntimeInstanceData) -> FatPtr {
     let result = super::import_get_bytes();
+    export_to_guest(env, &result)
+}
+
+pub fn _import_get_serde_bytes(env: &RuntimeInstanceData) -> FatPtr {
+    let result = super::import_get_serde_bytes();
     export_to_guest(env, &result)
 }
 

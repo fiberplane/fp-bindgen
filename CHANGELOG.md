@@ -3,6 +3,10 @@
 ## main
 
 - Add support for arrays of primitives (#94).
+- Added the `bytes-compat` feature for compatibility with the `bytes` crate.
+- Fixed an issue where embedded `Uint8Array`s that were returned to the
+  TypeScript runtime from `Bytes` or `ByteBuf` types in the Rust plugin could
+  end up being corrupted.
 
 ## 2.0.1
 

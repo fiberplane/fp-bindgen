@@ -1,10 +1,8 @@
 pub mod bindings;
 pub mod types;
 
-use std::collections::HashMap;
-
+use bytes::Bytes;
 use serde_bytes::ByteBuf;
-use time::OffsetDateTime;
 use types::*;
 
 fn import_void_function() {}
@@ -98,8 +96,11 @@ fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
     todo!()
 }
 
-fn import_get_bytes() -> Result<serde_bytes::ByteBuf, String> {
-    todo!()
+fn import_get_bytes() -> Result<Bytes, String> {
+    Ok(Bytes::from("hello"))
+}
+fn import_get_serde_bytes() -> Result<ByteBuf, String> {
+    Ok(ByteBuf::from("hello"))
 }
 
 fn import_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming {

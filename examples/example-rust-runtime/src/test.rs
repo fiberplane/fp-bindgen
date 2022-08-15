@@ -1,9 +1,9 @@
-use std::collections::BTreeMap;
-
-use anyhow::Result;
-use time::{macros::datetime, OffsetDateTime};
-
 use crate::spec::types::*;
+use anyhow::Result;
+use bytes::Bytes;
+use serde_bytes::ByteBuf;
+use std::collections::BTreeMap;
+use time::{macros::datetime, OffsetDateTime};
 
 const WASM_BYTES: &'static [u8] =
     include_bytes!("../../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm");
@@ -250,9 +250,16 @@ async fn fetch_async_data() -> Result<()> {
 
     let response = rt.fetch_data("sign-up".to_string()).await?;
 
-    assert_eq!(
-        response,
-        Ok(r#"status: "confirmed"#.to_string())
-    );
+    assert_eq!(response, Ok(r#"status: "confirmed"#.to_string()));
+    Ok(())
+}
+
+#[test]
+fn bytes() -> Result<()> {
+    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+
+    assert_eq!(rt.export_get_bytes()?, Ok(Bytes::from("hello, world")));
+    assert_eq!(rt.export_get_serde_bytes()?, Ok(ByteBuf::from("hello, world")));
+
     Ok(())
 }
