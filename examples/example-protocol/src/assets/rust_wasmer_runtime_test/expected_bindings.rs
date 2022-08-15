@@ -478,7 +478,9 @@ impl Runtime {
         let function = instance
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_serde_bytes")
-            .map_err(|_| InvocationError::FunctionNotExported)?;
+            .map_err(|_| {
+                InvocationError::FunctionNotExported("__fp_gen_export_get_serde_bytes".to_owned())
+            })?;
         let result = function.call()?;
         let result = import_from_guest_raw(&env, result);
         Ok(result)
