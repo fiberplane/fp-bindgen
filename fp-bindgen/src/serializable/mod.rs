@@ -47,6 +47,7 @@ where
         TypeIdent {
             name: "Box".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 
@@ -72,6 +73,7 @@ where
                 (TypeIdent::from("K"), vec![]),
                 (TypeIdent::from("V"), vec![]),
             ],
+            ..Default::default()
         }
     }
 
@@ -98,6 +100,7 @@ where
         TypeIdent {
             name: "BTreeSet".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 
@@ -123,6 +126,7 @@ where
                 (TypeIdent::from("K"), vec![]),
                 (TypeIdent::from("V"), vec![]),
             ],
+            ..Default::default()
         }
     }
 
@@ -149,6 +153,7 @@ where
         TypeIdent {
             name: "HashSet".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 
@@ -170,6 +175,7 @@ where
         TypeIdent {
             name: "Option".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 
@@ -191,6 +197,7 @@ where
         TypeIdent {
             name: "Rc".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 
@@ -216,6 +223,7 @@ where
                 (TypeIdent::from("T"), vec![]),
                 (TypeIdent::from("E"), vec![]),
             ],
+            ..Default::default()
         }
     }
 
@@ -279,6 +287,7 @@ where
         TypeIdent {
             name: "Vec".to_owned(),
             generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
         }
     }
 

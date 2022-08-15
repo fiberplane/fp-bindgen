@@ -67,8 +67,9 @@ impl Function {
                 ),
                 FnArg::Typed(arg) => FunctionArg {
                     name: arg.pat.to_token_stream().to_string(),
-                    ty: TypeIdent::try_from(arg.ty.as_ref())
-                        .unwrap_or_else(|_| panic!("Invalid argument type for function {}", name)),
+                    ty: TypeIdent::try_from(arg.ty.as_ref()).unwrap_or_else(|e| {
+                        panic!("Invalid argument type for function {}: {}", name, e)
+                    }),
                 },
             })
             .collect();

@@ -2,6 +2,7 @@
 
 ## main
 
+- Add support for arrays of primitives (#94).
 - Added the `bytes-compat` feature for compatibility with the `bytes` crate.
 
 ## 2.0.1

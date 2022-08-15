@@ -38,6 +38,16 @@ impl Primitive {
                     Type::Primitive(Primitive::#self)
                 }
             }
+
+            impl<const N: usize> Serializable for [#ty; N] {
+                fn ident() -> TypeIdent {
+                    TypeIdent::from(format!("[{}; {}]", #ty_str, N).as_str())
+                }
+
+                fn ty() -> Type {
+                    Type::Array(Primitive::#self, N)
+                }
+            }
         };
         implementation.into()
     }

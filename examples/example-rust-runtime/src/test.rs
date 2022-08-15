@@ -38,6 +38,21 @@ fn primitives() -> Result<()> {
 }
 
 #[test]
+fn arrays() -> Result<()> {
+    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+
+    assert_eq!(rt.export_array_u8([1u8, 2u8, 3u8])?, [1u8, 2u8, 3u8]);
+    assert_eq!(rt.export_array_u16([1u16, 2u16, 3u16])?, [1u16, 2u16, 3u16]);
+    assert_eq!(rt.export_array_u32([1u32, 2u32, 3u32])?, [1u32, 2u32, 3u32]);
+    assert_eq!(rt.export_array_i8([1i8, 2i8, 3i8])?, [1i8, 2i8, 3i8]);
+    assert_eq!(rt.export_array_i16([1i16, 2i16, 3i16])?, [1i16, 2i16, 3i16]);
+    assert_eq!(rt.export_array_i32([1i32, 2i32, 3i32])?, [1i32, 2i32, 3i32]);
+    assert_eq!(rt.export_array_f32([1f32, 2f32, 3f32])?, [1f32, 2f32, 3f32]);
+    assert_eq!(rt.export_array_f64([1f64, 2f64, 3f64])?, [1f64, 2f64, 3f64]);
+    Ok(())
+}
+
+#[test]
 fn string() -> Result<()> {
     let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
 

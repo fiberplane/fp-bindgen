@@ -166,7 +166,7 @@ pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, Invoc
     {serialize_raw_args}let function = instance
         .exports
         .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
-        .map_err(|_| InvocationError::FunctionNotExported)?;
+        .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
     let result = function.call({wasm_arg_names})?;
     {raw_return_wrapper}Ok(result)
 }}"#

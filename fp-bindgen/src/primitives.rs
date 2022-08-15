@@ -35,6 +35,22 @@ impl Primitive {
         };
         string.to_owned()
     }
+
+    pub fn js_array_name(&self) -> Option<String> {
+        use Primitive::*;
+        match self {
+            U8 => Some("Uint8Array"),
+            U16 => Some("Uint16Array"),
+            U32 => Some("Uint32Array"),
+            I8 => Some("Int8Array"),
+            I16 => Some("Int16Array"),
+            I32 => Some("Int32Array"),
+            F32 => Some("Float32Array"),
+            F64 => Some("Float64Array"),
+            _ => None,
+        }
+        .map(|s| s.to_owned())
+    }
 }
 
 impl FromStr for Primitive {

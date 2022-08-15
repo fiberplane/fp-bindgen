@@ -164,6 +164,46 @@ const imports: Imports = {
     return 8;
   },
 
+  importArrayU8: (arg: Uint8Array): Uint8Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Uint8Array([1, 2, 3]);
+  },
+
+  importArrayU16: (arg: Uint16Array): Uint16Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Uint16Array([1, 2, 3]);
+  },
+
+  importArrayU32: (arg: Uint32Array): Uint32Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Uint32Array([1, 2, 3]);
+  },
+
+  importArrayI8: (arg: Int8Array): Int8Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Int8Array([1, 2, 3]);
+  },
+
+  importArrayI16: (arg: Int16Array): Int16Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Int16Array([1, 2, 3]);
+  },
+
+  importArrayI32: (arg: Int32Array): Int32Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Int32Array([1, 2, 3]);
+  },
+
+  importArrayF32: (arg: Float32Array): Float32Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Float32Array([1, 2, 3]);
+  },
+
+  importArrayF64: (arg: Float64Array): Float64Array => {
+    assertEquals(arg, [1, 2, 3]);
+    return new Float64Array([1, 2, 3]);
+  },
+
   importSerdeAdjacentlyTagged: (
     arg: SerdeAdjacentlyTagged,
   ): SerdeAdjacentlyTagged => {
@@ -293,6 +333,19 @@ Deno.test("primitives", async () => {
 
   assertAlmostEquals(plugin.exportPrimitiveF32?.(3.1415926535) ?? 0, 3.1415926535);
   assertAlmostEquals(plugin.exportPrimitiveF64?.(2.718281828459) ?? 0, 2.718281828459);
+});
+
+Deno.test("arrays", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportArrayU8?.(new Uint8Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayU16?.(new Uint16Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayU32?.(new Uint32Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayI8?.(new Int8Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayI16?.(new Int16Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayI32?.(new Int32Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayF32?.(new Float32Array([1, 2, 3])), [1, 2, 3]);
+  assertEquals(plugin.exportArrayF64?.(new Float64Array([1, 2, 3])), [1, 2, 3]);
 });
 
 Deno.test("string", async () => {
