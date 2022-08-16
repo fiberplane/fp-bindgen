@@ -1,0 +1,1 @@
+../../../example-protocol/bindings/rust-wasmer-wasi-runtime/types.rs

@@ -1,0 +1,7 @@
+# This file changes the channel of the toolchain used for compiling this crate.
+# Currently, we need the nightly channel in order to specify multiple targets in
+# [build].target in .cargo/config. This feature will be available in stable soon
+# though. As soon as it is available this file can be deleted.
+# The issue is tracked here: https://github.com/rust-lang/cargo/issues/8176
+[toolchain]
+channel = "nightly"
