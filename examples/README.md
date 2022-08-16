@@ -40,7 +40,7 @@ Note that in order to run this runtime, you first need to generate the bindings 
 After that you can run the runtime using `deno main.ts`. It will load the plugin and verify all its
 functions can be called correctly.
 
-## `example-rust-runtime/`
+## `example-rust-wasmer-runtime/`
 
 This is an example of a Rust runtime that can load the example plugin.
 
@@ -49,6 +49,8 @@ Note that in order to run this runtime, you first need to generate the bindings 
 **and then you need to build the plugin using `cargo build` inside the `example-plugin/` folder**.
 After that you can run the runtime using `cargo run`. It will load the plugin and verify all its
 functions can be called correctly.
+If you want to run the tests you can run `cargo test` for the wasm32-unknown-unknown architecture.
+If you want to run the tests for wasm32-wasi you can run `cargo test -F wasi`.
 
 ## `redux-example/`
 
