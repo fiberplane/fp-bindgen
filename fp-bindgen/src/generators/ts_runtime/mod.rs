@@ -114,8 +114,13 @@ export async function createRuntime(
     function parseObject<T>(fatPtr: FatPtr): T {{
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
-        const object = decode(buffer) as unknown as T;
+        // Without creating a copy of the memory, we risk corruption of any
+        // embedded `Uint8Array` objects returned from `decode()` after `free()`
+        // has been called :(
+        const copy = new Uint8Array(len);
+        copy.set(buffer);
         free(fatPtr);
+        const object = decode(copy) as unknown as T;
         return object;
     }}
 

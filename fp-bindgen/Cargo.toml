@@ -6,7 +6,7 @@ repository = "https://github.com/fiberplane/fp-bindgen/"
 readme = "../README.md"
 keywords = ["WebAssembly", "WASM", "bindgen"]
 categories = ["development-tools::ffi", "wasm"]
-version = "2.0.1"
+version = "2.1.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -15,7 +15,8 @@ license = "Apache-2.0"
 all-features = true
 
 [features]
-default = ["http-compat", "rmpv-compat", "time-compat", "serde-bytes-compat"]
+bytes-compat = ["bytes"]
+default = ["bytes-compat", "http-compat", "rmpv-compat", "time-compat", "serde-bytes-compat"]
 http-compat = ["http"]
 rmpv-compat = ["rmpv"]
 serde-bytes-compat = ["serde_bytes"]
@@ -23,7 +24,8 @@ time-compat = ["time"]
 generators = ["rustfmt-wrapper"]
 
 [dependencies]
-fp-bindgen-macros = { version = "2.0.1", path = "../macros" }
+bytes = { version = "1", features = ["serde"], optional = true }
+fp-bindgen-macros = { version = "2.1.0", path = "../macros" }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
 pretty_assertions = "1"

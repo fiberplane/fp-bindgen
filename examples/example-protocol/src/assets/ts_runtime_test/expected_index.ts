@@ -28,7 +28,8 @@ export type Imports = {
     importFpStruct: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
     importFpUntagged: (arg: types.FpUntagged) => types.FpUntagged;
     importGenerics: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
-    importGetBytes: () => types.Result<ArrayBuffer, string>;
+    importGetBytes: () => types.Result<Uint8Array, string>;
+    importGetSerdeBytes: () => types.Result<ArrayBuffer, string>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
     importPrimitiveBool: (arg: boolean) => boolean;
     importPrimitiveF32: (arg: number) => number;
@@ -73,7 +74,8 @@ export type Exports = {
     exportFpStruct?: (arg: types.FpPropertyRenaming) => types.FpPropertyRenaming;
     exportFpUntagged?: (arg: types.FpUntagged) => types.FpUntagged;
     exportGenerics?: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
-    exportGetBytes?: () => types.Result<ArrayBuffer, string>;
+    exportGetBytes?: () => types.Result<Uint8Array, string>;
+    exportGetSerdeBytes?: () => types.Result<ArrayBuffer, string>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
     exportPrimitiveBool?: (arg: boolean) => boolean;
     exportPrimitiveF32?: (arg: number) => number;
@@ -115,6 +117,7 @@ export type Exports = {
     exportFpUntaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
     exportGetBytesRaw?: () => Uint8Array;
+    exportGetSerdeBytesRaw?: () => Uint8Array;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
     exportPrimitiveBoolRaw?: (arg: boolean) => boolean;
     exportPrimitiveI16Raw?: (arg: number) => number;
@@ -185,8 +188,13 @@ export async function createRuntime(
     function parseObject<T>(fatPtr: FatPtr): T {
         const [ptr, len] = fromFatPtr(fatPtr);
         const buffer = new Uint8Array(memory.buffer, ptr, len);
-        const object = decode(buffer) as unknown as T;
+        // Without creating a copy of the memory, we risk corruption of any
+        // embedded `Uint8Array` objects returned from `decode()` after `free()`
+        // has been called :(
+        const copy = new Uint8Array(len);
+        copy.set(buffer);
         free(fatPtr);
+        const object = decode(copy) as unknown as T;
         return object;
     }
 
@@ -309,6 +317,9 @@ export async function createRuntime(
             },
             __fp_gen_import_get_bytes: (): FatPtr => {
                 return serializeObject(importFunctions.importGetBytes());
+            },
+            __fp_gen_import_get_serde_bytes: (): FatPtr => {
+                return serializeObject(importFunctions.importGetSerdeBytes());
             },
             __fp_gen_import_multiple_primitives: (arg1: number, arg2_ptr: FatPtr): bigint => {
                 const arg2 = parseObject<string>(arg2_ptr);
@@ -571,6 +582,12 @@ export async function createRuntime(
         })(),
         exportGetBytes: (() => {
             const export_fn = instance.exports.__fp_gen_export_get_bytes as any;
+            if (!export_fn) return;
+
+            return () => parseObject<types.Result<Uint8Array, string>>(export_fn());
+        })(),
+        exportGetSerdeBytes: (() => {
+            const export_fn = instance.exports.__fp_gen_export_get_serde_bytes as any;
             if (!export_fn) return;
 
             return () => parseObject<types.Result<ArrayBuffer, string>>(export_fn());
@@ -858,6 +875,12 @@ export async function createRuntime(
         })(),
         exportGetBytesRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_get_bytes as any;
+            if (!export_fn) return;
+
+            return () => importFromMemory(export_fn());
+        })(),
+        exportGetSerdeBytesRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_get_serde_bytes as any;
             if (!export_fn) return;
 
             return () => importFromMemory(export_fn());

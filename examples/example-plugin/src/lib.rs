@@ -1,3 +1,4 @@
+use bytes::{Bytes, BytesMut};
 use ::http::{Method, Uri};
 use example_bindings::*;
 use serde_bytes::ByteBuf;
@@ -358,6 +359,26 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
         }
         Err(err) => Err(format!("Error: {:?}", err)),
     }
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_get_bytes() -> Result<Bytes, String> {
+    import_get_bytes().map(|bytes| {
+        let mut new_bytes = BytesMut::with_capacity(bytes.len() + 7);
+        new_bytes.extend_from_slice(&bytes);
+        new_bytes.extend_from_slice(b", world");
+        new_bytes.freeze()
+    })
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_get_serde_bytes() -> Result<ByteBuf, String> {
+    import_get_serde_bytes().map(|bytes| {
+        let mut new_bytes = ByteBuf::with_capacity(bytes.len() + 7);
+        new_bytes.extend_from_slice(&bytes);
+        new_bytes.extend_from_slice(b", world");
+        new_bytes
+    })
 }
 
 #[fp_export_impl(example_bindings)]

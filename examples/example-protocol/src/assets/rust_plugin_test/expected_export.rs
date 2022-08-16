@@ -49,7 +49,10 @@ pub fn export_fp_untagged(arg: FpUntagged) -> FpUntagged;
 pub fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_get_bytes() -> Result<serde_bytes::ByteBuf, String>;
+pub fn export_get_bytes() -> Result<bytes::Bytes, String>;
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_get_serde_bytes() -> Result<serde_bytes::ByteBuf, String>;
 
 #[fp_bindgen_support::fp_export_signature]
 pub fn export_multiple_primitives(arg1: i8, arg2: String) -> i64;

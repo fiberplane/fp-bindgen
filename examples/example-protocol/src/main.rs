@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use bytes::Bytes;
 use fp_bindgen::{prelude::*, types::CargoDependency};
 use once_cell::sync::Lazy;
 use redux_example::{ReduxAction, StateUpdate};
@@ -91,7 +92,8 @@ fp_import! {
     fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
 
     // Custom type in a generic position.
-    fn import_get_bytes() -> Result<ByteBuf, String>;
+    fn import_get_bytes() -> Result<Bytes, String>;
+    fn import_get_serde_bytes() -> Result<ByteBuf, String>;
 
     // Passing custom types with property/variant renaming.
     //
@@ -175,7 +177,8 @@ fp_export! {
     fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
 
     // Custom type in a generic position.
-    fn export_get_bytes() -> Result<ByteBuf, String>;
+    fn export_get_bytes() -> Result<Bytes, String>;
+    fn export_get_serde_bytes() -> Result<ByteBuf, String>;
 
     // Passing custom types with property/variant renaming.
     //
