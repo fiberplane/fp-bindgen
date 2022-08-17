@@ -55,8 +55,17 @@ jobs:
           cargo run
           popd
 
+#     TODO: remove the following step as soon as the file
+#      examples/example-plugin/rust-toolchain.toml will have been removed
+      - name: Install nightly toolchain
+        run: rustup toolchain install nightly
+
       - name: Install Wasm target
-        run: rustup target add wasm32-unknown-unknown wasm32-wasi
+        run: |
+          rustup target add wasm32-unknown-unknown wasm32-wasi
+#         TODO: remove the following line as soon as the file
+#          examples/example-plugin/rust-toolchain.toml will have been removed
+          rustup target add wasm32-unknown-unknown wasm32-wasi --toolchain nightly
 
       - name: Verify example-plugin builds
         run: |
