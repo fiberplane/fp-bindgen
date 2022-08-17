@@ -46,7 +46,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
     )
 }
 
-fn format_raw_ident(ty: &TypeIdent, types: &TypeMap) -> String {
+pub(crate) fn format_raw_ident(ty: &TypeIdent, types: &TypeMap) -> String {
     if ty.is_primitive() {
         format_ident(ty, types)
     } else {
@@ -54,7 +54,7 @@ fn format_raw_ident(ty: &TypeIdent, types: &TypeMap) -> String {
     }
 }
 
-fn format_wasm_ident(ty: &TypeIdent) -> String {
+pub(crate) fn format_wasm_ident(ty: &TypeIdent) -> String {
     if ty.is_primitive() {
         format!("<{} as WasmAbi>::AbiType", ty.name)
     } else {
@@ -62,7 +62,26 @@ fn format_wasm_ident(ty: &TypeIdent) -> String {
     }
 }
 
-fn format_import_function(function: &Function, types: &TypeMap) -> String {
+pub(crate) fn generate_import_function_variables<'a>(
+    function: &'a Function,
+    types: &TypeMap,
+) -> (
+    String,
+    String,
+    &'a String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+) {
     let doc = format_doc_lines(&function.doc_lines);
     let modifiers = format_modifiers(function);
 
@@ -135,8 +154,8 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
 
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
-            "let result = ModuleRawFuture::new(env.clone(), result).await;",
-            "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));",
+            "let result = ModuleRawFuture::new(env.clone(), result).await;".to_string(),
+            "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else if !function
         .return_type
@@ -145,12 +164,53 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
         .unwrap_or(true)
     {
         (
-            "let result = import_from_guest_raw(&env, result);",
-            "let result = result.map(|ref data| deserialize_from_slice(data));",
+            "let result = import_from_guest_raw(&env, result);".to_string(),
+            "let result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else {
-        ("let result = WasmAbi::from_abi(result);", "")
+        (
+            "let result = WasmAbi::from_abi(result);".to_string(),
+            "".to_string(),
+        )
     };
+
+    (
+        doc,
+        modifiers,
+        name,
+        args,
+        raw_args,
+        wasm_args,
+        return_type,
+        raw_return_type,
+        wasm_return_type,
+        serialize_args,
+        serialize_raw_args,
+        arg_names,
+        wasm_arg_names,
+        raw_return_wrapper,
+        return_wrapper,
+    )
+}
+
+fn format_import_function(function: &Function, types: &TypeMap) -> String {
+    let (
+        doc,
+        modifiers,
+        name,
+        args,
+        raw_args,
+        wasm_args,
+        return_type,
+        raw_return_type,
+        wasm_return_type,
+        serialize_args,
+        serialize_raw_args,
+        arg_names,
+        wasm_arg_names,
+        raw_return_wrapper,
+        return_wrapper,
+    ) = generate_import_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -173,7 +233,7 @@ pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, Invoc
     )
 }
 
-fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> String {
+pub(crate) fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> String {
     if ty.is_primitive() {
         format!("let {name} = WasmAbi::from_abi({name});")
     } else {
@@ -182,7 +242,7 @@ fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> String {
     }
 }
 
-fn format_export_function(function: &Function, types: &TypeMap) -> String {
+pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> String {
     let name = &function.name;
     let wasm_args = function
         .args
@@ -247,8 +307,6 @@ fn generate_function_bindings(
     types: &TypeMap,
     path: &str,
 ) {
-    let create_import_object_func = generate_create_import_object_func(&import_functions);
-
     let imports = import_functions
         .iter()
         .map(|function| format_export_function(function, types))
@@ -259,7 +317,16 @@ fn generate_function_bindings(
         .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
+    let create_import_object_func = generate_create_import_object_func(&import_functions);
+    format_function_bindings(imports, exports, create_import_object_func, path);
+}
 
+pub(crate) fn format_function_bindings(
+    imports: String,
+    exports: String,
+    create_import_object_func: String,
+    path: &str,
+) {
     let full = rustfmt_wrapper::rustfmt(format!(r#"use super::types::*;
 use fp_bindgen_support::{{
     common::{{mem::FatPtr, abi::WasmAbi}},
@@ -305,11 +372,10 @@ impl Runtime {{
 {imports}
 "#))
     .unwrap();
-
     write_bindings_file(format!("{}/bindings.rs", path), full);
 }
 
-fn write_bindings_file<C>(file_path: String, contents: C)
+pub(crate) fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {

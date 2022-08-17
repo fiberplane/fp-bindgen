@@ -10,6 +10,7 @@ use std::{
 
 pub mod rust_plugin;
 pub mod rust_wasmer_runtime;
+pub mod rust_wasmer_wasi_runtime;
 pub mod ts_runtime;
 
 #[non_exhaustive]
@@ -17,6 +18,7 @@ pub mod ts_runtime;
 pub enum BindingsType<'a> {
     RustPlugin(RustPluginConfig<'a>),
     RustWasmerRuntime,
+    RustWasmerWasiRuntime,
     #[deprecated(note = "Please use `BindingsType::TsRuntimeWithExtendedConfig` instead.")]
     TsRuntime(TsRuntimeConfig),
     TsRuntimeWithExtendedConfig(TsExtendedRuntimeConfig),
@@ -27,6 +29,7 @@ impl<'a> Display for BindingsType<'a> {
         f.write_str(match self {
             BindingsType::RustPlugin { .. } => "rust-plugin",
             BindingsType::RustWasmerRuntime { .. } => "rust-wasmer-runtime",
+            BindingsType::RustWasmerWasiRuntime { .. } => "rust-wasmer-wasi-runtime",
             #[allow(deprecated)]
             BindingsType::TsRuntime { .. } => "ts-runtime",
             BindingsType::TsRuntimeWithExtendedConfig { .. } => "ts-runtime",
@@ -137,6 +140,12 @@ pub fn generate_bindings(
             config.path,
         ),
         BindingsType::RustWasmerRuntime => rust_wasmer_runtime::generate_bindings(
+            import_functions,
+            export_functions,
+            types,
+            config.path,
+        ),
+        BindingsType::RustWasmerWasiRuntime => rust_wasmer_wasi_runtime::generate_bindings(
             import_functions,
             export_functions,
             types,

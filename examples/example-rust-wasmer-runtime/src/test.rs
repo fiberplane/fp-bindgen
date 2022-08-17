@@ -1,16 +1,27 @@
+#[cfg(not(feature="wasi"))]
 use crate::spec::types::*;
+#[cfg(feature="wasi")]
+use crate::wasi_spec::types::*;
+#[cfg(not(feature="wasi"))]
+use crate::spec::bindings::Runtime;
+#[cfg(feature="wasi")]
+use crate::wasi_spec::bindings::Runtime;
 use anyhow::Result;
 use bytes::Bytes;
 use serde_bytes::ByteBuf;
 use std::collections::BTreeMap;
 use time::{macros::datetime, OffsetDateTime};
 
+#[cfg(not(feature="wasi"))]
 const WASM_BYTES: &'static [u8] =
     include_bytes!("../../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm");
+#[cfg(feature="wasi")]
+const WASM_BYTES: &'static [u8] =
+    include_bytes!("../../example-plugin/target/wasm32-wasi/debug/example_plugin.wasm");
 
 #[test]
 fn primitives() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(rt.export_primitive_bool(true)?, true);
     assert_eq!(rt.export_primitive_bool(false)?, false);
@@ -39,7 +50,7 @@ fn primitives() -> Result<()> {
 
 #[test]
 fn arrays() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(rt.export_array_u8([1u8, 2u8, 3u8])?, [1u8, 2u8, 3u8]);
     assert_eq!(rt.export_array_u16([1u16, 2u16, 3u16])?, [1u16, 2u16, 3u16]);
@@ -54,18 +65,18 @@ fn arrays() -> Result<()> {
 
 #[test]
 fn string() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
-
+    let rt = Runtime::new(WASM_BYTES)?;
     assert_eq!(
         rt.export_string("Hello, plugin!".to_string())?,
         "Hello, world!"
     );
+
     Ok(())
 }
 
 #[test]
 fn timestamp() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
     assert_eq!(
         rt.export_timestamp(MyDateTime(datetime!(2022-04-12 19:10 UTC)))?,
         MyDateTime(datetime!(2022-04-13 12:37 UTC))
@@ -75,7 +86,7 @@ fn timestamp() -> Result<()> {
 
 #[test]
 fn flattened_structs() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
     assert_eq!(
         rt.export_fp_struct(FpPropertyRenaming {
             foo_bar: "foo_bar".to_string(),
@@ -123,7 +134,7 @@ fn flattened_structs() -> Result<()> {
 
 #[test]
 fn generics() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(
         rt.export_generics(StructWithGenerics {
@@ -156,7 +167,7 @@ fn generics() -> Result<()> {
 
 #[test]
 fn property_renaming() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(
         rt.export_fp_flatten(FpFlatten {
@@ -193,7 +204,7 @@ fn property_renaming() -> Result<()> {
 
 #[test]
 fn tagged_enums() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
     assert_eq!(
         rt.export_fp_adjacently_tagged(FpAdjacentlyTagged::Bar("Hello, plugin!".to_owned()))?,
         FpAdjacentlyTagged::Baz { a: -8, b: 64 }
@@ -223,7 +234,7 @@ fn tagged_enums() -> Result<()> {
 
 #[tokio::test]
 async fn async_struct() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(
         rt.export_async_struct(
@@ -246,7 +257,7 @@ async fn async_struct() -> Result<()> {
 
 #[tokio::test]
 async fn fetch_async_data() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     let response = rt.fetch_data("sign-up".to_string()).await?;
 
@@ -256,7 +267,7 @@ async fn fetch_async_data() -> Result<()> {
 
 #[test]
 fn bytes() -> Result<()> {
-    let rt = crate::spec::bindings::Runtime::new(WASM_BYTES)?;
+    let rt = Runtime::new(WASM_BYTES)?;
 
     assert_eq!(rt.export_get_bytes()?, Ok(Bytes::from("hello, world")));
     assert_eq!(rt.export_get_serde_bytes()?, Ok(ByteBuf::from("hello, world")));
