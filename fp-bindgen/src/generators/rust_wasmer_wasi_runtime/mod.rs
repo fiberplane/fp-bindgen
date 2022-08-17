@@ -3,8 +3,8 @@ use crate::{
     generators::{
         rust_plugin::generate_type_bindings,
         rust_wasmer_runtime::{
-            generate_import_function_variables, format_export_function, format_function_bindings
-        }
+            format_export_function, format_function_bindings, generate_import_function_variables,
+        },
     },
     types::TypeMap,
 };
@@ -34,7 +34,8 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
                 r#"namespace.insert(
             "__fp_gen_{name}",
             Function::new_native_with_env(store, env.clone(), _{name})
-    );"#)
+    );"#
+            )
         })
         .collect::<Vec<_>>()
         .join("\n    ");
@@ -53,8 +54,23 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
 }
 
 fn format_import_function(function: &Function, types: &TypeMap) -> String {
-    let (doc, modifiers, name, args, raw_args, wasm_args, return_type, raw_return_type, wasm_return_type,
-        serialize_args, serialize_raw_args, arg_names, wasm_arg_names, raw_return_wrapper, return_wrapper) = generate_import_function_variables(function, types);
+    let (
+        doc,
+        modifiers,
+        name,
+        args,
+        raw_args,
+        wasm_args,
+        return_type,
+        raw_return_type,
+        wasm_return_type,
+        serialize_args,
+        serialize_raw_args,
+        arg_names,
+        wasm_arg_names,
+        raw_return_wrapper,
+        return_wrapper,
+    ) = generate_import_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -97,10 +113,5 @@ fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(
-        imports,
-        exports,
-        create_import_object_func,
-        path
-    );
+    format_function_bindings(imports, exports, create_import_object_func, path);
 }

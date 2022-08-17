@@ -62,7 +62,26 @@ pub(crate) fn format_wasm_ident(ty: &TypeIdent) -> String {
     }
 }
 
-pub(crate) fn generate_import_function_variables<'a>(function: &'a Function, types: &TypeMap) -> (String, String, &'a String, String, String, String, String, String, String, String, String, String, String, String, String) {
+pub(crate) fn generate_import_function_variables<'a>(
+    function: &'a Function,
+    types: &TypeMap,
+) -> (
+    String,
+    String,
+    &'a String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+    String,
+) {
     let doc = format_doc_lines(&function.doc_lines);
     let modifiers = format_modifiers(function);
 
@@ -149,16 +168,49 @@ pub(crate) fn generate_import_function_variables<'a>(function: &'a Function, typ
             "let result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else {
-        ("let result = WasmAbi::from_abi(result);".to_string(), "".to_string())
+        (
+            "let result = WasmAbi::from_abi(result);".to_string(),
+            "".to_string(),
+        )
     };
 
-    (doc, modifiers, name, args, raw_args, wasm_args, return_type, raw_return_type, wasm_return_type,
-     serialize_args, serialize_raw_args, arg_names, wasm_arg_names, raw_return_wrapper, return_wrapper)
+    (
+        doc,
+        modifiers,
+        name,
+        args,
+        raw_args,
+        wasm_args,
+        return_type,
+        raw_return_type,
+        wasm_return_type,
+        serialize_args,
+        serialize_raw_args,
+        arg_names,
+        wasm_arg_names,
+        raw_return_wrapper,
+        return_wrapper,
+    )
 }
 
 fn format_import_function(function: &Function, types: &TypeMap) -> String {
-    let (doc, modifiers, name, args, raw_args, wasm_args, return_type, raw_return_type, wasm_return_type,
-     serialize_args, serialize_raw_args, arg_names, wasm_arg_names, raw_return_wrapper, return_wrapper) = generate_import_function_variables(function, types);
+    let (
+        doc,
+        modifiers,
+        name,
+        args,
+        raw_args,
+        wasm_args,
+        return_type,
+        raw_return_type,
+        wasm_return_type,
+        serialize_args,
+        serialize_raw_args,
+        arg_names,
+        wasm_arg_names,
+        raw_return_wrapper,
+        return_wrapper,
+    ) = generate_import_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -266,12 +318,7 @@ fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(
-        imports,
-        exports,
-        create_import_object_func,
-        path
-    );
+    format_function_bindings(imports, exports, create_import_object_func, path);
 }
 
 pub(crate) fn format_function_bindings(
