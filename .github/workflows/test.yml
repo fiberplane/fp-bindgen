@@ -56,7 +56,7 @@ jobs:
           popd
 
       - name: Install Wasm target
-        run: rustup target add wasm32-unknown-unknown
+        run: rustup target add wasm32-unknown-unknown wasm32-wasi
 
       - name: Verify example-plugin builds
         run: |
