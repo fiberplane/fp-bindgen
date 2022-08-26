@@ -1,0 +1,11 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "3", features = ["derive", "env", "wrap_help"] }
+console = "0.15"
+duct = "0.13"
+which = "4"
