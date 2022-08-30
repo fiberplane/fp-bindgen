@@ -15,6 +15,8 @@ mod http;
 mod rmpv;
 #[cfg(feature = "serde-bytes-compat")]
 mod serde_bytes;
+#[cfg(feature = "serde-json-compat")]
+mod serde_json;
 #[cfg(feature = "time-compat")]
 mod time;
 
