@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## main
+
+- Added the `serde-json-compat` feature for compatibility with the
+  `serde_json::Value` type.
+
 ## 2.1.0
 
 - Add support for arrays of primitives (#94).

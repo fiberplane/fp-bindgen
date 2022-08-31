@@ -16,10 +16,18 @@ all-features = true
 
 [features]
 bytes-compat = ["bytes"]
-default = ["bytes-compat", "http-compat", "rmpv-compat", "time-compat", "serde-bytes-compat"]
+default = [
+    "bytes-compat",
+    "http-compat",
+    "rmpv-compat",
+    "serde-bytes-compat",
+    "serde-json-compat",
+    "time-compat"
+]
 http-compat = ["http"]
 rmpv-compat = ["rmpv"]
 serde-bytes-compat = ["serde_bytes"]
+serde-json-compat = ["serde_json"]
 time-compat = ["time"]
 generators = ["rustfmt-wrapper"]
 
@@ -33,6 +41,7 @@ proc-macro2 = "1"
 quote = "1"
 rmpv = { version = "1.0.0", features = ["with-serde"], optional = true }
 serde_bytes = { version = "0.11", optional = true }
+serde_json = { version = "1.0", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", features = ["serde-human-readable"], optional = true }
 rustfmt-wrapper = { version = "0.1.0", optional = true }
