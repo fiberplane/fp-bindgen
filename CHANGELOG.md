@@ -5,7 +5,7 @@
 - Added the `serde-json-compat` feature for compatibility with the
   `serde_json::Value` type.
 - Use the Wasmer Singlepass compiler on all architectures (Cranelift
-  was used previously because Singlepass did not yet support M1 chips)
+  was used previously because Singlepass did not yet support arm64 chips)
 
 ## 2.1.0
 
