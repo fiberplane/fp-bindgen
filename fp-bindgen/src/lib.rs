@@ -33,6 +33,10 @@ The following table is intended to highlight the major differences between the d
 
 \*) These are only the _currently supported_ options. More may be added in the future.
 
+## Quickstart
+
+To quickly build an example protocol and plugin and run all available tests use: `cargo xtask test`
+
 ## Usage
 
 Using `fp-bindgen` is a three-step process:
