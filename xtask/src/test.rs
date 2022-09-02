@@ -1,4 +1,4 @@
-use crate::utils::{cargo, deno, from_root, run};
+use crate::utils::{cargo, deno, from_root, run, ProgressReporter};
 use crate::TaskResult;
 use anyhow::{bail, Context};
 use console::{style, Emoji};
@@ -10,26 +10,17 @@ static CHECK: Emoji<'_, '_> = Emoji("✅️ ", "");
 static WARN: Emoji<'_, '_> = Emoji("⚠️ ", "");
 static TRUCK: Emoji<'_, '_> = Emoji("🚚 ", "");
 static TEST: Emoji<'_, '_> = Emoji("🧪 ", "");
-static NUM_STEPS: usize = 5;
 
 pub fn test() -> TaskResult<()> {
-    let mut cur_step = 0;
-
-    cur_step += 1;
-    println!(
-        "{} {}Checking prerequisites...",
-        style(format!("[{cur_step}/{NUM_STEPS}]")).bold().dim(),
-        LOOKING_GLASS
-    );
+    let mut progress = ProgressReporter::new(5);
+    progress.next_step(LOOKING_GLASS, "Checking prerequisites...");
 
     let deno_path = which("deno").with_context(|| {
         "Could not find the 'deno' executable. Make sure it is available in your PATH."
     })?;
-    println!(
-        "{} {}Deno found at: {}",
-        style("     ").bold().dim(),
+    progress.report(
         CHECK,
-        deno_path.to_string_lossy()
+        &format!("Deno found at: {}", deno_path.to_string_lossy()),
     );
 
     match which("rustup").ok() {
@@ -37,61 +28,35 @@ pub fn test() -> TaskResult<()> {
             let output =
                 run(cmd(rustup_path, &["target", "list", "--installed"]).stdout_capture())?;
             let stdout = String::from_utf8_lossy(&output.stdout);
-            match stdout.lines().find(|l| l == &"wasm32-unknown-unknown") {
+            let mut check_target = |target: &str| match stdout.lines().find(|l| l == &target) {
                 Some(_) => {
-                    println!(
-                        "{} {}Rustup target 'wasm32-unknown-unknown' is installed.",
-                        style("     ").bold().dim(),
-                        CHECK,
-                    );
+                    progress.report(CHECK, &format!("Rustup target '{}' is installed.", target));
+                    Ok(())
                 }
                 None => {
-                    bail!("Rustup target 'wasm32-unknown-unknown' is not installed.");
+                    bail!("Rustup target '{}' is not installed.", target);
                 }
-            }
+            };
+            check_target("wasm32-unknown-unknown")?;
+            check_target("wasm32-wasi")?;
         }
         None => {
-            println!(
-                "{} {}{}",
-                style("     ").bold().dim(),
-                WARN,
-                style("Could not find rustup, so we cannot determine if the appropriate targets are installed.").yellow()
-            );
+            progress.report(WARN, &style("Could not find rustup, so we cannot determine if the appropriate targets are installed.").yellow().to_string());
         }
     }
 
-    cur_step += 1;
-    println!(
-        "{} {}Building example protocol...",
-        style(format!("[{cur_step}/{NUM_STEPS}]")).bold().dim(),
-        TRUCK
-    );
+    progress.next_step(TRUCK, "Building example protocol...");
     run(cargo(&["run"]).dir(from_root("examples/example-protocol")))?;
 
-    cur_step += 1;
-    println!(
-        "{} {}Building example plugin...",
-        style(format!("[{cur_step}/{NUM_STEPS}]")).bold().dim(),
-        TRUCK
-    );
+    progress.next_step(TRUCK, "Building example plugin...");
     run(cargo(&["build"]).dir(from_root("examples/example-plugin")))?;
 
-    cur_step += 1;
-    println!(
-        "{} {}Running Deno tests...",
-        style(format!("[{cur_step}/{NUM_STEPS}]")).bold().dim(),
-        TEST
-    );
+    progress.next_step(TEST, "Running deno tests...");
     run(
         deno(&["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime"))
     )?;
 
-    cur_step += 1;
-    println!(
-        "{} {}Run end-to-end wasmer runtime tests...",
-        style(format!("[{cur_step}/{NUM_STEPS}]")).bold().dim(),
-        TEST
-    );
+    progress.next_step(TEST, "Running end-to-end wasmer tests...");
     run(cargo(&["test"]).dir(from_root("examples/example-rust-runtime")))?;
 
     Ok(())
