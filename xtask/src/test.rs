@@ -23,7 +23,7 @@ pub fn test() -> TaskResult<()> {
     );
 
     let deno_path = which("deno").with_context(|| {
-        format!("Could not find the 'deno' executable. Make sure it is available in your PATH.")
+        "Could not find the 'deno' executable. Make sure it is available in your PATH."
     })?;
     println!(
         "{} {}Deno found at: {}",

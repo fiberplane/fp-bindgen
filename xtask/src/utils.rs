@@ -33,7 +33,7 @@ pub fn run(expr: Expression) -> TaskResult<Output> {
     let output = expr.unchecked().run()?;
     let code = output.status.code().unwrap();
     match code {
-        0 => Ok(output.clone()),
+        0 => Ok(output),
         _ => {
             bail!("Command invocation did not succeed.")
         }
