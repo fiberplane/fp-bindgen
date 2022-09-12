@@ -9,6 +9,7 @@ members = [
   "fp-bindgen",
   "fp-bindgen-support",
   "macros",
+  "xtask",
   "examples/example-protocol",
   "examples/redux-example",
 ]
