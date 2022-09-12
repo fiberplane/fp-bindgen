@@ -8,6 +8,7 @@ pub struct CargoDependency {
     pub path: Option<&'static str>,
     pub version: Option<&'static str>,
     pub features: BTreeSet<&'static str>,
+    pub default_features: Option<bool>,
 }
 
 impl CargoDependency {
@@ -24,6 +25,7 @@ impl CargoDependency {
                 path: Some(path),
                 version: other.version.or(self.version),
                 features: self.features.union(&other.features).copied().collect(),
+                default_features: other.default_features.or(self.default_features),
             }
         } else if let Some(git) = &other.git {
             Self {
@@ -32,6 +34,7 @@ impl CargoDependency {
                 path: None,
                 version: other.version.or(self.version),
                 features: self.features.union(&other.features).copied().collect(),
+                default_features: other.default_features.or(self.default_features),
             }
         } else {
             Self {
@@ -40,6 +43,7 @@ impl CargoDependency {
                 path: self.path,
                 version: other.version.or(self.version),
                 features: self.features.union(&other.features).copied().collect(),
+                default_features: other.default_features.or(self.default_features),
             }
         }
     }
@@ -58,6 +62,7 @@ impl CargoDependency {
             path: None,
             version: Some(version),
             features,
+            default_features: None,
         }
     }
 }
@@ -77,6 +82,10 @@ impl fmt::Display for CargoDependency {
 
         if let Some(version) = self.version {
             attributes.push(format!("version = {}", quote_value(version)));
+        }
+
+        if let Some(default_features) = self.default_features {
+            attributes.push(format!("default_features = {}", default_features));
         }
 
         if !self.features.is_empty() {

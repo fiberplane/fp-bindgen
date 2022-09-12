@@ -19,6 +19,7 @@ impl Serializable for rmpv::Value {
                     git: None,
                     branch: None,
                     path: None,
+                    default_features: None,
                 },
             )]),
             serde_attrs: Vec::new(),

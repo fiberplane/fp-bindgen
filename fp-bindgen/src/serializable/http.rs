@@ -107,6 +107,7 @@ fn http_dependencies() -> BTreeMap<&'static str, CargoDependency> {
                 path: None,
                 version: None,
                 features: BTreeSet::from(["http"]),
+                default_features: None,
             },
         ),
         ("http", CargoDependency::with_version("0.2")),
