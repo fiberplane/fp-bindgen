@@ -4,6 +4,9 @@ This folder contains various examples for inspiration on how to set up `fp-bindg
 run these examples as part of our CI, to both verify the examples themselves work, and the generated
 bindings are correct.
 
+The simplest way to make sure everything is working is by running `cargo xtask test`. If you want
+to manually run all steps, though, keep reading.
+
 **Make sure you run `cargo run` inside the `example-protocol/` folder first.** This is a
 prerequisite in order to get the example plugin and runtimes to work.
 
