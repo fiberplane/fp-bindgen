@@ -33,7 +33,7 @@ generators = ["rustfmt-wrapper"]
 
 [dependencies]
 bytes = { version = "1", features = ["serde"], optional = true }
-fp-bindgen-macros = { version = "2.2.0", path = "../macros" }
+fp-bindgen-macros = { version = "2.3.0", path = "../macros" }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
 pretty_assertions = "1"
