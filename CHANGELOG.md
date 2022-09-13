@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 2.3.0
+
+- Added support for configuring `default_features` in Cargo dependencies.
+
 ## 2.2.0
 
 - Added the `serde-json-compat` feature for compatibility with the
