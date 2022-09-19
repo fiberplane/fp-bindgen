@@ -13,6 +13,7 @@ use fp_bindgen_support::{
 };
 use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
 
+#[derive(Clone)]
 pub struct Runtime {
     module: Module,
 }
