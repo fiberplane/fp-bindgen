@@ -18,6 +18,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install latest stable compiler
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
@@ -32,7 +33,7 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-${{ rustc_hash }}-${{ hashFiles('**/*.lock') }}
+          key: ${{ runner.os }}-${{ steps.toolchain.outputs.rustc_hash }}-${{ hashFiles('**/*.lock') }}
 
       - name: Clean cache if it's too big
         run: |
