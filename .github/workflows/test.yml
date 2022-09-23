@@ -17,16 +17,22 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install latest stable compiler
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: clippy
+
       - name: Cache multiple paths
         id: cache
         uses: actions/cache@v2
         with:
           path: |
-            ~/.cargo/bin/
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-          key: ${{ runner.os }}-${{ hashFiles('**/*.lock') }}
+          key: ${{ runner.os }}-${{ rustc_hash }}-${{ hashFiles('**/*.lock') }}
 
       - name: Clean cache if it's too big
         run: |
