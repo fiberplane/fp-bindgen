@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## main
+
+- Added the `url-compat` for compatibility with the `url::Url` type.
+
 ## 2.3.0
 
 - Added support for configuring `default_features` in Cargo dependencies.
