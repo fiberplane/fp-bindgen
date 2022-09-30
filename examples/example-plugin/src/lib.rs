@@ -5,6 +5,7 @@ use serde_bytes::ByteBuf;
 use std::collections::{BTreeMap};
 use std::panic;
 use time::{macros::datetime, OffsetDateTime};
+use url::Url;
 
 // This plugin contains implementations for all the functions it may export
 // according to the protocol. These functions are called during our integration
@@ -379,6 +380,11 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
         new_bytes.extend_from_slice(b", world");
         new_bytes
     })
+}
+
+#[fp_export_impl(example_bindings)]
+fn export_url() -> Url {
+    Url::parse("https://fiberplane.com").unwrap()
 }
 
 #[fp_export_impl(example_bindings)]

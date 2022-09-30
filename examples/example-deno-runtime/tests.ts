@@ -501,6 +501,12 @@ Deno.test("bytes", async () => {
   assertEquals(unwrap(exportGetSerdeBytes()), encoder.encode("hello, world"));
 });
 
+Deno.test("url", async () => {
+  const { exportGetUrl } = await loadExamplePlugin();
+
+  assertEquals(exportGetUrl, "https://fiberplane.com");
+});
+
 function isOk<T, E>(result: Result<T, E>): result is { Ok: T } {
   return "Ok" in result;
 }
