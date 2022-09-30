@@ -18,3 +18,17 @@ impl Serializable for serde_json::Value {
         })
     }
 }
+
+impl<T: Serializable> Serializable for serde_json::Map<T, T> {
+    fn ident() -> TypeIdent {
+        TypeIdent {
+            name: "Map".to_string(),
+            generic_args: vec![(TypeIdent::from("T"), vec![])],
+            ..Default::default()
+        }
+    }
+
+    fn ty() -> Type {
+        Type::Container("Map".to_string(), TypeIdent::from("T"))
+    }
+}

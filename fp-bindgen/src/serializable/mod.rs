@@ -19,6 +19,8 @@ mod serde_bytes;
 mod serde_json;
 #[cfg(feature = "time-compat")]
 mod time;
+#[cfg(feature = "url-compat")]
+mod url;
 
 pub trait Serializable: 'static {
     /// The identifier of the type as defined in the protocol.

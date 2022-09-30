@@ -22,13 +22,15 @@ default = [
     "rmpv-compat",
     "serde-bytes-compat",
     "serde-json-compat",
-    "time-compat"
+    "time-compat",
+    "url-compat"
 ]
 http-compat = ["http"]
 rmpv-compat = ["rmpv"]
 serde-bytes-compat = ["serde_bytes"]
 serde-json-compat = ["serde_json"]
 time-compat = ["time"]
+url-compat = ["url"]
 generators = ["rustfmt-wrapper"]
 
 [dependencies]
@@ -44,4 +46,5 @@ serde_bytes = { version = "0.11", optional = true }
 serde_json = { version = "1.0", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", features = ["serde-human-readable"], optional = true }
+url = { version = "2", features = ["serde"], optional = true }
 rustfmt-wrapper = { version = "0.1.0", optional = true }
