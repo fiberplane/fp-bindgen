@@ -24,7 +24,7 @@ impl Serializable for Url {
                 },
             )]),
             serde_attrs: vec![],
-            ts_ty: "URL".to_string(),
+            ts_ty: "string".to_string(),
             ts_declaration: None
         })
     }

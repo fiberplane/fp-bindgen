@@ -360,4 +360,7 @@ mod tests {
         // Unsupported primitive array types
         assert!(TypeIdent::from_str("[u64; 8]").is_err());
     }
+
+    #[test]
+    fn t
 }
