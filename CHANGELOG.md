@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2.4.0
+
+- Allow the `Runtime` to be cloned (to reuse compiled WASM modules)
+- Added support for generating cargo dependencies that [inherit from
+  the workspace dependencies](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#inheriting-a-dependency-from-a-workspace)
+
 ## 2.3.0
 
 - Added support for configuring `default_features` in Cargo dependencies.
