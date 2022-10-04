@@ -42,10 +42,10 @@ impl CargoDependency {
         } else if let Some(workspace) = &other.workspace {
             Self {
                 workspace: Some(*workspace),
-                git: None,
-                branch: None,
-                path: None,
-                version: None,
+                git: other.git,
+                branch: other.branch,
+                path: other.path,
+                version: other.version,
                 features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
             }
