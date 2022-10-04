@@ -93,6 +93,8 @@ impl fmt::Display for CargoDependency {
             if let Some(branch) = self.branch {
                 attributes.push(format!("branch = {}", quote_value(branch)));
             }
+        } else if self.workspace == Some(true) {
+            attributes.push("workspace = true".to_owned());
         }
 
         if let Some(version) = self.version {
