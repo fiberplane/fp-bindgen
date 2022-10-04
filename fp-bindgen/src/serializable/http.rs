@@ -102,8 +102,7 @@ fn http_dependencies() -> BTreeMap<&'static str, CargoDependency> {
         (
             "fp-bindgen-support",
             CargoDependency {
-                git: Some("ssh://git@github.com/fiberplane/fp-bindgen.git"),
-                branch: Some("main"),
+                version: Some(env!("CARGO_PKG_VERSION")),
                 features: BTreeSet::from(["http"]),
                 ..Default::default()
             },
