@@ -9,6 +9,7 @@ pub struct CargoDependency {
     pub version: Option<&'static str>,
     pub features: BTreeSet<&'static str>,
     pub default_features: Option<bool>,
+    pub workspace: Option<bool>,
 }
 
 impl CargoDependency {
@@ -23,6 +24,7 @@ impl CargoDependency {
                 git: None,
                 branch: None,
                 path: Some(path),
+                workspace: None,
                 version: other.version.or(self.version),
                 features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
@@ -32,7 +34,18 @@ impl CargoDependency {
                 git: Some(git),
                 branch: other.branch,
                 path: None,
+                workspace: None,
                 version: other.version.or(self.version),
+                features: self.features.union(&other.features).copied().collect(),
+                default_features: other.default_features.or(self.default_features),
+            }
+        } else if let Some(workspace) = &other.workspace {
+            Self {
+                workspace: Some(*workspace),
+                git: other.git,
+                branch: other.branch,
+                path: other.path,
+                version: other.version,
                 features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
             }
@@ -41,6 +54,7 @@ impl CargoDependency {
                 git: self.git,
                 branch: self.branch,
                 path: self.path,
+                workspace: self.workspace,
                 version: other.version.or(self.version),
                 features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
@@ -63,6 +77,7 @@ impl CargoDependency {
             version: Some(version),
             features,
             default_features: None,
+            workspace: None,
         }
     }
 }
@@ -78,6 +93,8 @@ impl fmt::Display for CargoDependency {
             if let Some(branch) = self.branch {
                 attributes.push(format!("branch = {}", quote_value(branch)));
             }
+        } else if self.workspace == Some(true) {
+            attributes.push("workspace = true".to_owned());
         }
 
         if let Some(version) = self.version {

@@ -14,12 +14,9 @@ impl Serializable for time::OffsetDateTime {
             rs_dependencies: BTreeMap::from([(
                 "time",
                 CargoDependency {
-                    branch: None,
-                    git: None,
-                    path: None,
                     version: Some("0.3"),
                     features: BTreeSet::from(["serde-well-known"]),
-                    default_features: None,
+                    ..Default::default()
                 },
             )]),
             serde_attrs: vec![r#"with = "time::serde::rfc3339""#.to_owned()],
@@ -41,12 +38,9 @@ impl Serializable for time::PrimitiveDateTime {
             rs_dependencies: BTreeMap::from([(
                 "time",
                 CargoDependency {
-                    branch: None,
-                    git: None,
-                    path: None,
                     version: Some("0.3"),
                     features: BTreeSet::from(["serde-well-known"]),
-                    default_features: None,
+                    ..Default::default()
                 },
             )]),
             serde_attrs: vec![r#"with = "time::serde::rfc3339""#.to_owned()],
