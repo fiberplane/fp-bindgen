@@ -16,10 +16,7 @@ impl Serializable for rmpv::Value {
                 CargoDependency {
                     version: Some("1.0"),
                     features: BTreeSet::from(["with-serde"]),
-                    git: None,
-                    branch: None,
-                    path: None,
-                    default_features: None,
+                    ..Default::default()
                 },
             )]),
             serde_attrs: Vec::new(),
