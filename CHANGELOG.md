@@ -2,6 +2,7 @@
 
 ## 2.4.0
 
+- Allow the `Runtime` to be cloned (to reuse compiled WASM modules)
 - Added support for generating cargo dependencies that [inherit from
   the workspace dependencies](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#inheriting-a-dependency-from-a-workspace)
 
