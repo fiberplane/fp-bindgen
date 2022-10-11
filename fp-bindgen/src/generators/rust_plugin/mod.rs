@@ -28,7 +28,8 @@ pub(crate) fn generate_bindings(
 
     write_bindings_file(
         format!("{}/lib.rs", src_path),
-        "#[rustfmt::skip]
+        "#![allow(unused_imports)]
+#[rustfmt::skip]
 mod export;
 #[rustfmt::skip]
 mod import;
