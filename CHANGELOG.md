@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## main
+
+- Make sure `cargo check` doesn't complain about unused imports in the generated
+  plugin bindings.
+
 ## 2.4.0
 
 - Allow the `Runtime` to be cloned (to reuse compiled WASM modules)

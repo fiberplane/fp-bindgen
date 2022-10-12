@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 #[rustfmt::skip]
 mod export;
 #[rustfmt::skip]
