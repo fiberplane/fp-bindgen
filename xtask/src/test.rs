@@ -57,7 +57,7 @@ pub fn test() -> TaskResult<()> {
     )?;
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
-    run(cargo(&["test"]).dir(from_root("examples/example-rust-runtime")))?;
+    run(cargo(&["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
 
     Ok(())
 }
