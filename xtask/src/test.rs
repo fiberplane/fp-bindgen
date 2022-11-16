@@ -52,9 +52,7 @@ pub fn test() -> TaskResult<()> {
     run(cargo(&["build"]).dir(from_root("examples/example-plugin")))?;
 
     progress.next_step(TEST, "Running Cargo tests...");
-    run(
-        cargo(&["test"])
-    )?;
+    run(cargo(&["test"]))?;
 
     progress.next_step(TEST, "Running deno tests...");
     run(
