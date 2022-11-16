@@ -23,7 +23,7 @@ time = { version = "0.3", features = [
   "serde-well-known",
   "macros",
 ] }
-tokio = { version = "1.9.0", features = ["rt", "macros"] }
+tokio = { version = "1.9.0", features = ["rt", "macros", "time"] }
 wasmer = { version = "2.3", default-features = false, features = ["singlepass", "default-engine"] }
 wasmer-wasi = "2.3"
 anyhow = "1.0"

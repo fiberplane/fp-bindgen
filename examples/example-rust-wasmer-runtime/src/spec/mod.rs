@@ -1,6 +1,7 @@
 pub mod bindings;
 pub mod types;
 
+use std::time::Duration;
 use bytes::Bytes;
 use serde_bytes::ByteBuf;
 use types::*;
@@ -145,4 +146,14 @@ async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
         headers: opts.headers,
         status_code: 200,
     })
+}
+
+async fn perform_async_delay(succeed: bool, delay_ms: u64) -> Result<(), ()> {
+    let _ = tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+
+    if succeed {
+        Ok(())
+    } else {
+        Err(())
+    }
 }

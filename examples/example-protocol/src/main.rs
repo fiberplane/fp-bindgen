@@ -123,6 +123,9 @@ fp_import! {
     ///
     /// See `types/http.rs` for more info.
     async fn make_http_request(request: Request) -> HttpResult;
+
+    /// Example how an async delay (or any async task) can be exposed to plugins.
+    async fn perform_async_delay(succeed: bool, delay_ms: u64) -> Result<(), ()>;
 }
 
 fp_export! {
@@ -203,6 +206,9 @@ fp_export! {
 
     /// Example how plugin could expose async data-fetching capabilities.
     async fn fetch_data(r#type: String) -> Result<String, String>;
+
+    /// Delay for a specific amount of time and then succeed or fail.
+    async fn delay(succeed: bool, delay_ms: u64) -> Result<(), ()>;
 
     /// Called on the plugin to give it a chance to initialize.
     fn init();

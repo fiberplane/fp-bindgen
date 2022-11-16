@@ -352,7 +352,7 @@ impl Runtime {{
     }}
 
     fn default_store() -> wasmer::Store {{
-        let compiler = wasmer::Singlepass::default();
+        let compiler = wasmer::Cranelift::default();
         let engine = wasmer::Universal::new(compiler).engine();
         Store::new(&engine)
     }}

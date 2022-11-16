@@ -362,6 +362,17 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
 }
 
 #[fp_export_impl(example_bindings)]
+async fn delay(succeed: bool, delay_ms: u64) -> Result<(), ()> {
+    perform_async_delay(succeed, delay_ms).await?;
+
+    if succeed {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
+#[fp_export_impl(example_bindings)]
 fn export_get_bytes() -> Result<Bytes, String> {
     import_get_bytes().map(|bytes| {
         let mut new_bytes = BytesMut::with_capacity(bytes.len() + 7);

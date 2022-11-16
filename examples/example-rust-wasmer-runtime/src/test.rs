@@ -265,6 +265,26 @@ async fn fetch_async_data() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn concurrent_delays() -> Result<()> {
+    let rt = Runtime::new(WASM_BYTES)?;
+
+    let responses = tokio::join!(
+        rt.delay(true, 120),
+        rt.delay(true, 90),
+        rt.delay(false, 75),
+        rt.delay(true, 60),
+        rt.delay(true, 30),
+    );
+    assert_eq!(responses.0.ok().unwrap(), Ok(()));
+    assert_eq!(responses.1.ok().unwrap(), Ok(()));
+    assert_eq!(responses.2.ok().unwrap(), Err(()));
+    assert_eq!(responses.3.ok().unwrap(), Ok(()));
+    assert_eq!(responses.4.ok().unwrap(), Ok(()));
+
+    Ok(())
+}
+
 #[test]
 fn bytes() -> Result<()> {
     let rt = Runtime::new(WASM_BYTES)?;

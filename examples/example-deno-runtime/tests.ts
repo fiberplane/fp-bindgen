@@ -25,6 +25,7 @@ import type {
   StructWithGenerics,
 } from "../example-protocol/bindings/ts-runtime/types.ts";
 import {Result} from "../example-protocol/bindings/ts-runtime/types.ts";
+import * as types from "../example-protocol/bindings/ts-runtime/types.ts";
 
 let voidFunctionCalled = false;
 
@@ -296,6 +297,21 @@ const imports: Imports = {
       },
     });
   },
+
+  performAsyncDelay: (succeed: boolean, delayMs: bigint): Promise<types.Result<void, void>> => {
+    let result: types.Result<void, void>;
+    if (succeed) {
+      result = { Ok: undefined };
+    } else {
+      result = { Err: undefined };
+    }
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        resolve(result);
+      }, Number(delayMs));
+    })
+  }
 };
 
 let examplePlugin: Exports | null = null;
@@ -489,6 +505,24 @@ Deno.test("fetch async data", async () => {
   assertEquals(data, {
     Ok: JSON.stringify({ "status": "confirmed" })
   });
+});
+
+Deno.test("concurrent delays", async () => {
+  const { delay } = await loadExamplePlugin();
+  assert(delay);
+
+  let promises = [];
+  for (let t=0;t<200;t++) {
+    promises.push(delay(t % 2 == 0, BigInt(t)));
+  }
+  let results = await Promise.all(promises);
+  for (let t=0;t<200;t++) {
+    if (t % 2 == 0) {
+      assertEquals(results[t], { Ok: null });
+    } else {
+      assertEquals(results[t], { Err: null });
+    }
+  }
 });
 
 Deno.test("bytes", async () => {
