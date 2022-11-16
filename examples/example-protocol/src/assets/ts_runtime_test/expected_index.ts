@@ -55,9 +55,11 @@ export type Imports = {
     importVoidFunctionEmptyReturn: () => void;
     log: (message: string) => void;
     makeHttpRequest: (request: types.Request) => Promise<types.HttpResult>;
+    performAsyncDelay: (succeed: boolean, delayMs: bigint) => Promise<types.Result<void, void>>;
 };
 
 export type Exports = {
+    delay?: (succeed: boolean, delayMs: bigint) => Promise<types.Result<void, void>>;
     exportArrayF32?: (arg: Float32Array) => Float32Array;
     exportArrayF64?: (arg: Float64Array) => Float64Array;
     exportArrayI16?: (arg: Int16Array) => Int16Array;
@@ -100,6 +102,7 @@ export type Exports = {
     fetchData?: (rType: string) => Promise<types.Result<string, string>>;
     init?: () => void;
     reducerBridge?: (action: types.ReduxAction) => types.StateUpdate;
+    delayRaw?: (succeed: boolean, delayMs: bigint) => Promise<Uint8Array>;
     exportArrayF32Raw?: (arg: Uint8Array) => Uint8Array;
     exportArrayF64Raw?: (arg: Uint8Array) => Uint8Array;
     exportArrayI16Raw?: (arg: Uint8Array) => Uint8Array;
@@ -418,6 +421,20 @@ export async function createRuntime(
                     });
                 return _async_result_ptr;
             },
+            __fp_gen_perform_async_delay: (succeed: boolean, delayMs: bigint): FatPtr => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.performAsyncDelay(succeed, delayMs)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "perform_async_delay"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_host_resolve_async_value: resolvePromise,
         },
     });
@@ -436,6 +453,12 @@ export async function createRuntime(
     const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>("__fp_guest_resolve_async_value");
 
     return {
+        delay: (() => {
+            const export_fn = instance.exports.__fp_gen_delay as any;
+            if (!export_fn) return;
+
+            return (succeed: boolean, delayMs: bigint) => promiseFromPtr(export_fn(succeed, delayMs)).then((ptr) => parseObject<types.Result<void, void>>(ptr));
+        })(),
         exportArrayF32: (() => {
             const export_fn = instance.exports.__fp_gen_export_array_f32 as any;
             if (!export_fn) return;
@@ -728,6 +751,12 @@ export async function createRuntime(
                 const action_ptr = serializeObject(action);
                 return parseObject<types.StateUpdate>(export_fn(action_ptr));
             };
+        })(),
+        delayRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_delay as any;
+            if (!export_fn) return;
+
+            return (succeed: boolean, delayMs: bigint) => promiseFromPtr(export_fn(succeed, delayMs)).then(importFromMemory);
         })(),
         exportArrayF32Raw: (() => {
             const export_fn = instance.exports.__fp_gen_export_array_f32 as any;

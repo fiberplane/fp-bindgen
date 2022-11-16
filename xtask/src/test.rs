@@ -51,6 +51,11 @@ pub fn test() -> TaskResult<()> {
     progress.next_step(TRUCK, "Building example plugin...");
     run(cargo(&["build"]).dir(from_root("examples/example-plugin")))?;
 
+    progress.next_step(TEST, "Running Cargo tests...");
+    run(
+        cargo(&["test"])
+    )?;
+
     progress.next_step(TEST, "Running deno tests...");
     run(
         deno(&["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime"))

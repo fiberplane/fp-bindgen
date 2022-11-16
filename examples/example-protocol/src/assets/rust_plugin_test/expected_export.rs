@@ -1,5 +1,9 @@
 use crate::types::*;
 
+/// Delay for a specific amount of time and then succeed or fail.
+#[fp_bindgen_support::fp_export_signature]
+pub async fn delay(succeed: bool, delay_ms: u64) -> Result<(), ()>;
+
 #[fp_bindgen_support::fp_export_signature]
 pub fn export_array_f32(arg: [f32; 3]) -> [f32; 3];
 

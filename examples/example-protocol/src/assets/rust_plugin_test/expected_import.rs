@@ -132,3 +132,7 @@ pub fn log(message: String);
 /// See `types/http.rs` for more info.
 #[fp_bindgen_support::fp_import_signature]
 pub async fn make_http_request(request: Request) -> HttpResult;
+
+/// Example how an async delay (or any async task) can be exposed to plugins.
+#[fp_bindgen_support::fp_import_signature]
+pub async fn perform_async_delay(succeed: bool, delay_ms: u64) -> Result<(), ()>;

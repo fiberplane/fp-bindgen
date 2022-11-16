@@ -26,9 +26,43 @@ impl Runtime {
     }
 
     fn default_store() -> wasmer::Store {
-        let compiler = wasmer::Singlepass::default();
+        let compiler = wasmer::Cranelift::default();
         let engine = wasmer::Universal::new(compiler).engine();
         Store::new(&engine)
+    }
+
+    /// Delay for a specific amount of time and then succeed or fail.
+    pub async fn delay(
+        &self,
+        succeed: bool,
+        delay_ms: u64,
+    ) -> Result<Result<(), ()>, InvocationError> {
+        let result = self.delay_raw(succeed, delay_ms);
+        let result = result.await;
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub async fn delay_raw(
+        &self,
+        succeed: bool,
+        delay_ms: u64,
+    ) -> Result<Vec<u8>, InvocationError> {
+        let mut env = RuntimeInstanceData::default();
+        let mut wasi_env = wasmer_wasi::WasiState::new("delay").finalize().unwrap();
+        let mut import_object = wasi_env.import_object(&self.module).unwrap();
+        let namespace = create_import_object(self.module.store(), &env);
+        import_object.register("fp", namespace);
+        let instance = Instance::new(&self.module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        let function = instance
+            .exports
+            .get_native_function::<(<bool as WasmAbi>::AbiType, <u64 as WasmAbi>::AbiType), FatPtr>(
+                "__fp_gen_delay",
+            )
+            .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_delay".to_owned()))?;
+        let result = function.call(succeed.to_abi(), delay_ms.to_abi())?;
+        let result = ModuleRawFuture::new(env.clone(), result).await;
+        Ok(result)
     }
 
     pub fn export_array_f32(&self, arg: [f32; 3]) -> Result<[f32; 3], InvocationError> {
@@ -1440,6 +1474,10 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> wasmer::Exp
         "__fp_gen_make_http_request",
         Function::new_native_with_env(store, env.clone(), _make_http_request),
     );
+    namespace.insert(
+        "__fp_gen_perform_async_delay",
+        Function::new_native_with_env(store, env.clone(), _perform_async_delay),
+    );
     namespace
 }
 
@@ -1727,6 +1765,25 @@ pub fn _log(env: &RuntimeInstanceData, message: FatPtr) {
 pub fn _make_http_request(env: &RuntimeInstanceData, request: FatPtr) -> FatPtr {
     let request = import_from_guest::<Request>(env, request);
     let result = super::make_http_request(request);
+    let env = env.clone();
+    let async_ptr = create_future_value(&env);
+    let handle = tokio::runtime::Handle::current();
+    handle.spawn(async move {
+        let result = result.await;
+        let result_ptr = export_to_guest(&env, &result);
+        env.guest_resolve_async_value(async_ptr, result_ptr);
+    });
+    async_ptr
+}
+
+pub fn _perform_async_delay(
+    env: &RuntimeInstanceData,
+    succeed: <bool as WasmAbi>::AbiType,
+    delay_ms: <u64 as WasmAbi>::AbiType,
+) -> FatPtr {
+    let succeed = WasmAbi::from_abi(succeed);
+    let delay_ms = WasmAbi::from_abi(delay_ms);
+    let result = super::perform_async_delay(succeed, delay_ms);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
