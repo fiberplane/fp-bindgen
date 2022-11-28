@@ -24,8 +24,9 @@ time = { version = "0.3", features = [
   "macros",
 ] }
 tokio = { version = "1.9.0", features = ["rt", "macros"] }
-wasmer = { version = "2.3", default-features = false, features = ["singlepass", "default-engine"] }
-wasmer-wasi = "2.3"
+wasmer = "3"
+wasmer-compiler-singlepass = "3"
+wasmer-wasi = "3"
 anyhow = "1.0"
 
 [features]

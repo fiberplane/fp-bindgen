@@ -7,22 +7,24 @@ use crate::common::{
     r#async::{AsyncValue, FUTURE_STATUS_PENDING, FUTURE_STATUS_READY},
 };
 use std::{mem::size_of, task::Waker};
+use wasmer::{AsStoreRef, AsStoreMut, FunctionEnvMut, Store};
 
 pub mod future;
 
 /// Create an empty FutureValue in the linear memory and return a FatPtr to it.
-pub fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
-    let memory = unsafe { env.memory.get_unchecked() };
-
+pub fn create_future_value(env: &mut FunctionEnvMut<RuntimeInstanceData>) -> FatPtr {
     let size = size_of::<AsyncValue>(); //TODO: Is this *actually* safe? Might be a different size in wasm land...
-    let ptr = env.malloc(size as u32);
+    let ptr = env.data().malloc().call(&mut env.as_store_mut(), size as u32).unwrap();
 
     let (async_ptr, async_len) = to_wasm_ptr(ptr);
-    let values = async_ptr.deref(memory, 0, async_len).unwrap();
 
-    values[0].set(FUTURE_STATUS_PENDING);
-    values[1].set(0);
-    values[2].set(0);
+    let memory = env.data().memory.as_ref().unwrap();
+    let memory_view = memory.view(&env.as_store_ref());
+    let values = async_ptr.slice(&memory_view, async_len).unwrap();
+
+    values.write(0, FUTURE_STATUS_PENDING).unwrap();
+    values.write(1, 0).unwrap();
+    values.write(2, 0).unwrap();
 
     ptr
 }
@@ -31,18 +33,20 @@ pub fn create_future_value(env: &RuntimeInstanceData) -> FatPtr {
 /// want to deserialize it (which would actually free it as well).
 /// This function also doesn't call another function since everything is
 /// contained in the env object.
-pub fn resolve_async_value(env: &RuntimeInstanceData, async_value_ptr: FatPtr, result_ptr: FatPtr) {
+pub fn resolve_async_value(env: FunctionEnvMut<RuntimeInstanceData>, async_value_ptr: FatPtr, result_ptr: FatPtr) {
     // First assign the result ptr and mark the async value as ready:
-    let memory = unsafe { env.memory.get_unchecked() };
+    let memory = env.data().memory.as_ref().unwrap();
+    let memory_view = memory.view(&env.as_store_ref());
+
     let (async_ptr, async_len) = to_wasm_ptr(async_value_ptr);
     let (result_ptr, result_len) = from_fat_ptr(result_ptr);
-    let values = async_ptr.deref(memory, 0, async_len).unwrap();
+    let values = async_ptr.slice(&memory_view, async_len).unwrap();
 
-    values[0].set(FUTURE_STATUS_READY);
-    values[1].set(result_ptr);
-    values[2].set(result_len);
+    values.write(0, FUTURE_STATUS_READY).unwrap();
+    values.write(1, result_ptr).unwrap();
+    values.write(2, result_len).unwrap();
 
-    env.wakers
+    env.data().wakers
         .lock()
         .unwrap()
         .remove(&async_value_ptr)

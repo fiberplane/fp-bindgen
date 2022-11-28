@@ -2,50 +2,40 @@ use crate::common::mem::FatPtr;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::task::Waker;
-use wasmer::{LazyInit, Memory, NativeFunc, WasmerEnv};
+use wasmer::{FunctionEnv, Instance, Memory, Store, StoreMut, TypedFunction};
 
-#[derive(Clone, Default, WasmerEnv)]
+#[derive(Clone, Default)]
 pub struct RuntimeInstanceData {
-    #[wasmer(export)]
-    pub(crate) memory: LazyInit<Memory>,
-
+    pub(crate) memory: Option<Memory>,
     pub(crate) wakers: Arc<Mutex<HashMap<FatPtr, Waker>>>,
-
-    #[wasmer(export)]
-    __fp_free: LazyInit<NativeFunc<FatPtr>>,
-
-    #[wasmer(export)]
-    __fp_guest_resolve_async_value: LazyInit<NativeFunc<(FatPtr, FatPtr)>>,
-
-    #[wasmer(export)]
-    __fp_malloc: LazyInit<NativeFunc<u32, FatPtr>>,
+    __fp_free: Option<TypedFunction<FatPtr, ()>>,
+    __fp_guest_resolve_async_value: Option<TypedFunction<(FatPtr, FatPtr), ()>>,
+    __fp_malloc: Option<TypedFunction<u32, FatPtr>>,
 }
 
 impl RuntimeInstanceData {
-    pub fn guest_resolve_async_value(&self, async_ptr: FatPtr, result_ptr: FatPtr) {
-        unsafe {
+    pub fn init_with_instance(&mut self, store: &mut Store, instance: &Instance) {
+        self.memory = Some(instance.exports.get_memory("memory").unwrap().clone());
+        self.__fp_free = Some(instance.exports.get_typed_function(store, "__fp_free").unwrap());
+        self.__fp_guest_resolve_async_value= Some(instance.exports.get_typed_function(store, "__fp_guest_resolve_async_value").unwrap());
+        self.__fp_malloc= Some(instance.exports.get_typed_function(store, "__fp_malloc").unwrap());
+    }
+
+    pub fn guest_resolve_async_value(&self) -> TypedFunction<(FatPtr, FatPtr), ()> {
             self.__fp_guest_resolve_async_value
-                .get_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect("Runtime error: Cannot resolve async value");
-        }
+                .as_ref()
+                .unwrap()
+    .clone()
     }
 
-    pub fn malloc(&self, len: u32) -> FatPtr {
-        unsafe {
-            self.__fp_malloc
-                .get_unchecked()
-                .call(len)
-                .expect("unable to call malloc")
-        }
+    pub fn malloc(&self) -> TypedFunction<u32, FatPtr> {
+            self.__fp_malloc.as_ref().unwrap().clone()
     }
 
-    pub fn free(&self, ptr: FatPtr) {
-        unsafe {
+    pub fn free(&self) -> TypedFunction<FatPtr, ()> {
             self.__fp_free
-                .get_unchecked()
-                .call(ptr)
-                .expect("unable to call free")
-        };
+                .as_ref()
+                .unwrap()
+                .clone()
     }
 }

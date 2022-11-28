@@ -10,44 +10,45 @@ use crate::{
     },
 };
 use std::{future::Future, task::Poll};
+use wasmer::{AsStoreRef, FunctionEnvMut, Store};
 
 // The ModuleRawFuture implements the Future Trait to handle async Futures as
 // returned from the module.
-pub struct ModuleRawFuture {
+pub struct ModuleRawFuture<'a> {
+    env: FunctionEnvMut<'a, RuntimeInstanceData>,
     ptr: FatPtr,
-    env: RuntimeInstanceData,
 }
 
-impl ModuleRawFuture {
-    pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
-        Self { ptr, env }
+impl<'a> ModuleRawFuture<'a> {
+    pub fn new(env: FunctionEnvMut<'a, RuntimeInstanceData>, ptr: FatPtr) -> Self {
+        Self { env, ptr }
     }
 }
 
-impl<'de> Future for ModuleRawFuture {
+impl<'a, 'de> Future for ModuleRawFuture<'a> {
     type Output = Vec<u8>;
 
     fn poll(
-        self: std::pin::Pin<&mut Self>,
+        mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        let memory = unsafe { self.env.memory.get_unchecked() };
-
         let ptr = self.ptr;
 
         let (async_ptr, async_len) = to_wasm_ptr(ptr);
-        let values = async_ptr.deref(memory, 0, async_len).unwrap();
+        let memory = self.env.data().memory.as_ref().unwrap();
+        let memory_view = memory.view(&self.env.as_store_ref());
+        let values = async_ptr.slice(&memory_view, async_len).unwrap();
 
-        match values[0].get() {
+        match values.read(0).unwrap() {
             FUTURE_STATUS_PENDING => {
-                let mut wakers = self.env.wakers.lock().unwrap();
+                let mut wakers = self.env.data().wakers.lock().unwrap();
                 wakers.insert(ptr, cx.waker().clone());
                 Poll::Pending
             }
             FUTURE_STATUS_READY => {
-                let result_ptr = values[1].get();
-                let result_len = values[2].get();
-                let result = import_from_guest_raw(&self.env, to_fat_ptr(result_ptr, result_len));
+                let result_ptr = values.read(1).unwrap();
+                let result_len = values.read(2).unwrap();
+                let result = import_from_guest_raw(self.env.as_mut(), to_fat_ptr(result_ptr, result_len));
                 Poll::Ready(result)
             }
             value => panic!(

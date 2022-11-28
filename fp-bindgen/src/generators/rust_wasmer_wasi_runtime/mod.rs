@@ -33,7 +33,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
             format!(
                 r#"namespace.insert(
             "__fp_gen_{name}",
-            Function::new_native_with_env(store, env.clone(), _{name})
+            Function::new_typed_with_env(store, env.clone(), _{name})
     );"#
             )
         })
@@ -45,7 +45,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
     let mut namespace = wasmer::Exports::new();
     namespace.insert(
             "__fp_host_resolve_async_value",
-            Function::new_native_with_env(store, env.clone(), resolve_async_value)
+            Function::new_typed_with_env(store, env.clone(), resolve_async_value)
     );
     {imports}
     namespace

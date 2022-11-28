@@ -28,17 +28,17 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
         .map(|function| {
             let name = &function.name;
             format!(
-                "\"__fp_gen_{name}\" => Function::new_native_with_env(store, env.clone(), _{name}),"
+                "\"__fp_gen_{name}\" => Function::new_typed_with_env(&mut store, env, _{name}),"
             )
         })
         .collect::<Vec<_>>()
         .join("\n            ");
 
     format!(
-        r#"fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {{
+        r#"fn create_import_object(store: &mut Store, env: &FunctionEnv<RuntimeInstanceData>) -> Imports {{
     imports! {{
         "fp" => {{
-            "__fp_host_resolve_async_value" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
+            "__fp_host_resolve_async_value" => Function::new_typed_with_env(&mut store, env, resolve_async_value),
             {imports}
         }}
     }}
@@ -135,7 +135,7 @@ pub(crate) fn generate_import_function_variables<'a>(
         .args
         .iter()
         .filter(|arg| !arg.ty.is_primitive())
-        .map(|FunctionArg { name, .. }| format!("let {name} = export_to_guest_raw(&env, {name});"))
+        .map(|FunctionArg { name, .. }| format!("let {name} = export_to_guest_raw(&mut env.clone().into_mut(&mut self.store), {name});"))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -154,7 +154,7 @@ pub(crate) fn generate_import_function_variables<'a>(
 
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
-            "let result = ModuleRawFuture::new(env.clone(), result).await;".to_string(),
+            "let result = ModuleRawFuture::new(env.clone().into_mut(&mut self.store), result).await;".to_string(),
             "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else if !function
@@ -164,7 +164,7 @@ pub(crate) fn generate_import_function_variables<'a>(
         .unwrap_or(true)
     {
         (
-            "let result = import_from_guest_raw(&env, result);".to_string(),
+            "let result = import_from_guest_raw(env.clone().into_mut(&mut self.store), result);".to_string(),
             "let result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else {
@@ -213,21 +213,21 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
     ) = generate_import_function_variables(function, types);
 
     format!(
-        r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+        r#"{doc}pub {modifiers}fn {name}(&mut self{args}) -> Result<{return_type}, InvocationError> {{
     {serialize_args}
     let result = self.{name}_raw({arg_names});
     {return_wrapper}result
 }}
-pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
-    let mut env = RuntimeInstanceData::default();
-    let import_object = create_import_object(self.module.store(), &env);
-    let instance = Instance::new(&self.module, &import_object).unwrap();
-    env.init_with_instance(&instance).unwrap();
+pub {modifiers}fn {name}_raw(&mut self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
+    let env = FunctionEnv::new(&mut self.store, RuntimeInstanceData::default());
+    let import_object = create_import_object(&mut self.store, &env);
+    let instance = Instance::new(&mut self.store, &self.module, &import_object).unwrap();
+    //env.into_mut(&mut self.store).init_with_instance(&mut self.store, &instance);
     {serialize_raw_args}let function = instance
         .exports
-        .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
+        .get_typed_function::<{wasm_args}, {wasm_return_type}>(&self.store, "__fp_gen_{name}")
         .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
-    let result = function.call({wasm_arg_names})?;
+    let result = function.call(&mut self.store, {wasm_arg_names})?;
     {raw_return_wrapper}Ok(result)
 }}"#
     )
@@ -275,25 +275,24 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         .join(", ");
 
     let return_wrapper = if function.is_async {
-        r#"let env = env.clone();
-    let async_ptr = create_future_value(&env);
+        r#"let async_ptr = create_future_value(&mut env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
         let result = result.await;
-        let result_ptr = export_to_guest(&env, &result);
-        env.guest_resolve_async_value(async_ptr, result_ptr);
+        let result_ptr = export_to_guest(&mut env, &result);
+        env.data().guest_resolve_async_value().call(&mut env.as_store_mut(), async_ptr, result_ptr).unwrap();
     });
     async_ptr"#
     } else {
         match &function.return_type {
             None => "",
             Some(ty) if ty.is_primitive() => "result.to_abi()",
-            _ => "export_to_guest(env, &result)",
+            _ => "export_to_guest(&mut env, &result)",
         }
     };
 
     format!(
-        r#"pub fn _{name}(env: &RuntimeInstanceData{wasm_args}){wrapper_return_type} {{
+        r#"pub fn _{name}(env: FunctionEnvMut<RuntimeInstanceData>{wasm_args}){wrapper_return_type} {{
     {import_args}
     let result = super::{name}({arg_names});
     {return_wrapper}
@@ -337,10 +336,10 @@ use fp_bindgen_support::{{
         runtime::RuntimeInstanceData,
     }},
 }};
-use wasmer::{{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv}};
+use wasmer::{{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module, Store}};
 
-#[derive(Clone)]
 pub struct Runtime {{
+    store: Store,
     module: Module,
 }}
 
@@ -348,13 +347,12 @@ impl Runtime {{
     pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {{
         let store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
-        Ok(Self {{ module }})
+        Ok(Self {{ store, module }})
     }}
 
     fn default_store() -> wasmer::Store {{
-        let compiler = wasmer::Singlepass::default();
-        let engine = wasmer::Universal::new(compiler).engine();
-        Store::new(&engine)
+        let compiler = wasmer_compiler_singlepass::Singlepass::default();
+        Store::new(compiler)
     }}
 
     {exports}
