@@ -22,7 +22,7 @@ pub fn deserialize_from_slice<'a, T: Deserialize<'a>>(slice: &'a [u8]) -> T {
 
 /// Serialize an object from the linear memory and after that free up the memory
 pub fn import_from_guest<'de, T: Deserialize<'de>>(
-    env: FunctionEnvMut<RuntimeInstanceData>,
+    env: &mut FunctionEnvMut<RuntimeInstanceData>,
     fat_ptr: FatPtr,
 ) -> T {
     let value = import_from_guest_raw(env, fat_ptr);
@@ -37,7 +37,7 @@ pub fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-pub fn import_from_guest_raw(mut env: FunctionEnvMut<RuntimeInstanceData>, fat_ptr: FatPtr) -> Vec<u8> {
+pub fn import_from_guest_raw(env: &mut FunctionEnvMut<RuntimeInstanceData>, fat_ptr: FatPtr) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
@@ -48,7 +48,7 @@ pub fn import_from_guest_raw(mut env: FunctionEnvMut<RuntimeInstanceData>, fat_p
         panic!("Unknown extension bits");
     }
 
-    let memory = env.data().memory.as_ref().unwrap();
+    let memory = env.data().memory();
     let memory_view = memory.view(&env.as_store_ref());
     let value = ptr.slice(&memory_view, len).unwrap().read_to_vec().unwrap();
 
@@ -75,7 +75,7 @@ pub fn export_to_guest_raw(env: &mut FunctionEnvMut<RuntimeInstanceData>, buffer
 
     let (ptr, len) = to_wasm_ptr(fat_ptr);
 
-    let memory = env.data().memory.as_ref().unwrap();
+    let memory = env.data().memory();
     let memory_view = memory.view(&env.as_store_ref());
     let values = ptr.slice(&memory_view, len).unwrap();
     for (i, val) in buffer.iter().enumerate() {

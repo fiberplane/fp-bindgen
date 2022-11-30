@@ -35,20 +35,22 @@ impl<'a, 'de> Future for ModuleRawFuture<'a> {
         let ptr = self.ptr;
 
         let (async_ptr, async_len) = to_wasm_ptr(ptr);
-        let memory = self.env.data().memory.as_ref().unwrap();
-        let memory_view = memory.view(&self.env.as_store_ref());
-        let values = async_ptr.slice(&memory_view, async_len).unwrap();
+        let values = {
+            let memory = self.env.data().memory();
+            let memory_view = memory.view(&self.env.as_store_ref());
+            async_ptr.slice(&memory_view, async_len).unwrap().read_to_vec().unwrap()
+        };
 
-        match values.read(0).unwrap() {
+        match values[0] {
             FUTURE_STATUS_PENDING => {
                 let mut wakers = self.env.data().wakers.lock().unwrap();
                 wakers.insert(ptr, cx.waker().clone());
                 Poll::Pending
             }
             FUTURE_STATUS_READY => {
-                let result_ptr = values.read(1).unwrap();
-                let result_len = values.read(2).unwrap();
-                let result = import_from_guest_raw(self.env.as_mut(), to_fat_ptr(result_ptr, result_len));
+                let result_ptr = values[1];
+                let result_len = values[2];
+                let result = import_from_guest_raw(&mut self.env.as_mut(), to_fat_ptr(result_ptr, result_len));
                 Poll::Ready(result)
             }
             value => panic!(

@@ -18,7 +18,7 @@ pub fn create_future_value(env: &mut FunctionEnvMut<RuntimeInstanceData>) -> Fat
 
     let (async_ptr, async_len) = to_wasm_ptr(ptr);
 
-    let memory = env.data().memory.as_ref().unwrap();
+    let memory = env.data().memory();
     let memory_view = memory.view(&env.as_store_ref());
     let values = async_ptr.slice(&memory_view, async_len).unwrap();
 
@@ -35,7 +35,7 @@ pub fn create_future_value(env: &mut FunctionEnvMut<RuntimeInstanceData>) -> Fat
 /// contained in the env object.
 pub fn resolve_async_value(env: FunctionEnvMut<RuntimeInstanceData>, async_value_ptr: FatPtr, result_ptr: FatPtr) {
     // First assign the result ptr and mark the async value as ready:
-    let memory = env.data().memory.as_ref().unwrap();
+    let memory = env.data().memory();
     let memory_view = memory.view(&env.as_store_ref());
 
     let (async_ptr, async_len) = to_wasm_ptr(async_value_ptr);
