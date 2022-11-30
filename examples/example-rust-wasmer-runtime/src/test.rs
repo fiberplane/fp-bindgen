@@ -258,6 +258,7 @@ async fn async_struct() -> Result<()> {
 #[tokio::test]
 async fn fetch_async_data() -> Result<()> {
     let rt = Runtime::new(WASM_BYTES)?;
+    rt.init()?;
 
     let response = rt.fetch_data("sign-up".to_string()).await?;
 

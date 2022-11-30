@@ -154,7 +154,7 @@ pub(crate) fn generate_import_function_variables<'a>(
 
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
-            "let result = ModuleRawFuture::new(env.clone().into_mut(&mut *self.store.borrow_mut()), result).await;".to_string(),
+            "println!(\"raw future...\");let result = ModuleRawFuture::new(env.clone().into_mut(&mut *self.store.borrow_mut()), result).await;println!(\"raw future done\");".to_string(),
             "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else if !function
@@ -276,10 +276,18 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
 
     let return_wrapper = if function.is_async {
         r#"let async_ptr = create_future_value(&mut env);
-    let handle = tokio::runtime::Handle::current();
-    let result = handle.block_on(async move { result.await });
+        println!("Waiting for result...");
+    let result = futures::executor::block_on(async {
+        println!("Waiting for result...inside block_on");
+        let v = result.await.unwrap();
+        println!("Waiting for result...after block_on");
+        v
+    });
+        println!("Waiting for result...export_to_guest...");
     let result_ptr = export_to_guest(&mut env, &result);
+        println!("Waiting for result...resolve_async_value...");
     env.data().guest_resolve_async_value().call(&mut env.as_store_mut(), async_ptr, result_ptr).unwrap();
+        println!("Waiting for result...returning async_ptr...");
     async_ptr"#
     } else {
         match &function.return_type {

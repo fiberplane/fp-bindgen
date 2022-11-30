@@ -335,6 +335,7 @@ async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyR
 
 #[fp_export_impl(example_bindings)]
 async fn fetch_data(r#type: String) -> Result<String, String> {
+    log(format!("in fetch_data..."));
 
     let mut headers = ::http::HeaderMap::new();
     headers.insert(
@@ -342,6 +343,7 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
         ::http::header::HeaderValue::from_static("application/json"),
     );
 
+    log(format!("make_http_request..."));
     let result = make_http_request(Request {
         url: Uri::from_static("https://fiberplane.dev"),
         method: Method::POST,
@@ -350,15 +352,20 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
             r#"{{"country":"🇳🇱","type":"{}"}}"#,
             r#type
         ))),
-    })
-    .await;
+    });
 
-    match result {
+    log(format!("awaiting in http_request.."));
+    let result = result.await;
+
+    log(format!("got http_request results..."));
+    let r = match result {
         Ok(response) => {
             String::from_utf8(response.body.to_vec()).map_err(|_| "Invalid utf8".to_owned())
         }
         Err(err) => Err(format!("Error: {:?}", err)),
-    }
+    };
+    log(format!("got http_request results: {:?}", r));
+    r
 }
 
 #[fp_export_impl(example_bindings)]
