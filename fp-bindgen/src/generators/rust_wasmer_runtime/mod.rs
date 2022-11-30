@@ -350,13 +350,21 @@ impl Runtime {{
         let module = Module::new(&store, wasm_module)?;
         Ok(Self {{ module }})
     }}
-
+    
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     fn default_store() -> wasmer::Store {{
-        let compiler = wasmer::Singlepass::default();
-        let engine = wasmer::Universal::new(compiler).engine();
+        let compiler = wasmer_compiler_cranelift::Cranelift::default();
+        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
         Store::new(&engine)
     }}
-
+    
+    #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
+    fn default_store() -> wasmer::Store {{
+        let compiler = wasmer_compiler_singlepass::Singlepass::default();
+        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
+        Store::new(&engine)
+    }}
+    
     {exports}
 }}
 
