@@ -267,8 +267,6 @@ const imports: Imports = {
   },
 
   log: (message: string): void => {
-    // The plugin is not expected to log anything unless it panics:
-    //fail("Plugin panic: " + message);
     console.log(message);
   },
 
