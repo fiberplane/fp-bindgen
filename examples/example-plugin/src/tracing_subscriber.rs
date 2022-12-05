@@ -27,10 +27,10 @@ impl Subscriber for ExampleSubscriber {
     fn event(&self, event: &Event<'_>) {
         let location = match (event.metadata().file(), event.metadata().line()) {
             (Some(file), Some(line)) => {
-                format!("{}:{}", file, line)
+                format!("{}:{}: ", file, line)
             }
             (Some(file), None) => {
-                format!("{}", file)
+                format!("{}: ", file)
             }
             _ => "".to_owned()
         };
@@ -48,7 +48,7 @@ impl Subscriber for ExampleSubscriber {
 
         let mut v = Visitor { message: None };
         event.record(&mut v);
-        crate::log(format!("{}: {}", location, v.message.unwrap_or_else(|| "[Empty message]".to_owned())));
+        crate::log(format!("{}{}", location, v.message.unwrap_or_else(|| "[Empty message]".to_owned())));
     }
 
     fn enter(&self, _span: &Id) {
