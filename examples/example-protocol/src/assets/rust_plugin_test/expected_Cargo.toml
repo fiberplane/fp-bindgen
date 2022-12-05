@@ -8,7 +8,7 @@ edition = "2018"
 bytes = { version = "1", features = ["serde"] }
 fp-bindgen-support = { path = "../../../../fp-bindgen-support", version = "2.4.0", features = ["async", "guest", "http"] }
 http = { version = "0.2" }
-once_cell = { version = "1.4" }
+once_cell = { version = "1" }
 redux-example = { path = "../../../redux-example" }
 rmp-serde = { version = "1.0" }
 serde = { version = "1.0", features = ["derive"] }

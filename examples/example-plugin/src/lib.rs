@@ -16,6 +16,9 @@ use time::{macros::datetime, OffsetDateTime};
 //                https://fiberplane.dev/blog/writing-redux-reducers-in-rust/
 mod reducer;
 
+// An example 'tracing' subscriber
+mod tracing_subscriber;
+
 fn init_panic_hook() {
     use std::sync::Once;
     static SET_HOOK: Once = Once::new();
@@ -31,6 +34,8 @@ fn export_primitive_bool(arg: bool) -> bool {
 
 #[fp_export_impl(example_bindings)]
 fn export_primitive_f32(arg: f32) -> f32 {
+    tracing::info!("HELLO FROM export_primitive_f32 info");
+    log("HELLO FROM export_primitive_f32 VIA LOG".to_string());
     assert!(arg > 3.14);
     assert!(arg < 3.15);
     3.1415926535
@@ -384,4 +389,6 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
 #[fp_export_impl(example_bindings)]
 fn init() {
     init_panic_hook();
+    tracing_subscriber::init();
+    tracing::info!("Example plugin initialized");
 }

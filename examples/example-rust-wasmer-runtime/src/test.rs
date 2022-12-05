@@ -22,6 +22,7 @@ const WASM_BYTES: &'static [u8] =
 #[test]
 fn primitives() -> Result<()> {
     let rt = Runtime::new(WASM_BYTES)?;
+    rt.init()?;
 
     assert_eq!(rt.export_primitive_bool(true)?, true);
     assert_eq!(rt.export_primitive_bool(false)?, false);
