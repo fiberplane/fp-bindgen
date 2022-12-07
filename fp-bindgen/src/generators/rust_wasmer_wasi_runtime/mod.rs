@@ -16,7 +16,7 @@ pub(crate) fn generate_bindings(
     types: TypeMap,
     path: &str,
 ) {
-    fs::create_dir_all(&path).expect("Could not create output directory");
+    fs::create_dir_all(path).expect("Could not create output directory");
 
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:

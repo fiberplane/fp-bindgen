@@ -267,7 +267,7 @@ const imports: Imports = {
   },
 
   log: (message: string): void => {
-    console.log(message);
+    console.log("Plugin log: " + message);
   },
 
   makeHttpRequest: (request: Request): Promise<HttpResult> => {

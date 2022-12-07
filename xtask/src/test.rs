@@ -46,18 +46,18 @@ pub fn test() -> TaskResult<()> {
     }
 
     progress.next_step(TRUCK, "Building example protocol...");
-    run(cargo(&["run"]).dir(from_root("examples/example-protocol")))?;
+    run(cargo(["run"]).dir(from_root("examples/example-protocol")))?;
 
     progress.next_step(TRUCK, "Building example plugin...");
-    run(cargo(&["build"]).dir(from_root("examples/example-plugin")))?;
+    run(cargo(["build"]).dir(from_root("examples/example-plugin")))?;
 
     progress.next_step(TEST, "Running deno tests...");
     run(
-        deno(&["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime"))
+        deno(["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime"))
     )?;
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
-    run(cargo(&["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
+    run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
 
     Ok(())
 }

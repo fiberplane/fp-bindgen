@@ -34,8 +34,6 @@ fn export_primitive_bool(arg: bool) -> bool {
 
 #[fp_export_impl(example_bindings)]
 fn export_primitive_f32(arg: f32) -> f32 {
-    tracing::info!("HELLO FROM export_primitive_f32 info");
-    log("HELLO FROM export_primitive_f32 VIA LOG".to_string());
     assert!(arg > 3.14);
     assert!(arg < 3.15);
     3.1415926535

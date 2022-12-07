@@ -4,6 +4,7 @@ pub fn init() {
     subscriber::set_global_default(ExampleSubscriber::default()).unwrap();
 }
 
+/// This is a basic tracing Subscriber that forwards events as log messages via `log()`.
 #[derive(Default)]
 struct ExampleSubscriber {
     next_id: std::sync::atomic::AtomicUsize,
@@ -35,17 +36,6 @@ impl Subscriber for ExampleSubscriber {
             _ => "".to_owned()
         };
 
-        struct Visitor {
-            message: Option<String>,
-        }
-        impl field::Visit for Visitor {
-            fn record_debug(&mut self, field: &field::Field, value: &dyn std::fmt::Debug) {
-                if field.name() == "message" {
-                    self.message = Some(format!("{:?}", value));
-                }
-            }
-        }
-
         let mut v = Visitor { message: None };
         event.record(&mut v);
         crate::log(format!("{}{}", location, v.message.unwrap_or_else(|| "[Empty message]".to_owned())));
@@ -55,5 +45,17 @@ impl Subscriber for ExampleSubscriber {
     }
 
     fn exit(&self, _span: &Id) {
+    }
+}
+
+struct Visitor {
+    message: Option<String>,
+}
+
+impl field::Visit for Visitor {
+    fn record_debug(&mut self, field: &field::Field, value: &dyn std::fmt::Debug) {
+        if field.name() == "message" {
+            self.message = Some(format!("{:?}", value));
+        }
     }
 }
