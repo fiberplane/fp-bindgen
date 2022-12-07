@@ -16,6 +16,9 @@ use time::{macros::datetime, OffsetDateTime};
 //                https://fiberplane.dev/blog/writing-redux-reducers-in-rust/
 mod reducer;
 
+// An example 'tracing' subscriber
+mod tracing_subscriber;
+
 fn init_panic_hook() {
     use std::sync::Once;
     static SET_HOOK: Once = Once::new();
@@ -384,4 +387,6 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
 #[fp_export_impl(example_bindings)]
 fn init() {
     init_panic_hook();
+    tracing_subscriber::init();
+    tracing::info!("Example plugin initialized");
 }

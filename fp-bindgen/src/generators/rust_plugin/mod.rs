@@ -67,7 +67,7 @@ fn generate_cargo_file(
                 ..CargoDependency::default()
             },
         ),
-        ("once_cell", CargoDependency::with_version("1.4")),
+        ("once_cell", CargoDependency::with_version("1")),
         ("rmp-serde", CargoDependency::with_version("1.0")),
         (
             "serde",
