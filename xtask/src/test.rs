@@ -52,9 +52,7 @@ pub fn test() -> TaskResult<()> {
     run(cargo(["build"]).dir(from_root("examples/example-plugin")))?;
 
     progress.next_step(TEST, "Running deno tests...");
-    run(
-        deno(["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime"))
-    )?;
+    run(deno(["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime")))?;
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
     run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
