@@ -13,7 +13,7 @@ static TRUCK: Emoji<'_, '_> = Emoji("🚚 ", "");
 static TEST: Emoji<'_, '_> = Emoji("🧪 ", "");
 
 pub fn test() -> TaskResult<()> {
-    let mut progress = ProgressReporter::new(8);
+    let mut progress = ProgressReporter::new(9);
     progress.next_step(LOOKING_GLASS, "Checking prerequisites...");
 
     let deno_path = which("deno").with_context(|| {
@@ -66,6 +66,10 @@ pub fn test() -> TaskResult<()> {
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
     run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
+
+    progress.next_step(TEST, "Running end-to-end wasmer-wasi tests...");
+    run(cargo(["test", "--features", "wasi"])
+        .dir(from_root("examples/example-rust-wasmer-runtime")))?;
 
     Ok(())
 }
