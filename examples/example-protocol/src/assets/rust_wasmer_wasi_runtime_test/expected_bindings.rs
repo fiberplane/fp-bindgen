@@ -11,18 +11,30 @@ use fp_bindgen_support::{
         runtime::RuntimeInstanceData,
     },
 };
+use std::cell::RefCell;
 use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv};
 
 #[derive(Clone)]
 pub struct Runtime {
-    module: Module,
+    instance: RefCell<Instance>,
+    env: RuntimeInstanceData,
 }
 
 impl Runtime {
     pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
         let store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
-        Ok(Self { module })
+        let mut env = RuntimeInstanceData::default();
+        let mut wasi_env = wasmer_wasi::WasiState::new("fp").finalize().unwrap();
+        let mut import_object = wasi_env.import_object(&module).unwrap();
+        let namespace = create_import_object(module.store(), &env);
+        import_object.register("fp", namespace);
+        let instance = Instance::new(&module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        Ok(Self {
+            instance: RefCell::new(instance),
+            env,
+        })
     }
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
@@ -46,24 +58,17 @@ impl Runtime {
         result
     }
     pub fn export_array_f32_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_f32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_f32")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_f32".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -74,24 +79,17 @@ impl Runtime {
         result
     }
     pub fn export_array_f64_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_f64")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_f64")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_f64".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -102,24 +100,17 @@ impl Runtime {
         result
     }
     pub fn export_array_i16_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_i16")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i16")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_i16".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -130,24 +121,17 @@ impl Runtime {
         result
     }
     pub fn export_array_i32_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_i32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i32")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_i32".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -158,24 +142,17 @@ impl Runtime {
         result
     }
     pub fn export_array_i8_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_i8")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i8")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_i8".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -186,24 +163,17 @@ impl Runtime {
         result
     }
     pub fn export_array_u16_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_u16")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u16")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_u16".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -214,24 +184,17 @@ impl Runtime {
         result
     }
     pub fn export_array_u32_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_u32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u32")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_u32".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -242,24 +205,17 @@ impl Runtime {
         result
     }
     pub fn export_array_u8_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_array_u8")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u8")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_array_u8".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -279,17 +235,10 @@ impl Runtime {
         arg1: Vec<u8>,
         arg2: u64,
     ) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_async_struct")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg1 = export_to_guest_raw(&env, arg1);
-        let function = instance
+        let arg1 = export_to_guest_raw(&self.env, arg1);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(FatPtr, <u64 as WasmAbi>::AbiType), FatPtr>(
                 "__fp_gen_export_async_struct",
@@ -298,7 +247,7 @@ impl Runtime {
                 InvocationError::FunctionNotExported("__fp_gen_export_async_struct".to_owned())
             })?;
         let result = function.call(arg1.to_abi(), arg2.to_abi())?;
-        let result = ModuleRawFuture::new(env.clone(), result).await;
+        let result = ModuleRawFuture::new(self.env.clone(), result).await;
         Ok(result)
     }
 
@@ -315,17 +264,10 @@ impl Runtime {
         &self,
         arg: Vec<u8>,
     ) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_adjacently_tagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_adjacently_tagged")
             .map_err(|_| {
@@ -334,7 +276,7 @@ impl Runtime {
                 )
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -348,24 +290,17 @@ impl Runtime {
         result
     }
     pub fn export_fp_enum_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_enum")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_enum")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_fp_enum".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -376,24 +311,17 @@ impl Runtime {
         result
     }
     pub fn export_fp_flatten_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_flatten")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_flatten")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_fp_flatten".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -410,17 +338,10 @@ impl Runtime {
         &self,
         arg: Vec<u8>,
     ) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_internally_tagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_internally_tagged")
             .map_err(|_| {
@@ -429,7 +350,7 @@ impl Runtime {
                 )
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -443,24 +364,17 @@ impl Runtime {
         result
     }
     pub fn export_fp_struct_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_struct")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_struct")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_fp_struct".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -471,24 +385,17 @@ impl Runtime {
         result
     }
     pub fn export_fp_untagged_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_fp_untagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_untagged")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_fp_untagged".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -502,24 +409,17 @@ impl Runtime {
         result
     }
     pub fn export_generics_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_generics")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_generics")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_generics".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -529,23 +429,16 @@ impl Runtime {
         result
     }
     pub fn export_get_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_get_bytes")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_bytes")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_get_bytes".to_owned())
             })?;
         let result = function.call()?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -557,23 +450,16 @@ impl Runtime {
         result
     }
     pub fn export_get_serde_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_get_serde_bytes")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_serde_bytes")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_get_serde_bytes".to_owned())
             })?;
         let result = function.call()?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -591,17 +477,10 @@ impl Runtime {
         arg1: i8,
         arg2: Vec<u8>,
     ) -> Result<i64, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_multiple_primitives")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg2 = export_to_guest_raw(&env, arg2);
-        let function = instance
+        let arg2 = export_to_guest_raw(&self.env, arg2);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(<i8 as WasmAbi>::AbiType, FatPtr), <i64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_multiple_primitives",
@@ -621,16 +500,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_bool_raw(&self, arg: bool) -> Result<bool, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_bool")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<bool as WasmAbi>::AbiType, <bool as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_bool",
@@ -648,16 +520,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_f32_raw(&self, arg: f32) -> Result<f32, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_f32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<f32 as WasmAbi>::AbiType, <f32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_f32",
@@ -675,16 +540,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_f64_raw(&self, arg: f64) -> Result<f64, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_f64")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<f64 as WasmAbi>::AbiType, <f64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_f64",
@@ -702,16 +560,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_i16_raw(&self, arg: i16) -> Result<i16, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_i16")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<i16 as WasmAbi>::AbiType, <i16 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i16",
@@ -729,16 +580,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_i32_raw(&self, arg: i32) -> Result<i32, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_i32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<i32 as WasmAbi>::AbiType, <i32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i32",
@@ -756,16 +600,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_i64_raw(&self, arg: i64) -> Result<i64, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_i64")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<i64 as WasmAbi>::AbiType, <i64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i64",
@@ -783,16 +620,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_i8_raw(&self, arg: i8) -> Result<i8, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_i8")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<i8 as WasmAbi>::AbiType, <i8 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i8",
@@ -810,16 +640,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_u16_raw(&self, arg: u16) -> Result<u16, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_u16")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<u16 as WasmAbi>::AbiType, <u16 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u16",
@@ -837,16 +660,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_u32_raw(&self, arg: u32) -> Result<u32, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_u32")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<u32 as WasmAbi>::AbiType, <u32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u32",
@@ -864,16 +680,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_u64_raw(&self, arg: u64) -> Result<u64, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_u64")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<u64 as WasmAbi>::AbiType, <u64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u64",
@@ -891,16 +700,9 @@ impl Runtime {
         result
     }
     pub fn export_primitive_u8_raw(&self, arg: u8) -> Result<u8, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_primitive_u8")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<<u8 as WasmAbi>::AbiType, <u8 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u8",
@@ -926,17 +728,10 @@ impl Runtime {
         &self,
         arg: Vec<u8>,
     ) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_adjacently_tagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_adjacently_tagged")
             .map_err(|_| {
@@ -945,7 +740,7 @@ impl Runtime {
                 )
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -959,24 +754,17 @@ impl Runtime {
         result
     }
     pub fn export_serde_enum_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_enum")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_enum")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_serde_enum".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -987,24 +775,17 @@ impl Runtime {
         result
     }
     pub fn export_serde_flatten_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_flatten")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_flatten")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_serde_flatten".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1021,17 +802,10 @@ impl Runtime {
         &self,
         arg: Vec<u8>,
     ) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_internally_tagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_internally_tagged")
             .map_err(|_| {
@@ -1040,7 +814,7 @@ impl Runtime {
                 )
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1054,24 +828,17 @@ impl Runtime {
         result
     }
     pub fn export_serde_struct_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_struct")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_struct")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_serde_struct".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1085,24 +852,17 @@ impl Runtime {
         result
     }
     pub fn export_serde_untagged_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_serde_untagged")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_untagged")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_serde_untagged".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1113,24 +873,17 @@ impl Runtime {
         result
     }
     pub fn export_string_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_string")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_string")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_string".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1141,24 +894,17 @@ impl Runtime {
         result
     }
     pub fn export_timestamp_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_timestamp")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let arg = export_to_guest_raw(&env, arg);
-        let function = instance
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_timestamp")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_export_timestamp".to_owned())
             })?;
         let result = function.call(arg.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 
@@ -1167,16 +913,9 @@ impl Runtime {
         result
     }
     pub fn export_void_function_raw(&self) -> Result<(), InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("export_void_function")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(), ()>("__fp_gen_export_void_function")
             .map_err(|_| {
@@ -1199,22 +938,15 @@ impl Runtime {
         result
     }
     pub async fn fetch_data_raw(&self, r#type: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("fetch_data")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let r#type = export_to_guest_raw(&env, r#type);
-        let function = instance
+        let r#type = export_to_guest_raw(&self.env, r#type);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_fetch_data".to_owned()))?;
         let result = function.call(r#type.to_abi())?;
-        let result = ModuleRawFuture::new(env.clone(), result).await;
+        let result = ModuleRawFuture::new(self.env.clone(), result).await;
         Ok(result)
     }
 
@@ -1224,14 +956,9 @@ impl Runtime {
         result
     }
     pub fn init_raw(&self) -> Result<(), InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("init").finalize().unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let function = instance
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<(), ()>("__fp_gen_init")
             .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_init".to_owned()))?;
@@ -1248,24 +975,17 @@ impl Runtime {
         result
     }
     pub fn reducer_bridge_raw(&self, action: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
-        let mut env = RuntimeInstanceData::default();
-        let mut wasi_env = wasmer_wasi::WasiState::new("reducer_bridge")
-            .finalize()
-            .unwrap();
-        let mut import_object = wasi_env.import_object(&self.module).unwrap();
-        let namespace = create_import_object(self.module.store(), &env);
-        import_object.register("fp", namespace);
-        let instance = Instance::new(&self.module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        let action = export_to_guest_raw(&env, action);
-        let function = instance
+        let action = export_to_guest_raw(&self.env, action);
+        let function = self
+            .instance
+            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_reducer_bridge")
             .map_err(|_| {
                 InvocationError::FunctionNotExported("__fp_gen_reducer_bridge".to_owned())
             })?;
         let result = function.call(action.to_abi())?;
-        let result = import_from_guest_raw(&env, result);
+        let result = import_from_guest_raw(&self.env, result);
         Ok(result)
     }
 }

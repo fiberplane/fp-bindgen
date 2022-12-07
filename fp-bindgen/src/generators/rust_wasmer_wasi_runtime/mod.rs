@@ -106,7 +106,7 @@ fn generate_function_bindings(
         .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
-    let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {{
+    let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
         let store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
         let mut env = RuntimeInstanceData::default();
@@ -117,7 +117,7 @@ fn generate_function_bindings(
         let instance = Instance::new(&module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
         Ok(Self { instance: RefCell::new(instance), env })
-    }}"#
+    }"#
     .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);
     format_function_bindings(imports, exports, new_func, create_import_object_func, path);
