@@ -79,14 +79,8 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
     {return_wrapper}result
 }}
 pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
-    let mut env = RuntimeInstanceData::default();
-    let mut wasi_env = wasmer_wasi::WasiState::new("{name}").finalize().unwrap();
-    let mut import_object = wasi_env.import_object(&self.module).unwrap();
-    let namespace = create_import_object(self.module.store(), &env);
-    import_object.register("fp", namespace);
-    let instance = Instance::new(&self.module, &import_object).unwrap();
-    env.init_with_instance(&instance).unwrap();
-    {serialize_raw_args}let function = instance
+    {serialize_raw_args}let function = self.instance
+        .borrow()
         .exports
         .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
         .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
@@ -112,6 +106,19 @@ fn generate_function_bindings(
         .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
+    let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {{
+        let store = Self::default_store();
+        let module = Module::new(&store, wasm_module)?;
+        let mut env = RuntimeInstanceData::default();
+        let mut wasi_env = wasmer_wasi::WasiState::new("fp").finalize().unwrap();
+        let mut import_object = wasi_env.import_object(&module).unwrap();
+        let namespace = create_import_object(module.store(), &env);
+        import_object.register("fp", namespace);
+        let instance = Instance::new(&module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        Ok(Self { instance: RefCell::new(instance), env })
+    }}"#
+    .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(imports, exports, create_import_object_func, path);
+    format_function_bindings(imports, exports, new_func, create_import_object_func, path);
 }

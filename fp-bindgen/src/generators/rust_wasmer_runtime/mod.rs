@@ -135,7 +135,9 @@ pub(crate) fn generate_import_function_variables<'a>(
         .args
         .iter()
         .filter(|arg| !arg.ty.is_primitive())
-        .map(|FunctionArg { name, .. }| format!("let {name} = export_to_guest_raw(&env, {name});"))
+        .map(|FunctionArg { name, .. }| {
+            format!("let {name} = export_to_guest_raw(&self.env, {name});")
+        })
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -154,7 +156,7 @@ pub(crate) fn generate_import_function_variables<'a>(
 
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
-            "let result = ModuleRawFuture::new(env.clone(), result).await;".to_string(),
+            "let result = ModuleRawFuture::new(self.env.clone(), result).await;".to_string(),
             "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else if !function
@@ -164,7 +166,7 @@ pub(crate) fn generate_import_function_variables<'a>(
         .unwrap_or(true)
     {
         (
-            "let result = import_from_guest_raw(&env, result);".to_string(),
+            "let result = import_from_guest_raw(&self.env, result);".to_string(),
             "let result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else {
@@ -219,11 +221,8 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
     {return_wrapper}result
 }}
 pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
-    let mut env = RuntimeInstanceData::default();
-    let import_object = create_import_object(self.module.store(), &env);
-    let instance = Instance::new(&self.module, &import_object).unwrap();
-    env.init_with_instance(&instance).unwrap();
-    {serialize_raw_args}let function = instance
+    {serialize_raw_args}let function = self.instance
+        .borrow()
         .exports
         .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
         .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
@@ -317,13 +316,24 @@ fn generate_function_bindings(
         .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
+    let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
+        let store = Self::default_store();
+        let module = Module::new(&store, wasm_module)?;
+        let mut env = RuntimeInstanceData::default();
+        let import_object = create_import_object(module.store(), &env);
+        let instance = Instance::new(&module, &import_object).unwrap();
+        env.init_with_instance(&instance).unwrap();
+        Ok(Self { instance: RefCell::new(instance), env })
+    }"#
+    .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(imports, exports, create_import_object_func, path);
+    format_function_bindings(imports, exports, new_func, create_import_object_func, path);
 }
 
 pub(crate) fn format_function_bindings(
     imports: String,
     exports: String,
+    new_func: String,
     create_import_object_func: String,
     path: &str,
 ) {
@@ -337,34 +347,32 @@ use fp_bindgen_support::{{
         runtime::RuntimeInstanceData,
     }},
 }};
+use std::cell::RefCell;
 use wasmer::{{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv}};
 
 #[derive(Clone)]
 pub struct Runtime {{
-    module: Module,
+    instance: RefCell<Instance>,
+    env: RuntimeInstanceData,
 }}
 
 impl Runtime {{
-    pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {{
-        let store = Self::default_store();
-        let module = Module::new(&store, wasm_module)?;
-        Ok(Self {{ module }})
-    }}
-    
+    {new_func}
+
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     fn default_store() -> wasmer::Store {{
         let compiler = wasmer_compiler_cranelift::Cranelift::default();
         let engine = wasmer_engine_universal::Universal::new(compiler).engine();
         Store::new(&engine)
     }}
-    
+
     #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
     fn default_store() -> wasmer::Store {{
         let compiler = wasmer_compiler_singlepass::Singlepass::default();
         let engine = wasmer_engine_universal::Universal::new(compiler).engine();
         Store::new(&engine)
     }}
-    
+
     {exports}
 }}
 
