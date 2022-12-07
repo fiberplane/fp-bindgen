@@ -7,12 +7,13 @@ use which::which;
 
 static LOOKING_GLASS: Emoji<'_, '_> = Emoji("🔍 ", "");
 static CHECK: Emoji<'_, '_> = Emoji("✅️ ", "");
+static CLIP: Emoji<'_, '_> = Emoji("📎 ", "");
 static WARN: Emoji<'_, '_> = Emoji("⚠️ ", "");
 static TRUCK: Emoji<'_, '_> = Emoji("🚚 ", "");
 static TEST: Emoji<'_, '_> = Emoji("🧪 ", "");
 
 pub fn test() -> TaskResult<()> {
-    let mut progress = ProgressReporter::new(6);
+    let mut progress = ProgressReporter::new(8);
     progress.next_step(LOOKING_GLASS, "Checking prerequisites...");
 
     let deno_path = which("deno").with_context(|| {
@@ -44,6 +45,12 @@ pub fn test() -> TaskResult<()> {
             progress.report(WARN, &style("Could not find rustup, so we cannot determine if the appropriate targets are installed.").yellow().to_string());
         }
     }
+
+    progress.next_step(CLIP, "Clippy...");
+    run(cargo(["clippy", "--all-features"]).dir(from_root("")))?;
+
+    progress.next_step(CLIP, "Checking formatting...");
+    run(cargo(["fmt", "--", "--check"]).dir(from_root("")))?;
 
     progress.next_step(TRUCK, "Building example protocol...");
     run(cargo(["run"]).dir(from_root("examples/example-protocol")))?;
