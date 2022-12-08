@@ -42,12 +42,12 @@ impl Runtime {
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     fn default_store() -> wasmer::Store {
-        Store::new(wasmer::Cranelift::default())
+        Store::new(wasmer_compiler_cranelift::Cranelift::default())
     }
 
     #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
     fn default_store() -> wasmer::Store {
-        Store::new(wasmer::Singlepass::default())
+        Store::new(wasmer_compiler_singlepass::Singlepass::default())
     }
 
     fn function_env_mut(&mut self) -> FunctionEnvMut<Arc<RuntimeInstanceData>> {
