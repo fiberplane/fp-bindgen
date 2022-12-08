@@ -1,9 +1,8 @@
-use std::sync::Arc;
-use bytemuck::Pod;
 use super::{io::to_wasm_ptr, runtime::RuntimeInstanceData};
 use crate::common::mem::FatPtr;
 use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use wasmer::{AsStoreMut, AsStoreRef, FunctionEnvMut};
 
 /// Serialize the given value to MessagePack
@@ -39,7 +38,10 @@ pub fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-pub fn import_from_guest_raw(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>, fat_ptr: FatPtr) -> Vec<u8> {
+pub fn import_from_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    fat_ptr: FatPtr,
+) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
@@ -54,18 +56,24 @@ pub fn import_from_guest_raw(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
     let memory_view = memory.view(&env.as_store_ref());
     let value = ptr.slice(&memory_view, len).unwrap().read_to_vec().unwrap();
 
-    //env.free(fat_ptr);
+    env.data().clone().free(&mut env.as_store_mut(), fat_ptr);
 
     value
 }
 
 /// Serialize a value and put it in linear memory.
-pub fn export_to_guest<T: Serialize>(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>, value: &T) -> FatPtr {
+pub fn export_to_guest<T: Serialize>(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    value: &T,
+) -> FatPtr {
     export_to_guest_raw(env, &rmp_serde::to_vec(value).unwrap())
 }
 
 /// Copy the buffer into linear memory.
-pub fn export_to_guest_raw(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>, buffer: impl AsRef<[u8]>) -> FatPtr {
+pub fn export_to_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    buffer: impl AsRef<[u8]>,
+) -> FatPtr {
     let buffer = buffer.as_ref();
     let len = buffer.len() as u32;
 
@@ -87,18 +95,19 @@ pub fn export_to_guest_raw(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>, b
     fat_ptr
 }
 
-/// Update a buffer in linear memory.
-pub fn update_in_guest_raw<T: Pod>(env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>, fat_ptr: FatPtr, f: impl FnOnce(&mut T)) {
+/// Update a buffer in linear memory. Performs no (de)allocation of any kind.
+pub fn update_in_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    fat_ptr: FatPtr,
+    f: impl FnOnce(&mut [u8]),
+) {
     let (ptr, len) = to_wasm_ptr(fat_ptr);
 
     let memory = env.data().memory.as_ref().unwrap();
     let memory_view = memory.view(&env.as_store_ref());
     let mut bytes = ptr.slice(&memory_view, len).unwrap().read_to_vec().unwrap();
 
-    // Update in place
-    let pod: &mut T = bytemuck::from_bytes_mut(&mut bytes);
-    f(pod);
-    let bytes = bytemuck::bytes_of(pod);
+    f(&mut bytes);
 
     // Write out
     let values = ptr.slice(&memory_view, len).unwrap();

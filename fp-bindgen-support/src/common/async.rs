@@ -1,5 +1,5 @@
-use bytemuck::{Pod, Zeroable};
 use super::mem::{to_fat_ptr, FatPtr};
+use bytemuck::{Pod, Zeroable};
 
 pub const FUTURE_STATUS_PENDING: u32 = 0;
 pub const FUTURE_STATUS_READY: u32 = 1;

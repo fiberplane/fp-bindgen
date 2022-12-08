@@ -232,7 +232,7 @@ fn tagged_enums() -> Result<()> {
     Ok(())
 }
 
-/*#[tokio::test]
+#[tokio::test]
 async fn async_struct() -> Result<()> {
     let mut rt = new_runtime()?;
 
@@ -263,7 +263,7 @@ async fn fetch_async_data() -> Result<()> {
 
     assert_eq!(response, Ok(r#"status: "confirmed"#.to_string()));
     Ok(())
-}*/
+}
 
 #[test]
 fn bytes() -> Result<()> {

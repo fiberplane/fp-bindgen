@@ -27,9 +27,7 @@ fn generate_create_imports_func(import_functions: &FunctionList) -> String {
         .iter()
         .map(|function| {
             let name = &function.name;
-            format!(
-                "\"__fp_gen_{name}\" => Function::new_typed_with_env(store, env, _{name}),"
-            )
+            format!("\"__fp_gen_{name}\" => Function::new_typed_with_env(store, env, _{name}),")
         })
         .collect::<Vec<_>>()
         .join("\n            ");
@@ -195,7 +193,7 @@ pub(crate) fn generate_import_function_variables<'a>(
     )
 }
 
-fn format_import_function(function: &Function, types: &TypeMap) -> String {
+pub fn format_import_function(function: &Function, types: &TypeMap) -> String {
     let (
         doc,
         modifiers,
@@ -273,17 +271,22 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         .join(", ");
 
     let return_wrapper = if function.is_async {
-        r#"/*let async_ptr = create_future_value(&mut env);
-    let handle = tokio::runtime::Handle::current();
-    handle.spawn(async move {
-        let result = result.await;
-        let result_ptr = export_to_guest(&mut env, &result);
-        env.guest_resolve_async_value(async_ptr, result_ptr);
-    });
+        r#"let async_ptr = create_future_value(&mut env);
+    let result: Vec<u8> = std::thread::spawn(|| {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        rt.block_on(async move {
+            rmp_serde::to_vec(&result.await).unwrap()
+        })
+    }).join().unwrap();
 
-    async_ptr
-    */
-    todo!();"#
+    let result_ptr = export_to_guest_raw(&mut env, &result);
+    env.data()
+        .clone()
+        .guest_resolve_async_value(&mut env.as_store_mut(), async_ptr, result_ptr);
+
+    async_ptr"#
     } else {
         match &function.return_type {
             None => "",
@@ -350,7 +353,7 @@ use fp_bindgen_support::{{
     }},
 }};
 use std::sync::Arc;
-use wasmer::{{imports, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module, Store}};
+use wasmer::{{imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module, Store}};
 
 pub struct Runtime {{
     store: Store,

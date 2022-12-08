@@ -46,11 +46,11 @@ pub fn test() -> TaskResult<()> {
         }
     }
 
-    /*progress.next_step(CLIP, "Clippy...");
+    progress.next_step(CLIP, "Clippy...");
     run(cargo(["clippy", "--all-features"]).dir(from_root("")))?;
 
     progress.next_step(CLIP, "Checking formatting...");
-    run(cargo(["fmt", "--", "--check"]).dir(from_root("")))?;*/
+    run(cargo(["fmt", "--", "--check"]).dir(from_root("")))?;
 
     progress.next_step(TRUCK, "Building example protocol...");
     run(cargo(["run"]).dir(from_root("examples/example-protocol")))?;
@@ -58,18 +58,18 @@ pub fn test() -> TaskResult<()> {
     progress.next_step(TRUCK, "Building example plugin...");
     run(cargo(["build"]).dir(from_root("examples/example-plugin")))?;
 
-    /*progress.next_step(TEST, "Running deno tests...");
-    run(deno(["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime")))?;*/
+    progress.next_step(TEST, "Running deno tests...");
+    run(deno(["test", "--allow-read", "tests.ts"]).dir(from_root("examples/example-deno-runtime")))?;
 
-    /*progress.next_step(TEST, "Running cargo tests...");
-    run(cargo(["test"]).dir(from_root("")))?;*/
+    progress.next_step(TEST, "Running cargo tests...");
+    run(cargo(["test"]).dir(from_root("")))?;
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
     run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
 
-    /*progress.next_step(TEST, "Running end-to-end wasmer-wasi tests...");
+    progress.next_step(TEST, "Running end-to-end wasmer-wasi tests...");
     run(cargo(["test", "--features", "wasi"])
-        .dir(from_root("examples/example-rust-wasmer-runtime")))?;*/
+        .dir(from_root("examples/example-rust-wasmer-runtime")))?;
 
     Ok(())
 }

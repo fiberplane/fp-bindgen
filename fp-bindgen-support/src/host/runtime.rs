@@ -1,4 +1,3 @@
-use std::cell::UnsafeCell;
 use crate::common::mem::FatPtr;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -18,9 +17,24 @@ impl RuntimeInstanceData {
     pub fn from_instance(store: &Store, instance: &Instance) -> Self {
         Self {
             memory: Some(instance.exports.get_memory("memory").unwrap().clone()),
-            __fp_free: Some(instance.exports.get_typed_function(store, "__fp_free").unwrap()),
-            __fp_guest_resolve_async_value: Some(instance.exports.get_typed_function(store, "__fp_guest_resolve_async_value").unwrap()),
-            __fp_malloc: Some(instance.exports.get_typed_function(store, "__fp_malloc").unwrap()),
+            __fp_free: Some(
+                instance
+                    .exports
+                    .get_typed_function(store, "__fp_free")
+                    .unwrap(),
+            ),
+            __fp_guest_resolve_async_value: Some(
+                instance
+                    .exports
+                    .get_typed_function(store, "__fp_guest_resolve_async_value")
+                    .unwrap(),
+            ),
+            __fp_malloc: Some(
+                instance
+                    .exports
+                    .get_typed_function(store, "__fp_malloc")
+                    .unwrap(),
+            ),
             ..Default::default()
         }
     }
@@ -33,14 +47,17 @@ impl RuntimeInstanceData {
         self.__fp_malloc = other.__fp_malloc;
     }
 
-    pub fn guest_resolve_async_value(&self, async_ptr: FatPtr, result_ptr: FatPtr) {
-        /*unsafe {
-            self.__fp_guest_resolve_async_value
-                .unwrap_unchecked()
-                .call(async_ptr, result_ptr)
-                .expect("Runtime error: Cannot resolve async value");
-        }*/
-        todo!()
+    pub fn guest_resolve_async_value(
+        &self,
+        store: &mut impl AsStoreMut,
+        async_ptr: FatPtr,
+        result_ptr: FatPtr,
+    ) {
+        self.__fp_guest_resolve_async_value
+            .as_ref()
+            .unwrap()
+            .call(store, async_ptr, result_ptr)
+            .expect("Runtime error: Cannot resolve async value");
     }
 
     pub fn malloc(&self, store: &mut impl AsStoreMut, len: u32) -> FatPtr {
@@ -51,13 +68,11 @@ impl RuntimeInstanceData {
             .expect("unable to call malloc")
     }
 
-    pub fn free(&self, ptr: FatPtr) {
-        /*unsafe {
-            self.__fp_free
-                .get_unchecked()
-                .call(ptr)
-                .expect("unable to call free")
-        };*/
-        todo!()
+    pub fn free(&self, store: &mut impl AsStoreMut, ptr: FatPtr) {
+        self.__fp_free
+            .as_ref()
+            .unwrap()
+            .call(store, ptr)
+            .expect("unable to call free");
     }
 }
