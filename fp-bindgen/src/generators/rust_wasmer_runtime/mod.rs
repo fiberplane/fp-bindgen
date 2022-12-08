@@ -22,23 +22,23 @@ pub(crate) fn generate_bindings(
     generate_function_bindings(import_functions, export_functions, &types, path);
 }
 
-fn generate_create_import_object_func(import_functions: &FunctionList) -> String {
+fn generate_create_imports_func(import_functions: &FunctionList) -> String {
     let imports = import_functions
         .iter()
         .map(|function| {
             let name = &function.name;
             format!(
-                "\"__fp_gen_{name}\" => Function::new_native_with_env(store, env.clone(), _{name}),"
+                "\"__fp_gen_{name}\" => Function::new_typed_with_env(store, env, _{name}),"
             )
         })
         .collect::<Vec<_>>()
         .join("\n            ");
 
     format!(
-        r#"fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {{
+        r#"fn create_imports(store: &mut Store, env: &FunctionEnv<Arc<RuntimeInstanceData>>) -> Imports {{
     imports! {{
         "fp" => {{
-            "__fp_host_resolve_async_value" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
+            "__fp_host_resolve_async_value" => Function::new_typed_with_env(store, env, resolve_async_value),
             {imports}
         }}
     }}
@@ -136,7 +136,7 @@ pub(crate) fn generate_import_function_variables<'a>(
         .iter()
         .filter(|arg| !arg.ty.is_primitive())
         .map(|FunctionArg { name, .. }| {
-            format!("let {name} = export_to_guest_raw(&self.env, {name});")
+            format!("let {name} = export_to_guest_raw(&mut self.function_env_mut(), {name});")
         })
         .collect::<Vec<_>>()
         .join("\n");
@@ -156,7 +156,7 @@ pub(crate) fn generate_import_function_variables<'a>(
 
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
-            "let result = ModuleRawFuture::new(self.env.clone(), result).await;".to_string(),
+            "let result = ModuleRawFuture::new(self.function_env_mut(), result).await;".to_string(),
             "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else if !function
@@ -166,7 +166,7 @@ pub(crate) fn generate_import_function_variables<'a>(
         .unwrap_or(true)
     {
         (
-            "let result = import_from_guest_raw(&self.env, result);".to_string(),
+            "let result = import_from_guest_raw(&mut self.function_env_mut(), result);".to_string(),
             "let result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
         )
     } else {
@@ -215,17 +215,17 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
     ) = generate_import_function_variables(function, types);
 
     format!(
-        r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+        r#"{doc}pub {modifiers}fn {name}(&mut self{args}) -> Result<{return_type}, InvocationError> {{
     {serialize_args}
     let result = self.{name}_raw({arg_names});
     {return_wrapper}result
 }}
-pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
+pub {modifiers}fn {name}_raw(&mut self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
     {serialize_raw_args}let function = self.instance
         .exports
-        .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
+        .get_typed_function::<{wasm_args}, {wasm_return_type}>(&mut self.store, "__fp_gen_{name}")
         .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
-    let result = function.call({wasm_arg_names})?;
+    let result = function.call(&mut self.store, {wasm_arg_names})?;
     {raw_return_wrapper}Ok(result)
 }}"#
     )
@@ -236,7 +236,7 @@ pub(crate) fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> 
         format!("let {name} = WasmAbi::from_abi({name});")
     } else {
         let ty = format_ident(ty, types);
-        format!("let {name} = import_from_guest::<{ty}>(env, {name});")
+        format!("let {name} = import_from_guest::<{ty}>(&mut env, {name});")
     }
 }
 
@@ -273,25 +273,27 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         .join(", ");
 
     let return_wrapper = if function.is_async {
-        r#"let env = env.clone();
-    let async_ptr = create_future_value(&env);
+        r#"/*let async_ptr = create_future_value(&mut env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
         let result = result.await;
-        let result_ptr = export_to_guest(&env, &result);
+        let result_ptr = export_to_guest(&mut env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
-    async_ptr"#
+
+    async_ptr
+    */
+    todo!();"#
     } else {
         match &function.return_type {
             None => "",
             Some(ty) if ty.is_primitive() => "result.to_abi()",
-            _ => "export_to_guest(env, &result)",
+            _ => "export_to_guest(&mut env, &result)",
         }
     };
 
     format!(
-        r#"pub fn _{name}(env: &RuntimeInstanceData{wasm_args}){wrapper_return_type} {{
+        r#"pub fn _{name}(mut env: FunctionEnvMut<Arc<RuntimeInstanceData>>{wasm_args}){wrapper_return_type} {{
     {import_args}
     let result = super::{name}({arg_names});
     {return_wrapper}
@@ -316,24 +318,25 @@ fn generate_function_bindings(
         .collect::<Vec<_>>()
         .join("\n\n");
     let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
-        let store = Self::default_store();
+        let mut store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
-        let mut env = RuntimeInstanceData::default();
-        let import_object = create_import_object(module.store(), &env);
-        let instance = Instance::new(&module, &import_object).unwrap();
-        env.init_with_instance(&instance).unwrap();
-        Ok(Self { instance, env })
+        let env = FunctionEnv::new(&mut store, Arc::new(RuntimeInstanceData::default()));
+        let import_object = create_imports(&mut store, &env);
+        let instance = Instance::new(&mut store, &module, &import_object).unwrap();
+        let env_from_instance = RuntimeInstanceData::from_instance(&mut store, &instance);
+        Arc::get_mut(env.as_mut(&mut store)).unwrap().copy_from(env_from_instance);
+        Ok(Self { store, instance, env })
     }"#
     .to_string();
-    let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(imports, exports, new_func, create_import_object_func, path);
+    let create_imports_func = generate_create_imports_func(&import_functions);
+    format_function_bindings(imports, exports, new_func, create_imports_func, path);
 }
 
 pub(crate) fn format_function_bindings(
     imports: String,
     exports: String,
     new_func: String,
-    create_import_object_func: String,
+    create_imports_func: String,
     path: &str,
 ) {
     let full = rustfmt_wrapper::rustfmt(format!(r#"use super::types::*;
@@ -346,13 +349,13 @@ use fp_bindgen_support::{{
         runtime::RuntimeInstanceData,
     }},
 }};
-use std::cell::RefCell;
-use wasmer::{{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv}};
+use std::sync::Arc;
+use wasmer::{{imports, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module, Store}};
 
-#[derive(Clone)]
 pub struct Runtime {{
+    store: Store,
     instance: Instance,
-    env: RuntimeInstanceData,
+    env: FunctionEnv<Arc<RuntimeInstanceData>>,
 }}
 
 impl Runtime {{
@@ -360,22 +363,22 @@ impl Runtime {{
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     fn default_store() -> wasmer::Store {{
-        let compiler = wasmer_compiler_cranelift::Cranelift::default();
-        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
-        Store::new(&engine)
+        Store::new(wasmer::Cranelift::default())
     }}
 
     #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
     fn default_store() -> wasmer::Store {{
-        let compiler = wasmer_compiler_singlepass::Singlepass::default();
-        let engine = wasmer_engine_universal::Universal::new(compiler).engine();
-        Store::new(&engine)
+        Store::new(wasmer::Singlepass::default())
+    }}
+
+    fn function_env_mut(&mut self) -> FunctionEnvMut<Arc<RuntimeInstanceData>> {{
+        self.env.clone().into_mut(&mut self.store)
     }}
 
     {exports}
 }}
 
-{create_import_object_func}
+{create_imports_func}
 
 {imports}
 "#))

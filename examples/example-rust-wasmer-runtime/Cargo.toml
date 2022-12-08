@@ -25,16 +25,15 @@ time = { version = "0.3", features = [
 ] }
 tokio = { version = "1.9.0", features = ["rt", "macros"] }
 tracing = "0.1.37"
-wasmer = { version = "2.3", default-features = false }
-wasmer-wasi = "2.3"
-wasmer-engine-universal = { version = "2.3", features = ["compiler"] }
+wasmer = { version = "3", default-features = false }
+wasmer-wasi = "3"
 anyhow = "1.0"
 
 [features]
 wasi = []
 
 [target.'cfg(any(target_arch = "arm", target_arch = "aarch64"))'.dependencies]
-wasmer-compiler-cranelift = { version = "2.3" }
+wasmer-compiler-cranelift = { version = "3" }
 
 [target.'cfg(not(any(target_arch = "arm", target_arch = "aarch64")))'.dependencies]
-wasmer-compiler-singlepass = { version = "2.3" }
+wasmer-compiler-singlepass = { version = "3" }

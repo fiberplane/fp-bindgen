@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::{
     common::{
         mem::FatPtr,
@@ -10,28 +11,30 @@ use crate::{
     },
 };
 use std::{future::Future, task::Poll};
+use std::sync::Arc;
+use wasmer::FunctionEnvMut;
 
 // The ModuleRawFuture implements the Future Trait to handle async Futures as
 // returned from the module.
-pub struct ModuleRawFuture {
+pub struct ModuleRawFuture<'a> {
     ptr: FatPtr,
-    env: RuntimeInstanceData,
+    env: FunctionEnvMut<'a, Arc<RuntimeInstanceData>>,
 }
 
-impl ModuleRawFuture {
-    pub fn new(env: RuntimeInstanceData, ptr: FatPtr) -> Self {
+impl<'a> ModuleRawFuture<'a> {
+    pub fn new(env: FunctionEnvMut<'a, Arc<RuntimeInstanceData>>, ptr: FatPtr) -> Self {
         Self { ptr, env }
     }
 }
 
-impl<'de> Future for ModuleRawFuture {
+impl<'a, 'de> Future for ModuleRawFuture<'a> {
     type Output = Vec<u8>;
 
     fn poll(
         self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
-        let memory = unsafe { self.env.memory.get_unchecked() };
+        /*let memory = unsafe { self.env.memory.get_unchecked() };
 
         let ptr = self.ptr;
 
@@ -54,6 +57,7 @@ impl<'de> Future for ModuleRawFuture {
                 "expected async value FUTURE_STATUS_PENDING ({}) or FUTURE_STATUS_READY ({}) but got: {}",
                 FUTURE_STATUS_PENDING, FUTURE_STATUS_READY, value
             ),
-        }
+        }*/
+        Poll::Pending
     }
 }
