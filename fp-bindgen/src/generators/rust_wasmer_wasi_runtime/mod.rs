@@ -80,7 +80,6 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
 }}
 pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
     {serialize_raw_args}let function = self.instance
-        .borrow()
         .exports
         .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
         .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
@@ -116,7 +115,7 @@ fn generate_function_bindings(
         import_object.register("fp", namespace);
         let instance = Instance::new(&module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
-        Ok(Self { instance: RefCell::new(instance), env })
+        Ok(Self { instance, env })
     }"#
     .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);

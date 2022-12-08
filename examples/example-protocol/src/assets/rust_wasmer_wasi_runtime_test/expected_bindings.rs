@@ -16,7 +16,7 @@ use wasmer::{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv
 
 #[derive(Clone)]
 pub struct Runtime {
-    instance: RefCell<Instance>,
+    instance: Instance,
     env: RuntimeInstanceData,
 }
 
@@ -31,10 +31,7 @@ impl Runtime {
         import_object.register("fp", namespace);
         let instance = Instance::new(&module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
-        Ok(Self {
-            instance: RefCell::new(instance),
-            env,
-        })
+        Ok(Self { instance, env })
     }
 
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
@@ -61,7 +58,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_f32")
             .map_err(|_| {
@@ -82,7 +78,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_f64")
             .map_err(|_| {
@@ -103,7 +98,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i16")
             .map_err(|_| {
@@ -124,7 +118,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i32")
             .map_err(|_| {
@@ -145,7 +138,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_i8")
             .map_err(|_| {
@@ -166,7 +158,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u16")
             .map_err(|_| {
@@ -187,7 +178,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u32")
             .map_err(|_| {
@@ -208,7 +198,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_array_u8")
             .map_err(|_| {
@@ -238,7 +227,6 @@ impl Runtime {
         let arg1 = export_to_guest_raw(&self.env, arg1);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(FatPtr, <u64 as WasmAbi>::AbiType), FatPtr>(
                 "__fp_gen_export_async_struct",
@@ -267,7 +255,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_adjacently_tagged")
             .map_err(|_| {
@@ -293,7 +280,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_enum")
             .map_err(|_| {
@@ -314,7 +300,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_flatten")
             .map_err(|_| {
@@ -341,7 +326,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_internally_tagged")
             .map_err(|_| {
@@ -367,7 +351,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_struct")
             .map_err(|_| {
@@ -388,7 +371,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_fp_untagged")
             .map_err(|_| {
@@ -412,7 +394,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_generics")
             .map_err(|_| {
@@ -431,7 +412,6 @@ impl Runtime {
     pub fn export_get_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_bytes")
             .map_err(|_| {
@@ -452,7 +432,6 @@ impl Runtime {
     pub fn export_get_serde_bytes_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(), FatPtr>("__fp_gen_export_get_serde_bytes")
             .map_err(|_| {
@@ -480,7 +459,6 @@ impl Runtime {
         let arg2 = export_to_guest_raw(&self.env, arg2);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(<i8 as WasmAbi>::AbiType, FatPtr), <i64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_multiple_primitives",
@@ -502,7 +480,6 @@ impl Runtime {
     pub fn export_primitive_bool_raw(&self, arg: bool) -> Result<bool, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<bool as WasmAbi>::AbiType, <bool as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_bool",
@@ -522,7 +499,6 @@ impl Runtime {
     pub fn export_primitive_f32_raw(&self, arg: f32) -> Result<f32, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<f32 as WasmAbi>::AbiType, <f32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_f32",
@@ -542,7 +518,6 @@ impl Runtime {
     pub fn export_primitive_f64_raw(&self, arg: f64) -> Result<f64, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<f64 as WasmAbi>::AbiType, <f64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_f64",
@@ -562,7 +537,6 @@ impl Runtime {
     pub fn export_primitive_i16_raw(&self, arg: i16) -> Result<i16, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<i16 as WasmAbi>::AbiType, <i16 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i16",
@@ -582,7 +556,6 @@ impl Runtime {
     pub fn export_primitive_i32_raw(&self, arg: i32) -> Result<i32, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<i32 as WasmAbi>::AbiType, <i32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i32",
@@ -602,7 +575,6 @@ impl Runtime {
     pub fn export_primitive_i64_raw(&self, arg: i64) -> Result<i64, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<i64 as WasmAbi>::AbiType, <i64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i64",
@@ -622,7 +594,6 @@ impl Runtime {
     pub fn export_primitive_i8_raw(&self, arg: i8) -> Result<i8, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<i8 as WasmAbi>::AbiType, <i8 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_i8",
@@ -642,7 +613,6 @@ impl Runtime {
     pub fn export_primitive_u16_raw(&self, arg: u16) -> Result<u16, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<u16 as WasmAbi>::AbiType, <u16 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u16",
@@ -662,7 +632,6 @@ impl Runtime {
     pub fn export_primitive_u32_raw(&self, arg: u32) -> Result<u32, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<u32 as WasmAbi>::AbiType, <u32 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u32",
@@ -682,7 +651,6 @@ impl Runtime {
     pub fn export_primitive_u64_raw(&self, arg: u64) -> Result<u64, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<u64 as WasmAbi>::AbiType, <u64 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u64",
@@ -702,7 +670,6 @@ impl Runtime {
     pub fn export_primitive_u8_raw(&self, arg: u8) -> Result<u8, InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<<u8 as WasmAbi>::AbiType, <u8 as WasmAbi>::AbiType>(
                 "__fp_gen_export_primitive_u8",
@@ -731,7 +698,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_adjacently_tagged")
             .map_err(|_| {
@@ -757,7 +723,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_enum")
             .map_err(|_| {
@@ -778,7 +743,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_flatten")
             .map_err(|_| {
@@ -805,7 +769,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_internally_tagged")
             .map_err(|_| {
@@ -831,7 +794,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_struct")
             .map_err(|_| {
@@ -855,7 +817,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_serde_untagged")
             .map_err(|_| {
@@ -876,7 +837,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_string")
             .map_err(|_| {
@@ -897,7 +857,6 @@ impl Runtime {
         let arg = export_to_guest_raw(&self.env, arg);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_timestamp")
             .map_err(|_| {
@@ -915,7 +874,6 @@ impl Runtime {
     pub fn export_void_function_raw(&self) -> Result<(), InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(), ()>("__fp_gen_export_void_function")
             .map_err(|_| {
@@ -941,7 +899,6 @@ impl Runtime {
         let r#type = export_to_guest_raw(&self.env, r#type);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_fetch_data")
             .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_fetch_data".to_owned()))?;
@@ -958,7 +915,6 @@ impl Runtime {
     pub fn init_raw(&self) -> Result<(), InvocationError> {
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<(), ()>("__fp_gen_init")
             .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_init".to_owned()))?;
@@ -978,7 +934,6 @@ impl Runtime {
         let action = export_to_guest_raw(&self.env, action);
         let function = self
             .instance
-            .borrow()
             .exports
             .get_native_function::<FatPtr, FatPtr>("__fp_gen_reducer_bridge")
             .map_err(|_| {
