@@ -49,7 +49,7 @@ pub fn test() -> TaskResult<()> {
     progress.next_step(CLIP, "Clippy...");
     run(cargo(["clippy", "--all-features"]).dir(from_root("")))?;
 
-    progress.next_step(CLIP, "Checking formatting...");
+    progress.next_step(CHECK, "Checking formatting...");
     run(cargo(["fmt", "--", "--check"]).dir(from_root("")))?;
 
     progress.next_step(TRUCK, "Building example protocol...");
