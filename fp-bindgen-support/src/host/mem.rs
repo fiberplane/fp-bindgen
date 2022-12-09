@@ -2,7 +2,8 @@ use super::{io::to_wasm_ptr, runtime::RuntimeInstanceData};
 use crate::common::mem::FatPtr;
 use rmp_serde::{decode::ReadReader, Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
-use wasmer::WasmCell;
+use std::sync::Arc;
+use wasmer::{AsStoreMut, AsStoreRef, FunctionEnvMut};
 
 /// Serialize the given value to MessagePack
 pub fn serialize_to_vec<T: Serialize>(value: &T) -> Vec<u8> {
@@ -22,7 +23,7 @@ pub fn deserialize_from_slice<'a, T: Deserialize<'a>>(slice: &'a [u8]) -> T {
 
 /// Serialize an object from the linear memory and after that free up the memory
 pub fn import_from_guest<'de, T: Deserialize<'de>>(
-    env: &RuntimeInstanceData,
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
     fat_ptr: FatPtr,
 ) -> T {
     let value = import_from_guest_raw(env, fat_ptr);
@@ -37,38 +38,43 @@ pub fn import_from_guest<'de, T: Deserialize<'de>>(
 ///
 /// Useful when the consumer wants to pass the result, without having the
 /// deserialize and serialize it.
-pub fn import_from_guest_raw(env: &RuntimeInstanceData, fat_ptr: FatPtr) -> Vec<u8> {
+pub fn import_from_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    fat_ptr: FatPtr,
+) -> Vec<u8> {
     if fat_ptr == 0 {
         // This may happen with async calls that don't return a result:
         return Vec::new();
     }
-
-    let memory = unsafe { env.memory.get_unchecked() };
 
     let (ptr, len) = to_wasm_ptr::<u8>(fat_ptr);
     if len & 0xff000000 != 0 {
         panic!("Unknown extension bits");
     }
 
-    let value: Vec<u8> = {
-        let view = ptr.deref(memory, 0, len).unwrap();
-        view.iter().map(WasmCell::get).collect()
-    };
+    let memory = env.data().memory.as_ref().unwrap();
+    let memory_view = memory.view(&env.as_store_ref());
+    let value = ptr.slice(&memory_view, len).unwrap().read_to_vec().unwrap();
 
-    env.free(fat_ptr);
+    env.data().clone().free(&mut env.as_store_mut(), fat_ptr);
 
     value
 }
 
 /// Serialize a value and put it in linear memory.
-pub fn export_to_guest<T: Serialize>(env: &RuntimeInstanceData, value: &T) -> FatPtr {
-    export_to_guest_raw(env, rmp_serde::to_vec(value).unwrap())
+pub fn export_to_guest<T: Serialize>(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    value: &T,
+) -> FatPtr {
+    export_to_guest_raw(env, &rmp_serde::to_vec(value).unwrap())
 }
 
 /// Copy the buffer into linear memory.
-pub fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr {
-    let memory = unsafe { env.memory.get_unchecked() };
-
+pub fn export_to_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    buffer: impl AsRef<[u8]>,
+) -> FatPtr {
+    let buffer = buffer.as_ref();
     let len = buffer.len() as u32;
 
     // Make sure the length marker does not run into our extension bits:
@@ -76,14 +82,36 @@ pub fn export_to_guest_raw(env: &RuntimeInstanceData, buffer: Vec<u8>) -> FatPtr
         panic!("Buffer too large ({} bytes)", len);
     }
 
-    let fat_ptr = env.malloc(len);
-
+    let fat_ptr = env.data().clone().malloc(&mut env.as_store_mut(), len);
     let (ptr, len) = to_wasm_ptr(fat_ptr);
 
-    let values = ptr.deref(memory, 0, len).unwrap();
+    let memory = env.data().memory.as_ref().unwrap();
+    let memory_view = memory.view(&env.as_store_ref());
+    let values = ptr.slice(&memory_view, len).unwrap();
     for (i, val) in buffer.iter().enumerate() {
-        values[i].set(*val);
+        values.write(i as u64, *val).unwrap();
     }
 
     fat_ptr
+}
+
+/// Update a buffer in linear memory. Performs no (de)allocation of any kind.
+pub fn update_in_guest_raw(
+    env: &mut FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    fat_ptr: FatPtr,
+    f: impl FnOnce(&mut [u8]),
+) {
+    let (ptr, len) = to_wasm_ptr(fat_ptr);
+
+    let memory = env.data().memory.as_ref().unwrap();
+    let memory_view = memory.view(&env.as_store_ref());
+    let mut bytes = ptr.slice(&memory_view, len).unwrap().read_to_vec().unwrap();
+
+    f(&mut bytes);
+
+    // Write out
+    let values = ptr.slice(&memory_view, len).unwrap();
+    for (i, val) in bytes.iter().enumerate() {
+        values.write(i as u64, *val).unwrap();
+    }
 }

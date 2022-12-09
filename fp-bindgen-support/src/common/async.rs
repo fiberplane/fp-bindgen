@@ -1,11 +1,12 @@
 use super::mem::{to_fat_ptr, FatPtr};
+use bytemuck::{Pod, Zeroable};
 
 pub const FUTURE_STATUS_PENDING: u32 = 0;
 pub const FUTURE_STATUS_READY: u32 = 1;
 
 #[doc(hidden)]
 #[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Pod, Zeroable)]
 pub struct AsyncValue {
     pub status: u32,
     pub ptr: u32,
