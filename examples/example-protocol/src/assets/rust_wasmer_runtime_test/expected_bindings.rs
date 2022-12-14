@@ -40,12 +40,6 @@ impl Runtime {
         })
     }
 
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
-    fn default_store() -> wasmer::Store {
-        Store::new(wasmer_compiler_cranelift::Cranelift::default())
-    }
-
-    #[cfg(not(any(target_arch = "arm", target_arch = "aarch64")))]
     fn default_store() -> wasmer::Store {
         Store::new(wasmer_compiler_singlepass::Singlepass::default())
     }
