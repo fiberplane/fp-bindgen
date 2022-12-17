@@ -13,7 +13,8 @@ use fp_bindgen_support::{
 };
 use std::sync::Arc;
 use wasmer::{
-    imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module, Store,
+    imports, AsStoreMut, Function, FunctionEnv, FunctionEnvMut, Imports, Instance, Module,
+    Singlepass, Store,
 };
 
 pub struct Runtime {
@@ -41,7 +42,7 @@ impl Runtime {
     }
 
     fn default_store() -> wasmer::Store {
-        Store::new(wasmer_compiler_singlepass::Singlepass::default())
+        Store::new(Singlepass::default())
     }
 
     fn function_env_mut(&mut self) -> FunctionEnvMut<Arc<RuntimeInstanceData>> {
