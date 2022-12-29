@@ -176,7 +176,7 @@ Currently, we support the following binding types:
 
 - `BindingsType::RustPlugin`: Generates bindings for a Rust plugin.
 - `BindingsType::RustWasmerRuntime`: Generates runtime bindings for use with Wasmer.
-- `BindingsType::TsRuntime`: Generates bindings for a TypeScript runtime.
+- `BindingsType::TsRuntimeWithExtendedConfig`: Generates bindings for a TypeScript runtime.
 
 Note that some binding types take an additional config argument.
 
