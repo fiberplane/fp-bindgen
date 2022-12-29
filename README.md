@@ -156,7 +156,7 @@ from the crate ecosystem:
 - `rmpv-compat`: Enables compatibility with the `rmpv::Value` type.
 - `serde-bytes-compat`: Enables compatibility with the `serde_bytes::ByteBuf` type (the `Bytes` type
   is a reference type, which `fp-bindgen` doesn't support in general).
-- `serde-json-compat`: Enables compatibility with `serde_json::Value` type.
+- `serde-json-compat`: Enables compatibility with `serde_json::Map` and `serde_json::Value` types.
 - `time-compat`: Enables compatibility with `time`'s `PrimitiveDateTime` and `OffsetDateTime` types.
 
 ## Generating bindings
@@ -178,7 +178,7 @@ Currently, we support the following binding types:
 
 - `BindingsType::RustPlugin`: Generates bindings for a Rust plugin.
 - `BindingsType::RustWasmerRuntime`: Generates runtime bindings for use with Wasmer.
-- `BindingsType::TsRuntimeWithExtendedConfig`: Generates bindings for a TypeScript runtime.
+- `BindingsType::TsRuntime`: Generates bindings for a TypeScript runtime.
 
 Note that some binding types take an additional config argument.
 
