@@ -1,7 +1,7 @@
 use super::Serializable;
+use crate::prelude::TypeMap;
 use crate::types::{CargoDependency, CustomType, Type, TypeIdent};
 use std::collections::BTreeMap;
-use crate::prelude::TypeMap;
 
 impl Serializable for serde_json::Value {
     fn ident() -> TypeIdent {
