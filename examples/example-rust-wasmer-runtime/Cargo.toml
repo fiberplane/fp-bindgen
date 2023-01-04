@@ -25,8 +25,7 @@ time = { version = "0.3", features = [
 ] }
 tokio = { version = "1.9.0", features = ["rt", "macros"] }
 tracing = "0.1.37"
-wasmer = { version = "3", default-features = false }
-wasmer-compiler-singlepass = { version = "3" }
+wasmer = { version = "3", default-features = false, features = ["singlepass"] }
 wasmer-wasi = "3"
 anyhow = "1.0"
 
