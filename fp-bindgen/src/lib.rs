@@ -149,9 +149,12 @@ keep their TypeScript types in sync with the protocol.
 The `fp-bindgen` crate supports optional Cargo features for compatibility with some common types
 from the crate ecosystem:
 
-- `http-compat`: Enables compatibility with types from the `http` crate.
-- `serde-bytes-compat`: Enables compatibility with `serde_bytes`'s `ByteBuf` type (the `Bytes` type
+- `bytes-compat`: Enables compatibility with the `bytes::Bytes` type.
+- `http-compat`: Enables compatibility with various types from the `http` crate.
+- `rmpv-compat`: Enables compatibility with the `rmpv::Value` type.
+- `serde-bytes-compat`: Enables compatibility with the `serde_bytes::ByteBuf` type (the `Bytes` type
   is a reference type, which `fp-bindgen` doesn't support in general).
+- `serde-json-compat`: Enables compatibility with `serde_json::Map` and `serde_json::Value` types.
 - `time-compat`: Enables compatibility with `time`'s `PrimitiveDateTime` and `OffsetDateTime` types.
 
 ## Generating bindings
@@ -173,7 +176,7 @@ Currently, we support the following binding types:
 
 - `BindingsType::RustPlugin`: Generates bindings for a Rust plugin.
 - `BindingsType::RustWasmerRuntime`: Generates runtime bindings for use with Wasmer.
-- `BindingsType::TsRuntime`: Generates bindings for a TypeScript runtime.
+- `BindingsType::TsRuntimeWithExtendedConfig`: Generates bindings for a TypeScript runtime.
 
 Note that some binding types take an additional config argument.
 

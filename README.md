@@ -156,7 +156,7 @@ from the crate ecosystem:
 - `rmpv-compat`: Enables compatibility with the `rmpv::Value` type.
 - `serde-bytes-compat`: Enables compatibility with the `serde_bytes::ByteBuf` type (the `Bytes` type
   is a reference type, which `fp-bindgen` doesn't support in general).
-- `serde-json-compat`: Enables compatibility with `serde_json::Value` type.
+- `serde-json-compat`: Enables compatibility with `serde_json::Map` and `serde_json::Value` types.
 - `time-compat`: Enables compatibility with `time`'s `PrimitiveDateTime` and `OffsetDateTime` types.
 
 ## Generating bindings

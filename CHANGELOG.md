@@ -4,6 +4,7 @@
 
 - Make sure `cargo check` doesn't complain about unused imports in the generated
   plugin bindings.
+- Add support for `serde_json::Map` (https://github.com/fiberplane/fp-bindgen/pull/163)
 
 ## 2.4.0
 
