@@ -5,7 +5,7 @@ use super::{
 use crate::types::format_bounds;
 use crate::{casing::Casing, docs::get_doc_lines, primitives::Primitive, types::FieldAttrs};
 use quote::ToTokens;
-use std::{collections::BTreeMap, convert::TryFrom, str::FromStr};
+use std::{convert::TryFrom, str::FromStr};
 use syn::{
     ext::IdentExt, parenthesized, parse::Parse, parse::ParseStream, Attribute, Error, GenericParam,
     Ident, ItemEnum, LitStr, Result, Token, TypePath,
@@ -149,17 +149,17 @@ pub struct EnumOptions {
     /// successfully deserialize is used as the result.
     pub untagged: bool,
 
-    /// Rust module paths where the type can be found for the given generator.
+    /// Rust module path where the type can be found for the given generator.
     /// If present, the generator can use this type instead of generating it.
     ///
     /// ## Example:
     ///
     /// ```rs
-    /// #[fp(rust_plugin_module = "my_crate")]
+    /// #[fp(rust_module = "my_crate")]
     /// enum MyEnum { /* ... */ }
     /// ```
     ///
-    /// This will insert `"rust_plugin" => "my_crate"` into the map, which can
+    /// This will set `"my_crate"` as the rust_module, to
     /// be used by the Rust plugin generator to generate a `use` statement such
     /// as:
     ///
@@ -168,7 +168,7 @@ pub struct EnumOptions {
     /// ```
     ///
     /// Instead of generating the enum definition itself.
-    pub native_modules: BTreeMap<String, String>,
+    pub rust_module: Option<String>,
 }
 
 impl EnumOptions {
@@ -197,8 +197,8 @@ impl EnumOptions {
         if other.untagged {
             self.untagged = true;
         }
-        for (key, value) in other.native_modules.iter() {
-            self.native_modules.insert(key.clone(), value.clone());
+        if let Some(other_rust_module) = &other.rust_module {
+            self.rust_module = Some(other_rust_module.clone());
         }
     }
 
@@ -245,12 +245,10 @@ impl Parse for EnumOptions {
                     result.variant_casing = Casing::try_from(parse_value()?.as_ref())
                         .map_err(|err| Error::new(content.span(), err))?
                 }
-                "untagged" => result.untagged = true,
-                module if module.ends_with("_module") => {
-                    result
-                        .native_modules
-                        .insert(module[0..module.len() - 7].to_owned(), parse_value()?);
+                "rust_module" => {
+                    result.rust_module = Some(parse_value()?);
                 }
+                "untagged" => result.untagged = true,
                 other => {
                     return Err(Error::new(
                         content.span(),

@@ -4,10 +4,7 @@ use std::rc::Rc;
 
 /// Example for representing Redux actions.
 #[derive(Serializable, Serialize, Deserialize)]
-#[fp(
-    rust_plugin_module = "redux_example",
-    rust_wasmer_runtime_module = "redux_example"
-)]
+#[fp(rust_module = "redux_example")]
 #[serde(rename_all = "snake_case", tag = "type", content = "payload")]
 pub enum ReduxAction {
     ClearTitle,
@@ -20,10 +17,7 @@ pub enum ReduxAction {
 /// cheaply clone the state, as well as to cheaply perform a diff between the
 /// old and new state. This is done in `StateUpdate::from_states()`.
 #[derive(Clone, Default, Serializable, Serialize, Deserialize)]
-#[fp(
-    rust_plugin_module = "redux_example",
-    rust_wasmer_runtime_module = "redux_example"
-)]
+#[fp(rust_module = "redux_example")]
 #[serde(rename_all = "camelCase")]
 pub struct ReduxState {
     pub title: Rc<String>,
@@ -35,10 +29,7 @@ pub struct ReduxState {
 /// Fields are wrapped in `Option`. If any field is `None` it means it hasn't
 /// changed.
 #[derive(Serializable, Serialize, Deserialize)]
-#[fp(
-    rust_plugin_module = "redux_example",
-    rust_wasmer_runtime_module = "redux_example"
-)]
+#[fp(rust_module = "redux_example")]
 #[serde(rename_all = "camelCase")]
 pub struct StateUpdate {
     pub title: Option<Rc<String>>,

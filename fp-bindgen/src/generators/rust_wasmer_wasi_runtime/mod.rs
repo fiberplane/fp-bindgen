@@ -19,7 +19,7 @@ pub(crate) fn generate_bindings(
 
     // We use the same type generation as for the Rust plugin, only with the
     // serializable and deserializable types inverted:
-    generate_type_bindings(&types, path, "rust_wasmer_wasi_runtime");
+    generate_type_bindings(&types, path);
 
     generate_function_bindings(import_functions, export_functions, &types, path);
 }

@@ -29,9 +29,8 @@ The file [`reducer.rs`](example-plugin/src/reducer.rs) is an example of how to i
 reducer in Rust.
 
 Note that the plugin also depends on the [`redux-example`](#redux-example) crate for access to the
-Redux types. This is also a demonstration of how to use the `#[fp(rust_plugin_module = "...")]` and
-`#[fp(rust_wasmer_runtime_module = "...")]` annotations to share types between the protocol
-definition and the dependent Rust crates.
+Redux types. This is also a demonstration of how to use the `#[fp(rust_module = "...")]` annotation
+to share types between the protocol definition and the dependent Rust crates.
 
 ## `example-deno-runtime/`
 
