@@ -140,7 +140,7 @@ Please note that in this case, you do have a bigger responsibility to make sure 
 fulfills the requirements of the code generator, hence why Serde's trait derives and annotations
 have to be added manually here, in accordance with how the generator would otherwise generate them.
 
-For now, this feature is limited to the Rust generators throug the
+For now, this feature is limited to the Rust generators through the
 `rust_module` annotation. For us, this makes sense given the
 protocol itself is specified using Rust syntax as well. If desired, we could extend this to the
 TypeScript generator as well, though that would imply an even bigger responsibility for the user to
