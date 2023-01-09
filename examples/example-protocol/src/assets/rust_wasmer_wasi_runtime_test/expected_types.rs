@@ -2,6 +2,9 @@
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, rc::Rc};
 
+pub use redux_example::ReduxAction;
+pub use redux_example::StateUpdate;
+
 pub type Body = serde_bytes::ByteBuf;
 
 /// # This is an enum with doc comments.
@@ -134,14 +137,6 @@ pub struct Point<T> {
     pub value: T,
 }
 
-/// Example for representing Redux actions.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(tag = "type", content = "payload", rename_all = "snake_case")]
-pub enum ReduxAction {
-    ClearTitle,
-    UpdateTitle { title: String },
-}
-
 /// Represents an HTTP request to be sent.
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Request {
@@ -249,19 +244,6 @@ pub enum SerdeVariantRenaming {
         #[serde(rename = "qux_baz")]
         qux_baz: f64,
     },
-}
-
-/// A state update to communicate to the Redux host.
-///
-/// Fields are wrapped in `Option`. If any field is `None` it means it hasn't
-/// changed.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StateUpdate {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub title: Option<Rc<String>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub revision: Option<u16>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 // is recommended because you can pass these directly to the JavaScript `Date`
 // constructor. The Serde attributes to enable RFC3339 formatting are inserted
 // automatically by the bindings generator, but you may have to add them
-// yourself if you using annotations such as `#[fp(rust_plugin_module)]`.
+// yourself if you using annotations such as `#[fp(rust_module)]`.
 //
 // If you do not use RFC3339 formatting, you should expect your date/time types
 // to only work from Rust to Rust.

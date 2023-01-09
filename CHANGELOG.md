@@ -5,6 +5,7 @@
 - Make sure `cargo check` doesn't complain about unused imports in the generated
   plugin bindings.
 - Add support for `serde_json::Map` (https://github.com/fiberplane/fp-bindgen/pull/163)
+- Replace the `rust_plugin_module` and `rust_wasmer_runtime_module` annotations with a single `rust_module` annotation.
 
 ## 2.4.0
 

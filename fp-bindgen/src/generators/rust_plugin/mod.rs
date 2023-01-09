@@ -22,7 +22,7 @@ pub(crate) fn generate_bindings(
 
     generate_cargo_file(config, &import_functions, &types, path);
 
-    generate_type_bindings(&types, &src_path, "rust_plugin");
+    generate_type_bindings(&types, &src_path);
     generate_imported_function_bindings(import_functions, &types, &src_path);
     generate_exported_function_bindings(export_functions, &types, &src_path);
 
@@ -123,7 +123,7 @@ edition = \"2018\"
     );
 }
 
-pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
+pub fn generate_type_bindings(types: &TypeMap, path: &str) {
     let std_types: BTreeSet<_> = types.values().filter_map(collect_std_types).collect();
     let std_imports = if std_types.is_empty() {
         "".to_owned()
@@ -139,13 +139,14 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
     let type_imports = types
         .values()
         .filter_map(|ty| {
-            let (ident, native_modules) = match ty {
-                Type::Enum(Enum { ident, options, .. }) => (ident, &options.native_modules),
-                Type::Struct(Struct { ident, options, .. }) => (ident, &options.native_modules),
+            let (ident, rust_module) = match ty {
+                Type::Enum(Enum { ident, options, .. }) => (ident, &options.rust_module),
+                Type::Struct(Struct { ident, options, .. }) => (ident, &options.rust_module),
                 _ => return None,
             };
-            native_modules
-                .get(module_key)
+
+            rust_module
+                .as_ref()
                 .map(|module| format!("pub use {}::{};", module, ident.name))
         })
         .collect::<Vec<_>>();
@@ -162,14 +163,14 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str, module_key: &str) {
                 Some(format!("pub type {} = {};", name, format_ident(ty, types)))
             }
             Type::Enum(ty) => {
-                if ty.options.native_modules.contains_key(module_key) || ty.ident.name == "Result" {
+                if ty.options.rust_module.is_some() || ty.ident.name == "Result" {
                     None
                 } else {
                     Some(create_enum_definition(ty, types))
                 }
             }
             Type::Struct(ty) => {
-                if ty.options.native_modules.contains_key(module_key) {
+                if ty.options.rust_module.is_some() {
                     None
                 } else {
                     Some(create_struct_definition(ty, types))
