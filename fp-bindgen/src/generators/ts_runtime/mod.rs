@@ -229,7 +229,7 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         join_lines(&export_wrappers, |line| format!("        {}", line)),
         join_lines(&raw_export_wrappers, |line| format!("        {}", line)),
     );
-    write_bindings_file(format!("{}/index.ts", path), &contents);
+    write_bindings_file(format!("{}/index.ts", path), contents);
 }
 
 enum FunctionType {
@@ -905,9 +905,10 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
     fields
         .iter()
         .flat_map(|field| {
+            let field_optional = field.attrs.skip_serializing_if.is_some();
             let field_decl = match types.get(&field.ty) {
                 Some(Type::Container(name, _)) => {
-                    let optional = if name == "Option" { "?" } else { "" };
+                    let field_optional = field_optional || name == "Option";
                     let (arg, _) = field
                         .ty
                         .generic_args
@@ -916,13 +917,14 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
                     format!(
                         "{}{}: {};",
                         get_field_name(field, casing),
-                        optional,
+                        if field_optional { "?" } else { "" },
                         format_ident(arg, types, "")
                     )
                 }
                 _ => format!(
-                    "{}: {};",
+                    "{}{}: {};",
                     get_field_name(field, casing),
+                    if field_optional { "?" } else { "" },
                     format_ident(&field.ty, types, "")
                 ),
             };
@@ -1131,5 +1133,5 @@ fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

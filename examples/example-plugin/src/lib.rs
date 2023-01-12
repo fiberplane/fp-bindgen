@@ -385,6 +385,19 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
 }
 
 #[fp_export_impl(example_bindings)]
+fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions {
+    assert_eq!(
+        arg,
+        StructWithOptions {
+            potentially_optional_string: "Hello!".to_owned()
+        }
+    );
+    StructWithOptions {
+        potentially_optional_string: "Hello!".to_owned()
+    }
+}
+
+#[fp_export_impl(example_bindings)]
 fn init() {
     init_panic_hook();
     tracing_subscriber::init();

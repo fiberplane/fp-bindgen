@@ -289,4 +289,8 @@ export type StructWithGenerics<T> = {
     optional_timestamp?: MyDateTime;
 };
 
+export type StructWithOptions = {
+    potentiallyOptionalString?: string;
+};
+
 export type HeaderMap = { [key: string]: Uint8Array };

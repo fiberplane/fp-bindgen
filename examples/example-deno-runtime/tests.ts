@@ -2,7 +2,6 @@ import {
   assert,
   assertAlmostEquals,
   assertEquals,
-  fail,
 } from "https://deno.land/std@0.135.0/testing/asserts.ts";
 import { loadPlugin } from "./loader.ts";
 import type { Exports, Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
@@ -22,7 +21,7 @@ import type {
   SerdePropertyRenaming,
   SerdeUntagged,
   SerdeVariantRenaming,
-  StructWithGenerics,
+  StructWithGenerics, StructWithOptions,
 } from "../example-protocol/bindings/ts-runtime/types.ts";
 import {Result} from "../example-protocol/bindings/ts-runtime/types.ts";
 
@@ -295,6 +294,11 @@ const imports: Imports = {
       },
     });
   },
+
+  importStructWithOptions: (arg: StructWithOptions): StructWithOptions => {
+    assertEquals(arg.potentiallyOptionalString, "Hello");
+    return arg;
+  }
 };
 
 let examplePlugin: Exports | null = null;
@@ -498,6 +502,14 @@ Deno.test("bytes", async () => {
   const encoder = new TextEncoder();
   assertEquals(unwrap(exportGetBytes()), encoder.encode("hello, world"));
   assertEquals(unwrap(exportGetSerdeBytes()), encoder.encode("hello, world"));
+});
+
+Deno.test("options", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(plugin.exportStructWithOptions?.({
+    potentiallyOptionalString: "Hello!"
+  }).potentiallyOptionalString, "Hello!");
 });
 
 function isOk<T, E>(result: Result<T, E>): result is { Ok: T } {

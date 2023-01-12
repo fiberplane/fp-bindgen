@@ -598,5 +598,5 @@ fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

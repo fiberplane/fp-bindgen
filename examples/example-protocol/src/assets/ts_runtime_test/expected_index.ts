@@ -49,6 +49,7 @@ export type Imports = {
     importSerdeStruct: (arg: types.SerdePropertyRenaming) => types.SerdePropertyRenaming;
     importSerdeUntagged: (arg: types.SerdeUntagged) => types.SerdeUntagged;
     importString: (arg: string) => string;
+    importStructWithOptions: (arg: types.StructWithOptions) => types.StructWithOptions;
     importTimestamp: (arg: types.MyDateTime) => types.MyDateTime;
     importVoidFunction: () => void;
     importVoidFunctionEmptyResult: () => types.Result<void, number>;
@@ -95,6 +96,7 @@ export type Exports = {
     exportSerdeStruct?: (arg: types.SerdePropertyRenaming) => types.SerdePropertyRenaming;
     exportSerdeUntagged?: (arg: types.SerdeUntagged) => types.SerdeUntagged;
     exportString?: (arg: string) => string;
+    exportStructWithOptions?: (arg: types.StructWithOptions) => types.StructWithOptions;
     exportTimestamp?: (arg: types.MyDateTime) => types.MyDateTime;
     exportVoidFunction?: () => void;
     fetchData?: (rType: string) => Promise<types.Result<string, string>>;
@@ -131,6 +133,7 @@ export type Exports = {
     exportSerdeStructRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeUntaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportStringRaw?: (arg: Uint8Array) => Uint8Array;
+    exportStructWithOptionsRaw?: (arg: Uint8Array) => Uint8Array;
     exportTimestampRaw?: (arg: Uint8Array) => Uint8Array;
     fetchDataRaw?: (rType: Uint8Array) => Promise<Uint8Array>;
     reducerBridgeRaw?: (action: Uint8Array) => Uint8Array;
@@ -385,6 +388,10 @@ export async function createRuntime(
             __fp_gen_import_string: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<string>(arg_ptr);
                 return serializeObject(importFunctions.importString(arg));
+            },
+            __fp_gen_import_struct_with_options: (arg_ptr: FatPtr): FatPtr => {
+                const arg = parseObject<types.StructWithOptions>(arg_ptr);
+                return serializeObject(importFunctions.importStructWithOptions(arg));
             },
             __fp_gen_import_timestamp: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<types.MyDateTime>(arg_ptr);
@@ -700,6 +707,15 @@ export async function createRuntime(
                 return parseObject<string>(export_fn(arg_ptr));
             };
         })(),
+        exportStructWithOptions: (() => {
+            const export_fn = instance.exports.__fp_gen_export_struct_with_options as any;
+            if (!export_fn) return;
+
+            return (arg: types.StructWithOptions) => {
+                const arg_ptr = serializeObject(arg);
+                return parseObject<types.StructWithOptions>(export_fn(arg_ptr));
+            };
+        })(),
         exportTimestamp: (() => {
             const export_fn = instance.exports.__fp_gen_export_timestamp as any;
             if (!export_fn) return;
@@ -980,6 +996,15 @@ export async function createRuntime(
         })(),
         exportStringRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_string as any;
+            if (!export_fn) return;
+
+            return (arg: Uint8Array) => {
+                const arg_ptr = exportToMemory(arg);
+                return importFromMemory(export_fn(arg_ptr));
+            };
+        })(),
+        exportStructWithOptionsRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_struct_with_options as any;
             if (!export_fn) return;
 
             return (arg: Uint8Array) => {

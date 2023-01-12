@@ -256,3 +256,10 @@ pub struct StructWithGenerics<T> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub optional_timestamp: Option<MyDateTime>,
 }
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StructWithOptions {
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub potentially_optional_string: String,
+}

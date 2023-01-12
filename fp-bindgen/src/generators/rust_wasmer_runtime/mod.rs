@@ -60,6 +60,7 @@ pub(crate) fn format_wasm_ident(ty: &TypeIdent) -> String {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub(crate) fn generate_import_function_variables<'a>(
     function: &'a Function,
     types: &TypeMap,
@@ -387,5 +388,5 @@ pub(crate) fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

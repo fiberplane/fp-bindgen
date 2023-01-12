@@ -13,6 +13,9 @@ pub use self::http::*;
 mod inline_docs;
 pub use inline_docs::*;
 
+mod options;
+pub use options::*;
+
 mod renaming;
 pub use renaming::*;
 
