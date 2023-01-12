@@ -1,3 +1,4 @@
+mod clean;
 mod test;
 mod utils;
 
@@ -17,6 +18,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Cleans all target folders
+    Clean,
     /// Builds test protocol and plugin and runs all available tests
     Test,
 }
@@ -31,6 +34,7 @@ fn handle_cli() -> TaskResult<()> {
     let cli = Cli::parse();
 
     match &cli.command {
+        Some(Commands::Clean) => clean::clean()?,
         Some(Commands::Test) => test::test()?,
         None => {}
     }
