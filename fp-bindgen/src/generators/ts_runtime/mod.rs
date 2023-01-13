@@ -905,27 +905,40 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
     fields
         .iter()
         .flat_map(|field| {
-            let field_optional = field.attrs.skip_serializing_if.is_some();
+            let has_skip_serializing_attribute = field.attrs.skip_serializing_if.is_some();
             let field_decl = match types.get(&field.ty) {
                 Some(Type::Container(name, _)) => {
-                    let field_optional = field_optional || name == "Option";
+                    let is_option_type = name == "Option";
                     let (arg, _) = field
                         .ty
                         .generic_args
                         .first()
                         .expect("Identifier was expected to contain a generic argument");
                     format!(
-                        "{}{}: {};",
+                        "{}{}: {}{};",
                         get_field_name(field, casing),
-                        if field_optional { "?" } else { "" },
-                        format_ident(arg, types, "")
+                        if is_option_type && !has_skip_serializing_attribute {
+                            "?"
+                        } else {
+                            ""
+                        },
+                        format_ident(arg, types, ""),
+                        if is_option_type && has_skip_serializing_attribute {
+                            " | null"
+                        } else {
+                            ""
+                        },
                     )
                 }
                 _ => format!(
-                    "{}{}: {};",
+                    "{}: {}{};",
                     get_field_name(field, casing),
-                    if field_optional { "?" } else { "" },
-                    format_ident(&field.ty, types, "")
+                    format_ident(&field.ty, types, ""),
+                    if has_skip_serializing_attribute {
+                        " | null"
+                    } else {
+                        ""
+                    },
                 ),
             };
             if field.doc_lines.is_empty() {

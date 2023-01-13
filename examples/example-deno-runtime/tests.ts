@@ -296,7 +296,11 @@ const imports: Imports = {
   },
 
   importStructWithOptions: (arg: StructWithOptions): StructWithOptions => {
-    assertEquals(arg.potentiallyOptionalString, "Hello");
+    assertEquals(arg.filledString, "Hello!");
+    assertEquals(arg.emptyString, undefined);
+    assertEquals(arg.filledRegularOptionString, "Hello!");
+    assertEquals(arg.emptyRegularOptionString, undefined);
+    assertEquals(arg.undefinedRegularOptionString, null);
     return arg;
   }
 };
@@ -507,9 +511,16 @@ Deno.test("bytes", async () => {
 Deno.test("options", async () => {
   const plugin = await loadExamplePlugin();
 
-  assertEquals(plugin.exportStructWithOptions?.({
-    potentiallyOptionalString: "Hello!"
-  }).potentiallyOptionalString, "Hello!");
+  const value = {
+    filledString: "Hello!",
+    filledRegularOptionString: "Hello!",
+    emptyString: "",
+    emptyRegularOptionString: null,
+  };
+  assertEquals(plugin.exportStructWithOptions?.(value), {
+    filledString: "Hello!",
+    filledRegularOptionString: "Hello!",
+  });
 });
 
 function isOk<T, E>(result: Result<T, E>): result is { Ok: T } {
