@@ -229,7 +229,7 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         join_lines(&export_wrappers, |line| format!("        {}", line)),
         join_lines(&raw_export_wrappers, |line| format!("        {}", line)),
     );
-    write_bindings_file(format!("{}/index.ts", path), &contents);
+    write_bindings_file(format!("{}/index.ts", path), contents);
 }
 
 enum FunctionType {
@@ -905,25 +905,40 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
     fields
         .iter()
         .flat_map(|field| {
+            let has_skip_serializing_attribute = field.attrs.skip_serializing_if.is_some();
             let field_decl = match types.get(&field.ty) {
                 Some(Type::Container(name, _)) => {
-                    let optional = if name == "Option" { "?" } else { "" };
+                    let is_option_type = name == "Option";
                     let (arg, _) = field
                         .ty
                         .generic_args
                         .first()
                         .expect("Identifier was expected to contain a generic argument");
                     format!(
-                        "{}{}: {};",
+                        "{}{}: {}{};",
                         get_field_name(field, casing),
-                        optional,
-                        format_ident(arg, types, "")
+                        if is_option_type && has_skip_serializing_attribute {
+                            "?"
+                        } else {
+                            ""
+                        },
+                        format_ident(arg, types, ""),
+                        if is_option_type && !has_skip_serializing_attribute {
+                            " | null"
+                        } else {
+                            ""
+                        },
                     )
                 }
                 _ => format!(
-                    "{}: {};",
+                    "{}{}: {};",
                     get_field_name(field, casing),
-                    format_ident(&field.ty, types, "")
+                    if has_skip_serializing_attribute {
+                        "?"
+                    } else {
+                        ""
+                    },
+                    format_ident(&field.ty, types, ""),
                 ),
             };
             if field.doc_lines.is_empty() {
@@ -1131,5 +1146,5 @@ fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

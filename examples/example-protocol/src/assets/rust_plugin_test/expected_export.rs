@@ -112,6 +112,9 @@ pub fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
 pub fn export_string(arg: String) -> String;
 
 #[fp_bindgen_support::fp_export_signature]
+pub fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions;
+
+#[fp_bindgen_support::fp_export_signature]
 pub fn export_timestamp(arg: MyDateTime) -> MyDateTime;
 
 #[fp_bindgen_support::fp_export_signature]

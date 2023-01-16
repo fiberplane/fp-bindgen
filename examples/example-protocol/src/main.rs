@@ -91,6 +91,9 @@ fp_import! {
     fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
     fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>);
 
+    // Options
+    fn import_struct_with_options(arg: StructWithOptions) -> StructWithOptions;
+
     // Custom type in a generic position.
     fn import_get_bytes() -> Result<Bytes, String>;
     fn import_get_serde_bytes() -> Result<ByteBuf, String>;
@@ -175,6 +178,9 @@ fp_export! {
     //
     // See `types/generics.rs` for more info.
     fn export_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64>;
+
+    // Options
+    fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions;
 
     // Custom type in a generic position.
     fn export_get_bytes() -> Result<Bytes, String>;

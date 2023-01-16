@@ -535,27 +535,10 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
         .map(|field| {
             let mut serde_attrs = field.attrs.to_serde_attrs();
 
-            match types.get(&field.ty) {
-                Some(Type::Container(name, _)) if name == "Option" => {
-                    if !serde_attrs
-                        .iter()
-                        .any(|attr| attr == "default" || attr.starts_with("default = "))
-                    {
-                        serde_attrs.push("default".to_owned());
-                    }
-                    if !serde_attrs
-                        .iter()
-                        .any(|attr| attr.starts_with("skip_serializing_if ="))
-                    {
-                        serde_attrs.push("skip_serializing_if = \"Option::is_none\"".to_owned());
-                    }
+            if let Some(Type::Custom(custom_type)) = types.get(&field.ty) {
+                for attr in custom_type.serde_attrs.iter() {
+                    serde_attrs.push(attr.clone());
                 }
-                Some(Type::Custom(custom_type)) => {
-                    for attr in custom_type.serde_attrs.iter() {
-                        serde_attrs.push(attr.clone());
-                    }
-                }
-                _ => {}
             }
 
             let docs = if field.doc_lines.is_empty() {
@@ -598,5 +581,5 @@ fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

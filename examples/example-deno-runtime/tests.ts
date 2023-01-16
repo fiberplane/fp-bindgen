@@ -1,8 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-  assertEquals,
-  fail,
+  assertEquals, assertStrictEquals,
 } from "https://deno.land/std@0.135.0/testing/asserts.ts";
 import { loadPlugin } from "./loader.ts";
 import type { Exports, Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
@@ -22,7 +21,7 @@ import type {
   SerdePropertyRenaming,
   SerdeUntagged,
   SerdeVariantRenaming,
-  StructWithGenerics,
+  StructWithGenerics, StructWithOptions,
 } from "../example-protocol/bindings/ts-runtime/types.ts";
 import {Result} from "../example-protocol/bindings/ts-runtime/types.ts";
 
@@ -295,6 +294,16 @@ const imports: Imports = {
       },
     });
   },
+
+  importStructWithOptions: (arg: StructWithOptions): StructWithOptions => {
+    assertStrictEquals(arg.filledString, "Hello!");
+    assertStrictEquals(arg.emptyString, undefined);
+    assertStrictEquals(arg.filledOptionString, "Hello!");
+    assertStrictEquals(arg.emptyOptionString, undefined);
+    assertStrictEquals(arg.neverSkippedFilledOptionString, "Hello!");
+    assertStrictEquals(arg.neverSkippedEmptyOptionString, null);
+    return arg;
+  }
 };
 
 let examplePlugin: Exports | null = null;
@@ -498,6 +507,25 @@ Deno.test("bytes", async () => {
   const encoder = new TextEncoder();
   assertEquals(unwrap(exportGetBytes()), encoder.encode("hello, world"));
   assertEquals(unwrap(exportGetSerdeBytes()), encoder.encode("hello, world"));
+});
+
+Deno.test("options", async () => {
+  const plugin = await loadExamplePlugin();
+
+  const value = {
+    filledString: "Hello!",
+    filledOptionString: "Hello!",
+    emptyString: "",
+    emptyOptionString: undefined,
+    neverSkippedFilledOptionString: "Hello!",
+    neverSkippedEmptyOptionString: null,
+  };
+  assertEquals(plugin.exportStructWithOptions?.(value), {
+    filledString: "Hello!",
+    filledOptionString: "Hello!",
+    neverSkippedFilledOptionString: "Hello!",
+    neverSkippedEmptyOptionString: null,
+  });
 });
 
 function isOk<T, E>(result: Result<T, E>): result is { Ok: T } {

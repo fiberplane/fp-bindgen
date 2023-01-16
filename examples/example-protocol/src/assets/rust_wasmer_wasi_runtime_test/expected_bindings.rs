@@ -881,6 +881,37 @@ impl Runtime {
         Ok(result)
     }
 
+    pub fn export_struct_with_options(
+        &mut self,
+        arg: StructWithOptions,
+    ) -> Result<StructWithOptions, InvocationError> {
+        let arg = serialize_to_vec(&arg);
+        let result = self.export_struct_with_options_raw(arg);
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub fn export_struct_with_options_raw(
+        &mut self,
+        arg: Vec<u8>,
+    ) -> Result<Vec<u8>, InvocationError> {
+        let arg = export_to_guest_raw(&mut self.function_env_mut(), arg);
+        let function = self
+            .instance
+            .exports
+            .get_typed_function::<FatPtr, FatPtr>(
+                &mut self.store,
+                "__fp_gen_export_struct_with_options",
+            )
+            .map_err(|_| {
+                InvocationError::FunctionNotExported(
+                    "__fp_gen_export_struct_with_options".to_owned(),
+                )
+            })?;
+        let result = function.call(&mut self.store, arg.to_abi())?;
+        let result = import_from_guest_raw(&mut self.function_env_mut(), result);
+        Ok(result)
+    }
+
     pub fn export_timestamp(&mut self, arg: MyDateTime) -> Result<MyDateTime, InvocationError> {
         let arg = serialize_to_vec(&arg);
         let result = self.export_timestamp_raw(arg);
@@ -1135,6 +1166,10 @@ fn create_imports(
     namespace.insert(
         "__fp_gen_import_string",
         Function::new_typed_with_env(store, env, _import_string),
+    );
+    namespace.insert(
+        "__fp_gen_import_struct_with_options",
+        Function::new_typed_with_env(store, env, _import_struct_with_options),
     );
     namespace.insert(
         "__fp_gen_import_timestamp",
@@ -1450,6 +1485,15 @@ pub fn _import_serde_untagged(
 pub fn _import_string(mut env: FunctionEnvMut<Arc<RuntimeInstanceData>>, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<String>(&mut env, arg);
     let result = super::import_string(arg);
+    export_to_guest(&mut env, &result)
+}
+
+pub fn _import_struct_with_options(
+    mut env: FunctionEnvMut<Arc<RuntimeInstanceData>>,
+    arg: FatPtr,
+) -> FatPtr {
+    let arg = import_from_guest::<StructWithOptions>(&mut env, arg);
+    let result = super::import_struct_with_options(arg);
     export_to_guest(&mut env, &result)
 }
 

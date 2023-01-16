@@ -135,6 +135,10 @@ fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
     todo!()
 }
 
+fn import_struct_with_options(arg: StructWithOptions) {
+    todo!()
+}
+
 fn log(msg: String) {
     println!("Provider log: {}", msg);
 }

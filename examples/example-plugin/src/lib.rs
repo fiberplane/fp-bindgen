@@ -385,6 +385,18 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
 }
 
 #[fp_export_impl(example_bindings)]
+fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions {
+    let value = import_struct_with_options(arg.clone());
+
+    assert_eq!(
+        arg,
+        value,
+    );
+
+    value
+}
+
+#[fp_export_impl(example_bindings)]
 fn init() {
     init_panic_hook();
     tracing_subscriber::init();
