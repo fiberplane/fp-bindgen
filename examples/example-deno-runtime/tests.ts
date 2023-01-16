@@ -1,7 +1,7 @@
 import {
   assert,
   assertAlmostEquals,
-  assertEquals,
+  assertEquals, assertStrictEquals,
 } from "https://deno.land/std@0.135.0/testing/asserts.ts";
 import { loadPlugin } from "./loader.ts";
 import type { Exports, Imports } from "../example-protocol/bindings/ts-runtime/index.ts";
@@ -296,12 +296,12 @@ const imports: Imports = {
   },
 
   importStructWithOptions: (arg: StructWithOptions): StructWithOptions => {
-    assertEquals(arg.filledString, "Hello!");
-    assertEquals(arg.emptyString, undefined);
-    assertEquals(arg.filledOptionString, "Hello!");
-    assertEquals(arg.emptyOptionString, undefined);
-    assertEquals(arg.neverSkippedFilledOptionString, "Hello!");
-    assertEquals(arg.neverSkippedEmptyOptionString, null);
+    assertStrictEquals(arg.filledString, "Hello!");
+    assertStrictEquals(arg.emptyString, undefined);
+    assertStrictEquals(arg.filledOptionString, "Hello!");
+    assertStrictEquals(arg.emptyOptionString, undefined);
+    assertStrictEquals(arg.neverSkippedFilledOptionString, "Hello!");
+    assertStrictEquals(arg.neverSkippedEmptyOptionString, null);
     return arg;
   }
 };
@@ -524,6 +524,7 @@ Deno.test("options", async () => {
     filledString: "Hello!",
     filledOptionString: "Hello!",
     neverSkippedFilledOptionString: "Hello!",
+    neverSkippedEmptyOptionString: null,
   });
 });
 

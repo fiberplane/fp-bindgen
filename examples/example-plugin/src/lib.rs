@@ -386,14 +386,7 @@ fn export_get_serde_bytes() -> Result<ByteBuf, String> {
 
 #[fp_export_impl(example_bindings)]
 fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions {
-    let value = StructWithOptions {
-        filled_string: "Hello!".to_owned(),
-        empty_string: "".to_owned(),
-        filled_option_string: Some("Hello!".to_owned()),
-        empty_option_string: None,
-        never_skipped_filled_option_string: Some("Hello!".to_owned()),
-        never_skipped_empty_option_string: None,
-    };
+    let value = import_struct_with_options(arg.clone());
 
     assert_eq!(
         arg,

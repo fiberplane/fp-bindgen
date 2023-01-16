@@ -153,7 +153,7 @@ pub struct Request {
     pub headers: http::HeaderMap,
 
     /// The body to submit with the request.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub body: Option<Body>,
 }
 
@@ -251,9 +251,7 @@ pub struct StructWithGenerics<T> {
     pub list: Vec<T>,
     pub points: Vec<Point<T>>,
     pub recursive: Vec<Point<Point<T>>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub complex_nested: Option<BTreeMap<String, Vec<FloatingPoint>>>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub optional_timestamp: Option<MyDateTime>,
 }
 
@@ -268,8 +266,8 @@ pub struct StructWithOptions {
     pub filled_option_string: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_option_string: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub never_skipped_filled_option_string: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
     pub never_skipped_empty_option_string: Option<String>,
 }
