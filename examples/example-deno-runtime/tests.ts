@@ -298,9 +298,10 @@ const imports: Imports = {
   importStructWithOptions: (arg: StructWithOptions): StructWithOptions => {
     assertEquals(arg.filledString, "Hello!");
     assertEquals(arg.emptyString, undefined);
-    assertEquals(arg.filledRegularOptionString, "Hello!");
-    assertEquals(arg.emptyRegularOptionString, undefined);
-    assertEquals(arg.undefinedRegularOptionString, null);
+    assertEquals(arg.filledOptionString, "Hello!");
+    assertEquals(arg.emptyOptionString, undefined);
+    assertEquals(arg.neverSkippedFilledOptionString, "Hello!");
+    assertEquals(arg.neverSkippedEmptyOptionString, null);
     return arg;
   }
 };
@@ -513,13 +514,16 @@ Deno.test("options", async () => {
 
   const value = {
     filledString: "Hello!",
-    filledRegularOptionString: "Hello!",
+    filledOptionString: "Hello!",
     emptyString: "",
-    emptyRegularOptionString: null,
+    emptyOptionString: undefined,
+    neverSkippedFilledOptionString: "Hello!",
+    neverSkippedEmptyOptionString: null,
   };
   assertEquals(plugin.exportStructWithOptions?.(value), {
     filledString: "Hello!",
-    filledRegularOptionString: "Hello!",
+    filledOptionString: "Hello!",
+    neverSkippedFilledOptionString: "Hello!",
   });
 });
 

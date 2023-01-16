@@ -917,13 +917,13 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
                     format!(
                         "{}{}: {}{};",
                         get_field_name(field, casing),
-                        if is_option_type && !has_skip_serializing_attribute {
+                        if is_option_type && has_skip_serializing_attribute {
                             "?"
                         } else {
                             ""
                         },
                         format_ident(arg, types, ""),
-                        if is_option_type && has_skip_serializing_attribute {
+                        if is_option_type && !has_skip_serializing_attribute {
                             " | null"
                         } else {
                             ""
@@ -931,14 +931,14 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap, casing: Casing) -> Ve
                     )
                 }
                 _ => format!(
-                    "{}: {}{};",
+                    "{}{}: {};",
                     get_field_name(field, casing),
-                    format_ident(&field.ty, types, ""),
                     if has_skip_serializing_attribute {
-                        " | null"
+                        "?"
                     } else {
                         ""
                     },
+                    format_ident(&field.ty, types, ""),
                 ),
             };
             if field.doc_lines.is_empty() {

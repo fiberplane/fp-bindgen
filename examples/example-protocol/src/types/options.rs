@@ -9,9 +9,11 @@ pub struct StructWithOptions {
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub empty_string: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub filled_regular_option_string: Option<String>,
+    pub filled_option_string: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub empty_regular_option_string: Option<String>,
+    pub empty_option_string: Option<String>,
     #[serde(default)]
-    pub undefined_regular_option_string: Option<String>,
+    pub never_skipped_filled_option_string: Option<String>,
+    #[serde(default)]
+    pub never_skipped_empty_option_string: Option<String>,
 }

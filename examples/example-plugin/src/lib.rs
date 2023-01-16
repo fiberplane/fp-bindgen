@@ -389,9 +389,10 @@ fn export_struct_with_options(arg: StructWithOptions) -> StructWithOptions {
     let value = StructWithOptions {
         filled_string: "Hello!".to_owned(),
         empty_string: "".to_owned(),
-        filled_regular_option_string: Some("Hello!".to_owned()),
-        empty_regular_option_string: None,
-        undefined_regular_option_string: None,
+        filled_option_string: Some("Hello!".to_owned()),
+        empty_option_string: None,
+        never_skipped_filled_option_string: Some("Hello!".to_owned()),
+        never_skipped_empty_option_string: None,
     };
 
     assert_eq!(

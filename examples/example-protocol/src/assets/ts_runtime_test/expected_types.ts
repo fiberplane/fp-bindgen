@@ -277,20 +277,25 @@ export type SerdeVariantRenaming =
  * changed.
  */
 export type StateUpdate = {
-    title?: string;
-    revision?: number;
+    title: string | null;
+    revision: number | null;
 };
 
 export type StructWithGenerics<T> = {
     list: Array<T>;
     points: Array<Point<T>>;
     recursive: Array<Point<Point<T>>>;
-    complex_nested?: Record<string, Array<FloatingPoint>>;
-    optional_timestamp?: MyDateTime;
+    complex_nested: Record<string, Array<FloatingPoint>> | null;
+    optional_timestamp: MyDateTime | null;
 };
 
 export type StructWithOptions = {
-    potentiallyOptionalString?: string;
+    filledString?: string;
+    emptyString?: string;
+    filledOptionString?: string;
+    emptyOptionString?: string;
+    neverSkippedFilledOptionString: string | null;
+    neverSkippedEmptyOptionString: string | null;
 };
 
 export type HeaderMap = { [key: string]: Uint8Array };
