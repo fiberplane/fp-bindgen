@@ -1532,6 +1532,7 @@ pub fn _make_http_request(
     let async_ptr = create_future_value(&mut env);
     let result: Vec<u8> = std::thread::spawn(|| {
         let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
             .build()
             .unwrap();
         rt.block_on(async move { rmp_serde::to_vec(&result.await).unwrap() })

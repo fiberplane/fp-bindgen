@@ -275,6 +275,7 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         r#"let async_ptr = create_future_value(&mut env);
     let result: Vec<u8> = std::thread::spawn(|| {
         let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
             .build()
             .unwrap();
         rt.block_on(async move {
