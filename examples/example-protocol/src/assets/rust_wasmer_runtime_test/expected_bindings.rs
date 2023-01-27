@@ -844,6 +844,31 @@ impl Runtime {
         Ok(result)
     }
 
+    pub fn export_struct_with_options(
+        &self,
+        arg: StructWithOptions,
+    ) -> Result<StructWithOptions, InvocationError> {
+        let arg = serialize_to_vec(&arg);
+        let result = self.export_struct_with_options_raw(arg);
+        let result = result.map(|ref data| deserialize_from_slice(data));
+        result
+    }
+    pub fn export_struct_with_options_raw(&self, arg: Vec<u8>) -> Result<Vec<u8>, InvocationError> {
+        let arg = export_to_guest_raw(&self.env, arg);
+        let function = self
+            .instance
+            .exports
+            .get_native_function::<FatPtr, FatPtr>("__fp_gen_export_struct_with_options")
+            .map_err(|_| {
+                InvocationError::FunctionNotExported(
+                    "__fp_gen_export_struct_with_options".to_owned(),
+                )
+            })?;
+        let result = function.call(arg.to_abi())?;
+        let result = import_from_guest_raw(&self.env, result);
+        Ok(result)
+    }
+
     pub fn export_timestamp(&self, arg: MyDateTime) -> Result<MyDateTime, InvocationError> {
         let arg = serialize_to_vec(&arg);
         let result = self.export_timestamp_raw(arg);
@@ -983,6 +1008,7 @@ fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObjec
             "__fp_gen_import_serde_struct" => Function::new_native_with_env(store, env.clone(), _import_serde_struct),
             "__fp_gen_import_serde_untagged" => Function::new_native_with_env(store, env.clone(), _import_serde_untagged),
             "__fp_gen_import_string" => Function::new_native_with_env(store, env.clone(), _import_string),
+            "__fp_gen_import_struct_with_options" => Function::new_native_with_env(store, env.clone(), _import_struct_with_options),
             "__fp_gen_import_timestamp" => Function::new_native_with_env(store, env.clone(), _import_timestamp),
             "__fp_gen_import_void_function" => Function::new_native_with_env(store, env.clone(), _import_void_function),
             "__fp_gen_import_void_function_empty_result" => Function::new_native_with_env(store, env.clone(), _import_void_function_empty_result),
@@ -1247,6 +1273,12 @@ pub fn _import_serde_untagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr 
 pub fn _import_string(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<String>(env, arg);
     let result = super::import_string(arg);
+    export_to_guest(env, &result)
+}
+
+pub fn _import_struct_with_options(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
+    let arg = import_from_guest::<StructWithOptions>(env, arg);
+    let result = super::import_struct_with_options(arg);
     export_to_guest(env, &result)
 }
 
