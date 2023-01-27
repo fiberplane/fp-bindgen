@@ -1,5 +1,5 @@
 use crate::common::mem::FatPtr;
-use wasmer::WasmPtr;
+use wasmer::{Array, WasmPtr};
 
 /// Get a regular pointer and the length from a fat pointer
 pub(crate) fn from_fat_ptr(ptr: FatPtr) -> (u32, u32) {
@@ -8,7 +8,7 @@ pub(crate) fn from_fat_ptr(ptr: FatPtr) -> (u32, u32) {
 
 /// Take a regular FatPtr and convert it to a WasmPtr (which makes it easier to
 /// interact with the wasmer memory).
-pub fn to_wasm_ptr<T>(ptr: FatPtr) -> (WasmPtr<T>, u32)
+pub fn to_wasm_ptr<T>(ptr: FatPtr) -> (WasmPtr<T, Array>, u32)
 where
     T: Copy,
 {

@@ -10,7 +10,11 @@ impl WasmAbi for bool {
 
     #[inline]
     fn to_abi(self) -> Self::AbiType {
-        u8::from(self)
+        if self {
+            1
+        } else {
+            0
+        }
     }
 
     #[inline]
