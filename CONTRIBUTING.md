@@ -28,13 +28,15 @@ We actively welcome your pull requests:
    changes, please discuss these first with the maintainers.
 4. Ensure the test suite passes.
 5. Make sure your code is correctly formatted (see below).
-6. Issue that pull request!
+6. Add an entry to the [CHANGELOG.md](CHANGELOG.md).
+7. Issue that pull request!
 
-## Any contributions you make will be under the Apache 2.0 License
+## Contributions you make will be under the Apache 2.0 License and the MIT License
 
 In short, when you submit code changes, your submissions are understood to be
-under the same [Apache License](LICENSE.txt) that covers the project. Feel free
-to contact the maintainers if that's a concern.
+under the same [Apache License](LICENSE-APACHE) and [MIT License](LICENSE-MIT)
+that cover the project. Feel free to contact the maintainers if that's a
+concern.
 
 ## Report bugs using GitHub's [issues](https://github.com/fiberplane/fp-bindgen/issues)
 
@@ -51,13 +53,15 @@ Great bug reports tend to have:
   - Give sample code if you can.
 - What you expected would happen
 - What actually happens
-- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
+- Notes (possibly including why you think this might be happening, or stuff you
+  tried that didn't work)
 
 The better you help us understand your problem, the better we can help you!
 
 ## Use a Consistent Coding Style
 
-Please follow the [Rust Coding Conventions](https://rustc-dev-guide.rust-lang.org/conventions.html).
+Please follow the
+[Rust Coding Conventions](https://rustc-dev-guide.rust-lang.org/conventions.html).
 
 We run `cargo fmt -- --check` to verify pull requests confirm to the expected
 style and you can use this command locally to verify your changes before
