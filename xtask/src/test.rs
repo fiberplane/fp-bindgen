@@ -31,7 +31,7 @@ pub fn test() -> TaskResult<()> {
             let stdout = String::from_utf8_lossy(&output.stdout);
             let mut check_target = |target: &str| match stdout.lines().find(|l| l == &target) {
                 Some(_) => {
-                    progress.report(CHECK, &format!("Rustup target '{}' is installed.", target));
+                    progress.report(CHECK, &format!("Rustup target '{target}' is installed."));
                     Ok(())
                 }
                 None => {

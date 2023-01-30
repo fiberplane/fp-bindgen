@@ -17,7 +17,7 @@ pub(crate) fn generate_bindings(
     config: RustPluginConfig,
     path: &str,
 ) {
-    let src_path = format!("{}/src", path);
+    let src_path = format!("{path}/src");
     fs::create_dir_all(&src_path).expect("Could not create output directory");
 
     generate_cargo_file(config, &import_functions, &types, path);
@@ -27,7 +27,7 @@ pub(crate) fn generate_bindings(
     generate_exported_function_bindings(export_functions, &types, &src_path);
 
     write_bindings_file(
-        format!("{}/lib.rs", src_path),
+        format!("{src_path}/lib.rs"),
         "#![allow(unused_imports)]
 #[rustfmt::skip]
 mod export;
@@ -100,7 +100,7 @@ fn generate_cargo_file(
     }
 
     write_bindings_file(
-        format!("{}/Cargo.toml", path),
+        format!("{path}/Cargo.toml"),
         format!(
             "[package]
 name = \"{}\"
@@ -116,7 +116,7 @@ edition = \"2018\"
             config.authors,
             dependencies
                 .iter()
-                .map(|(name, value)| format!("{} = {}", name, value))
+                .map(|(name, value)| format!("{name} = {value}"))
                 .collect::<Vec<_>>()
                 .join("\n")
         ),
@@ -181,7 +181,7 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str) {
         .collect::<Vec<_>>();
 
     write_bindings_file(
-        format!("{}/types.rs", path),
+        format!("{path}/types.rs"),
         format!(
             "#![allow(unused_imports)]\n\
             use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
@@ -195,7 +195,7 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str) {
 pub fn format_doc_lines(doc_lines: &[String]) -> String {
     doc_lines
         .iter()
-        .map(|line| format!("///{}\n", line))
+        .map(|line| format!("///{line}\n"))
         .collect::<Vec<_>>()
         .join("")
 }
@@ -222,8 +222,7 @@ fn format_functions(functions: FunctionList, types: &TypeMap, macro_path: &str) 
                 None => "".to_owned(),
             };
             format!(
-                "{}#[{}]\npub {}fn {}({}){};",
-                doc, macro_path, modifiers, name, args_with_types, return_type,
+                "{doc}#[{macro_path}]\npub {modifiers}fn {name}({args_with_types}){return_type};",
             )
         })
         .collect::<Vec<_>>()
@@ -296,7 +295,7 @@ fn generate_imported_function_bindings(
     path: &str,
 ) {
     write_bindings_file(
-        format!("{}/import.rs", path),
+        format!("{path}/import.rs"),
         format!(
             "use crate::types::*;\n\n{}\n",
             format_functions(
@@ -314,7 +313,7 @@ fn generate_exported_function_bindings(
     path: &str,
 ) {
     write_bindings_file(
-        format!("{}/export.rs", path),
+        format!("{path}/export.rs"),
         format!(
             "use crate::types::*;\n\n{}\n",
             format_functions(
@@ -330,10 +329,10 @@ fn collect_std_types(ty: &Type) -> Option<String> {
     match ty {
         Type::Container(name, _) if name == "Rc" => Some("rc::Rc".to_owned()),
         Type::List(name, _) if (name == "BTreeSet" || name == "HashSet") => {
-            Some(format!("collections::{}", name))
+            Some(format!("collections::{name}"))
         }
         Type::Map(name, _, _) if (name == "BTreeMap" || name == "HashMap") => {
-            Some(format!("collections::{}", name))
+            Some(format!("collections::{name}"))
         }
         _ => None,
     }
@@ -359,7 +358,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                                 .map(|line| if line.is_empty() {
                                     line.to_owned()
                                 } else {
-                                    format!("    {}", line)
+                                    format!("    {line}")
                                 })
                                 .collect::<Vec<_>>()
                                 .join("\n")
@@ -413,7 +412,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                     if line.is_empty() {
                         line.clone()
                     } else {
-                        format!("    {}", line)
+                        format!("    {line}")
                     }
                 })
                 .collect::<Vec<_>>()
@@ -475,7 +474,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
                 if line.is_empty() {
                     line
                 } else {
-                    format!("    {}", line)
+                    format!("    {line}")
                 }
             })
             .collect::<Vec<_>>()
@@ -524,7 +523,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
 fn format_docs(doc_lines: &[String]) -> String {
     doc_lines
         .iter()
-        .map(|line| format!("///{}\n", line))
+        .map(|line| format!("///{line}\n"))
         .collect::<Vec<_>>()
         .join("")
 }
@@ -549,7 +548,7 @@ fn format_struct_fields(fields: &[Field], types: &TypeMap) -> Vec<String> {
                     field
                         .doc_lines
                         .iter()
-                        .map(|line| format!("///{}\n", line))
+                        .map(|line| format!("///{line}\n"))
                         .collect::<Vec<_>>()
                         .join("")
                 )

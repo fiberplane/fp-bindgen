@@ -47,7 +47,7 @@ impl TryFrom<&str> for Casing {
             "PascalCase" => Ok(Self::PascalCase),
             "snake_case" => Ok(Self::SnakeCase),
             "SCREAMING_SNAKE_CASE" => Ok(Self::ScreamingSnakeCase),
-            other => Err(format!("Unrecognized case format: {}", other)),
+            other => Err(format!("Unrecognized case format: {other}")),
         }
     }
 }

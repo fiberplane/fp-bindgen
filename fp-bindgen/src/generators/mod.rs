@@ -224,13 +224,12 @@ where
 
     for ident in idents_with_custom_serializers {
         println!(
-            "WARNING: Type `{}` is used directly in a {}, but relies on a custom Serde \
+            "WARNING: Type `{ident}` is used directly in a {context}, but relies on a custom Serde \
             (de)serializer. This (de)serializer is NOT used when using the type directly \
-            in a {}. This may result in unexpected (de)serialization issues, for instance \
+            in a {context}. This may result in unexpected (de)serialization issues, for instance \
             when passing data between Rust and TypeScript.\n\
             You may wish to create a newtype to avoid this warning.\n\
-            See `examples/example-protocol/src/types/time.rs` for an example.",
-            ident, context, context
+            See `examples/example-protocol/src/types/time.rs` for an example."
         );
     }
 }

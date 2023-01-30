@@ -49,7 +49,7 @@ impl TypeIdent {
                     .iter()
                     .map(|(arg, bounds)| {
                         if bounds.is_empty() || !include_bounds {
-                            format!("{}", arg)
+                            format!("{arg}")
                         } else {
                             format!(
                                 "{}: {}",
@@ -70,7 +70,7 @@ impl TypeIdent {
         };
 
         match self.array {
-            Some(len) => format!("[{}; {}]", ty, len),
+            Some(len) => format!("[{ty}; {len}]"),
             None => ty,
         }
     }
@@ -98,19 +98,18 @@ impl FromStr for TypeIdent {
             let split = string
                 .strip_prefix('[')
                 .and_then(|s| s.strip_suffix(']'))
-                .ok_or(format!("Invalid array syntax in: {}", string))?
+                .ok_or(format!("Invalid array syntax in: {string}"))?
                 .split(';')
                 .collect::<Vec<_>>();
 
             let element = split[0].trim();
             let len = usize::from_str(split[1].trim())
-                .map_err(|_| format!("Invalid array length in: {}", string))?;
+                .map_err(|_| format!("Invalid array length in: {string}"))?;
 
             let primitive = Primitive::from_str(element)?;
             if primitive.js_array_name().is_none() {
                 return Err(format!(
-                    "Only arrays of primitives supported by Javascript are allowed, found: {}",
-                    string
+                    "Only arrays of primitives supported by Javascript are allowed, found: {string}"
                 ));
             }
 
@@ -225,8 +224,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                                                 Ok(path_to_string(&tr.path))
                                             }
                                             TypeParamBound::Lifetime(_) => Err(format!(
-                                                "Lifecycle bounds are not supported: {:?}",
-                                                bound
+                                                "Lifecycle bounds are not supported: {bound:?}"
                                             )),
                                         })
                                         .collect::<Vec<_>>();
@@ -235,7 +233,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                                     }
                                 }
                                 arg => {
-                                    return Err(format!("Unsupported generic argument: {:?}", arg));
+                                    return Err(format!("Unsupported generic argument: {arg:?}"));
                                 }
                             }
                             if let Some(ident) = generic_arg_ident {
@@ -255,7 +253,7 @@ impl TryFrom<&syn::Type> for TypeIdent {
                 elems,
                 paren_token: _,
             }) if elems.is_empty() => Ok(TypeIdent::from("()")),
-            ty => Err(format!("Unsupported type: {:?}", ty)),
+            ty => Err(format!("Unsupported type: {ty:?}")),
         }
     }
 }
