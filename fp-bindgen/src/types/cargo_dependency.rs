@@ -130,6 +130,9 @@ impl fmt::Display for CargoDependency {
 
         if let Some(version) = self.version {
             attributes.push(format!("version = {}", quote_value(version)));
+            if let Some(registry) = self.registry {
+                attributes.push(format!("registry = {}", quote_value(registry)));
+            }
         }
 
         if let Some(default_features) = self.default_features {
