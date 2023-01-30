@@ -1,14 +1,16 @@
 use std::{collections::BTreeSet, fmt};
 
 /// Used for defining Cargo dependencies.
+#[non_exhaustive]
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct CargoDependency {
-    pub git: Option<&'static str>,
     pub branch: Option<&'static str>,
-    pub path: Option<&'static str>,
-    pub version: Option<&'static str>,
-    pub features: BTreeSet<&'static str>,
     pub default_features: Option<bool>,
+    pub features: BTreeSet<&'static str>,
+    pub git: Option<&'static str>,
+    pub path: Option<&'static str>,
+    pub registry: Option<&'static str>,
+    pub version: Option<&'static str>,
     pub workspace: Option<bool>,
 }
 
@@ -21,44 +23,60 @@ impl CargoDependency {
     pub fn merge_or_replace_with(&self, other: &Self) -> Self {
         if let Some(path) = &other.path {
             Self {
-                git: None,
                 branch: None,
-                path: Some(path),
-                workspace: None,
-                version: other.version.or(self.version),
-                features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
+                features: self.features.union(&other.features).copied().collect(),
+                git: None,
+                path: Some(path),
+                registry: other.registry.or(self.registry),
+                version: other.version.or(self.version),
+                workspace: None,
             }
         } else if let Some(git) = &other.git {
             Self {
-                git: Some(git),
                 branch: other.branch,
-                path: None,
-                workspace: None,
-                version: other.version.or(self.version),
-                features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
+                features: self.features.union(&other.features).copied().collect(),
+                git: Some(git),
+                path: None,
+                registry: other.registry.or(self.registry),
+                version: other.version.or(self.version),
+                workspace: None,
             }
         } else if let Some(workspace) = &other.workspace {
             Self {
-                workspace: Some(*workspace),
-                git: other.git,
                 branch: other.branch,
-                path: other.path,
-                version: other.version,
-                features: self.features.union(&other.features).copied().collect(),
                 default_features: other.default_features.or(self.default_features),
+                features: self.features.union(&other.features).copied().collect(),
+                git: other.git,
+                path: other.path,
+                registry: other.registry,
+                version: other.version,
+                workspace: Some(*workspace),
             }
         } else {
             Self {
-                git: self.git,
                 branch: self.branch,
+                default_features: other.default_features.or(self.default_features),
+                features: self.features.union(&other.features).copied().collect(),
+                git: self.git,
                 path: self.path,
+                registry: other.registry.or(self.registry),
                 workspace: self.workspace,
                 version: other.version.or(self.version),
-                features: self.features.union(&other.features).copied().collect(),
-                default_features: other.default_features.or(self.default_features),
             }
+        }
+    }
+
+    pub fn with_path(path: &'static str) -> Self {
+        Self::with_path_and_features(path, BTreeSet::new())
+    }
+
+    pub fn with_path_and_features(path: &'static str, features: BTreeSet<&'static str>) -> Self {
+        Self {
+            features,
+            path: Some(path),
+            ..Default::default()
         }
     }
 
@@ -71,13 +89,26 @@ impl CargoDependency {
         features: BTreeSet<&'static str>,
     ) -> Self {
         Self {
-            git: None,
-            branch: None,
-            path: None,
-            version: Some(version),
             features,
-            default_features: None,
-            workspace: None,
+            version: Some(version),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_version_from_registry(version: &'static str, registry: &'static str) -> Self {
+        Self::with_version_and_features_from_registry(version, registry, BTreeSet::new())
+    }
+
+    pub fn with_version_and_features_from_registry(
+        version: &'static str,
+        registry: &'static str,
+        features: BTreeSet<&'static str>,
+    ) -> Self {
+        Self {
+            features,
+            registry: Some(registry),
+            version: Some(version),
+            ..Default::default()
         }
     }
 }
