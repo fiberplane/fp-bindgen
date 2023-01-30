@@ -19,8 +19,6 @@ pub enum BindingsType<'a> {
     RustPlugin(RustPluginConfig<'a>),
     RustWasmerRuntime,
     RustWasmerWasiRuntime,
-    #[deprecated(note = "Please use `BindingsType::TsRuntimeWithExtendedConfig` instead.")]
-    TsRuntime(TsRuntimeConfig),
     TsRuntimeWithExtendedConfig(TsExtendedRuntimeConfig),
 }
 
@@ -30,8 +28,6 @@ impl<'a> Display for BindingsType<'a> {
             BindingsType::RustPlugin { .. } => "rust-plugin",
             BindingsType::RustWasmerRuntime { .. } => "rust-wasmer-runtime",
             BindingsType::RustWasmerWasiRuntime { .. } => "rust-wasmer-wasi-runtime",
-            #[allow(deprecated)]
-            BindingsType::TsRuntime { .. } => "ts-runtime",
             BindingsType::TsRuntimeWithExtendedConfig { .. } => "ts-runtime",
         })
     }
@@ -62,11 +58,6 @@ pub struct RustPluginConfig<'a> {
     /// these dependencies yourself can be useful if you want to explicitly bump
     /// a dependency version or you want to enable a Cargo feature in them.
     pub dependencies: BTreeMap<&'a str, CargoDependency>,
-}
-
-#[derive(Debug, Clone)]
-pub struct TsRuntimeConfig {
-    pub generate_raw_export_wrappers: bool,
 }
 
 #[non_exhaustive]
@@ -149,17 +140,6 @@ pub fn generate_bindings(
             import_functions,
             export_functions,
             types,
-            config.path,
-        ),
-        #[allow(deprecated)]
-        BindingsType::TsRuntime(runtime_config) => ts_runtime::generate_bindings(
-            import_functions,
-            export_functions,
-            types,
-            TsExtendedRuntimeConfig {
-                generate_raw_export_wrappers: runtime_config.generate_raw_export_wrappers,
-                ..Default::default()
-            },
             config.path,
         ),
         BindingsType::TsRuntimeWithExtendedConfig(runtime_config) => ts_runtime::generate_bindings(
