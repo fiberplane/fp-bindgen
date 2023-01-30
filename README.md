@@ -37,7 +37,8 @@ The following table is intended to highlight the major differences between the d
 
 ## Quickstart
 
-To quickly build an example protocol and plugin and run all available tests use: `cargo xtask test`
+* Check out the repository, using `git clone`. We use symlinks in the repo, so on Windows use `git clone -c core.symlinks=true` instead.
+* To quickly build an example protocol and plugin and run all available tests use: `cargo xtask test`
 
 ## Usage
 

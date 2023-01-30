@@ -3,3 +3,4 @@ bindings/
 example-protocol/bindings
 target
 .vscode
+.idea/
