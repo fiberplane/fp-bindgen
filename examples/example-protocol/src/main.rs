@@ -225,27 +225,18 @@ static PLUGIN_DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(||
     BTreeMap::from([
         (
             "redux-example",
-            CargoDependency {
-                path: Some("../../../redux-example"),
-                features: BTreeSet::default(),
-                ..Default::default()
-            },
+            CargoDependency::with_path("../../../redux-example"),
         ),
         (
             "fp-bindgen-support",
-            CargoDependency {
-                path: Some("../../../../fp-bindgen-support"),
-                features: BTreeSet::from(["async", "guest"]),
-                ..CargoDependency::default()
-            },
+            CargoDependency::with_path_and_features(
+                "../../../../fp-bindgen-support",
+                BTreeSet::from(["async", "guest"]),
+            ),
         ),
         (
             "time",
-            CargoDependency {
-                version: Some("0.3"),
-                features: BTreeSet::from(["macros"]),
-                ..CargoDependency::default()
-            },
+            CargoDependency::with_version_and_features("0.3", BTreeSet::from(["macros"])),
         ),
     ])
 });

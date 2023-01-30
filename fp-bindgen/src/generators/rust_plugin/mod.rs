@@ -61,11 +61,7 @@ fn generate_cargo_file(
     let mut dependencies = BTreeMap::from([
         (
             "fp-bindgen-support",
-            CargoDependency {
-                version: Some(env!("CARGO_PKG_VERSION")),
-                features: support_features,
-                ..CargoDependency::default()
-            },
+            CargoDependency::with_version_and_features(env!("CARGO_PKG_VERSION"), support_features),
         ),
         ("once_cell", CargoDependency::with_version("1")),
         ("rmp-serde", CargoDependency::with_version("1.0")),
