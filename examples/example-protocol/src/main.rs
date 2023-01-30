@@ -266,13 +266,13 @@ fn main() {
                 .with_raw_export_wrappers(),
         ),
     ] {
-        let output_path = format!("bindings/{}", bindings_type);
+        let output_path = format!("bindings/{bindings_type}");
 
         fp_bindgen!(BindingConfig {
             bindings_type,
             path: &output_path,
         });
-        println!("Generated bindings written to `{}/`.", output_path);
+        println!("Generated bindings written to `{output_path}/`.");
     }
 }
 

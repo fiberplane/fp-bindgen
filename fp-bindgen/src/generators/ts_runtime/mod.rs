@@ -217,19 +217,19 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
         } else {
             ""
         },
-        join_lines(&import_decls, |line| format!("    {};", line)),
-        join_lines(&export_decls, |line| format!("    {};", line)),
-        join_lines(&raw_export_decls, |line| format!("    {};", line)),
-        join_lines(&import_wrappers, |line| format!("            {}", line)),
+        join_lines(&import_decls, |line| format!("    {line};")),
+        join_lines(&export_decls, |line| format!("    {line};")),
+        join_lines(&raw_export_decls, |line| format!("    {line};")),
+        join_lines(&import_wrappers, |line| format!("            {line}")),
         if has_async_import_functions {
             "    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");\n"
         } else {
             ""
         },
-        join_lines(&export_wrappers, |line| format!("        {}", line)),
-        join_lines(&raw_export_wrappers, |line| format!("        {}", line)),
+        join_lines(&export_wrappers, |line| format!("        {line}")),
+        join_lines(&raw_export_wrappers, |line| format!("        {line}")),
     );
-    write_bindings_file(format!("{}/index.ts", path), contents);
+    write_bindings_file(format!("{path}/index.ts"), contents);
 }
 
 enum FunctionType {
@@ -415,7 +415,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                     return_type,
                     import_args
                         .iter()
-                        .map(|line| format!("    {}\n", line))
+                        .map(|line| format!("    {line}\n"))
                         .collect::<Vec<_>>()
                         .join(""),
                     name.to_camel_case(),
@@ -452,7 +452,7 @@ fn format_import_wrappers(import_functions: &FunctionList, types: &TypeMap) -> V
                     return_type,
                     import_args
                         .iter()
-                        .map(|line| format!("    {}\n", line))
+                        .map(|line| format!("    {line}\n"))
                         .collect::<Vec<_>>()
                         .join(""),
                     fn_call
@@ -540,10 +540,10 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 )
             } else {
                 match &function.return_type {
-                    None => format!("export_fn({});", call_args),
+                    None => format!("export_fn({call_args});"),
                     Some(ty) if ty.is_primitive() => format!(
                         "return {};",
-                        import_primitive(ty, &format!("export_fn({})", call_args))
+                        import_primitive(ty, &format!("export_fn({call_args})"))
                     ),
                     Some(ty) => format!(
                         "return parseObject<{}>(export_fn({}));",
@@ -558,7 +558,7 @@ fn format_export_wrappers(export_functions: &FunctionList, types: &TypeMap) -> V
                 format!(
                     "return ({}) => {{\n{}        {}\n    }};",
                     args,
-                    join_lines(&export_args, |line| format!("        {}", line)),
+                    join_lines(&export_args, |line| format!("        {line}")),
                     fn_call
                 )
             };
@@ -618,19 +618,16 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 .collect::<Vec<_>>()
                 .join(", ");
             let fn_call = if function.is_async {
-                format!(
-                    "return promiseFromPtr(export_fn({})).then(importFromMemory);",
-                    call_args
-                )
+                format!("return promiseFromPtr(export_fn({call_args})).then(importFromMemory);")
             } else {
                 match &function.return_type {
-                    None => format!("export_fn({});", call_args),
+                    None => format!("export_fn({call_args});"),
                     Some(ty) => format!(
                         "return {};",
                         if ty.is_primitive() {
-                            import_primitive(ty, &format!("export_fn({})", call_args))
+                            import_primitive(ty, &format!("export_fn({call_args})"))
                         } else {
-                            format!("importFromMemory(export_fn({}))", call_args)
+                            format!("importFromMemory(export_fn({call_args}))")
                         }
                     ),
                 }
@@ -641,7 +638,7 @@ fn format_raw_export_wrappers(export_functions: &FunctionList) -> Vec<String> {
                 format!(
                     "return ({}) => {{\n{}        {}\n    }};",
                     args,
-                    join_lines(&export_args, |line| format!("        {}", line)),
+                    join_lines(&export_args, |line| format!("        {line}")),
                     fn_call
                 )
             };
@@ -683,7 +680,7 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
                 ts_ty,
                 ts_declaration: Some(ts_declaration),
                 ..
-            }) => Some(format!("export type {} = {};", ts_ty, ts_declaration)),
+            }) => Some(format!("export type {ts_ty} = {ts_declaration};")),
             Type::Enum(ty) => Some(create_enum_definition(ty, types)),
             Type::Struct(ty) => Some(create_struct_definition(ty, types)),
             _ => None,
@@ -691,7 +688,7 @@ fn generate_type_bindings(types: &TypeMap, path: &str) {
         .collect::<Vec<_>>();
 
     write_bindings_file(
-        format!("{}/types.ts", path),
+        format!("{path}/types.ts"),
         format!(
             "// ============================================= //
 // Types for WebAssembly runtime                 //
@@ -727,9 +724,9 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
             let variant_decl = match &variant.ty {
                 Type::Unit => {
                     if let Some(tag) = &ty.options.tag_prop_name {
-                        format!("| {{ {}: \"{}\" }}", tag, variant_name)
+                        format!("| {{ {tag}: \"{variant_name}\" }}")
                     } else {
-                        format!("| \"{}\"", variant_name)
+                        format!("| \"{variant_name}\"")
                     }
                 }
                 Type::Struct(struct_variant) => {
@@ -752,7 +749,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                         let formatted_fields = if field_lines.len() > struct_variant.fields.len() {
                             format!(
                                 "\n{}",
-                                join_lines(&field_lines, |line| format!("    {}", line))
+                                join_lines(&field_lines, |line| format!("    {line}"))
                             )
                         } else {
                             format!(" {} ", field_lines.join(" ").trim_end_matches(';'))
@@ -761,8 +758,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                         match (&ty.options.tag_prop_name, &ty.options.content_prop_name) {
                             (Some(tag), Some(content)) => {
                                 format!(
-                                    "| {{ {}: \"{}\"; {}: {{{}}} }}",
-                                    tag, variant_name, content, formatted_fields
+                                    "| {{ {tag}: \"{variant_name}\"; {content}: {{{formatted_fields}}} }}"
                                 )
                             }
                             (Some(tag), None) => {
@@ -772,12 +768,11 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                                     " "
                                 };
                                 format!(
-                                    "| {{{}{}: \"{}\";{}}}",
-                                    space, tag, variant_name, formatted_fields
+                                    "| {{{space}{tag}: \"{variant_name}\";{formatted_fields}}}"
                                 )
                             }
                             (None, _) => {
-                                format!("| {{ {}: {{{}}} }}", variant_name, formatted_fields)
+                                format!("| {{ {variant_name}: {{{formatted_fields}}} }}")
                             }
                         }
                     }
@@ -834,7 +829,7 @@ fn create_enum_definition(ty: &Enum, types: &TypeMap) -> String {
                 lines
             };
 
-            join_lines(&lines, |line| format!("    {}", line))
+            join_lines(&lines, |line| format!("    {line}"))
         })
         .collect::<Vec<_>>()
         .join("");
@@ -873,7 +868,7 @@ fn create_struct_definition(ty: &Struct, types: &TypeMap) -> String {
                     types,
                     ty.options.field_casing
                 ),
-                |line| format!("    {}", line)
+                |line| format!("    {line}")
             )
             .trim_start_matches('\n'),
             flattened_fields
@@ -893,7 +888,7 @@ fn format_docs(doc_lines: &[String]) -> Vec<String> {
         lines.append(
             &mut doc_lines
                 .iter()
-                .map(|doc_line| format!(" *{}", doc_line))
+                .map(|doc_line| format!(" *{doc_line}"))
                 .collect(),
         );
         lines.push(" */".to_owned());
@@ -972,7 +967,7 @@ fn format_ident(ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
 /// Formats a type so it's valid TypeScript.
 fn format_type_with_ident(ty: &Type, ident: &TypeIdent, types: &TypeMap, scope: &str) -> String {
     match ty {
-        Type::Alias(name, _) => format!("{}{}", scope, name),
+        Type::Alias(name, _) => format!("{scope}{name}"),
         Type::Array(primitive, _) => primitive.js_array_name().unwrap_or_else(|| {
             panic!(
                 "Could not determine JS array type for primitive: {:?}",
@@ -1107,11 +1102,11 @@ fn get_pointer_name(name: &str) -> String {
 
 fn import_primitive(ty: &TypeIdent, value: &str) -> String {
     match ty.name.as_str() {
-        "bool" => format!("!!{}", value),
-        "i8" => format!("interpretSign({}, 128)", value),
-        "i16" => format!("interpretSign({}, 32768)", value),
-        "i32" => format!("interpretSign({}, 2147483648)", value),
-        "i64" => format!("interpretBigSign({}, 9223372036854775808n)", value),
+        "bool" => format!("!!{value}"),
+        "i8" => format!("interpretSign({value}, 128)"),
+        "i16" => format!("interpretSign({value}, 32768)"),
+        "i32" => format!("interpretSign({value}, 2147483648)"),
+        "i64" => format!("interpretBigSign({value}, 9223372036854775808n)"),
         _ => value.to_owned(),
     }
 }
@@ -1138,7 +1133,7 @@ where
     if lines.is_empty() {
         lines
     } else {
-        format!("{}\n", lines)
+        format!("{lines}\n")
     }
 }
 

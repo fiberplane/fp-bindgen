@@ -24,7 +24,7 @@ impl ModuleRawFuture {
     }
 }
 
-impl<'de> Future for ModuleRawFuture {
+impl Future for ModuleRawFuture {
     type Output = Vec<u8>;
 
     fn poll(

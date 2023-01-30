@@ -119,9 +119,8 @@ where
     let mut header_map = http::HeaderMap::new();
     let hashmap: HashMap<String, ByteBuf> = HashMap::deserialize(deserializer)?;
     for (key, value) in hashmap {
-        let header_name = HeaderName::from_str(&key).map_err(|e| {
-            serde::de::Error::custom(format!("Unable to parse header {}: {}", key, e))
-        })?;
+        let header_name = HeaderName::from_str(&key)
+            .map_err(|e| serde::de::Error::custom(format!("Unable to parse header {key}: {e}")))?;
         header_map.insert(header_name, http::HeaderValue::from_bytes(&value).unwrap());
     }
     Ok(header_map)

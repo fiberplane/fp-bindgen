@@ -381,12 +381,12 @@ impl Runtime {{
 {imports}
 "#))
     .unwrap();
-    write_bindings_file(format!("{}/bindings.rs", path), full);
+    write_bindings_file(format!("{path}/bindings.rs"), full);
 }
 
 pub(crate) fn write_bindings_file<C>(file_path: String, contents: C)
 where
     C: AsRef<[u8]>,
 {
-    fs::write(&file_path, &contents).expect("Could not write bindings file");
+    fs::write(file_path, &contents).expect("Could not write bindings file");
 }

@@ -103,7 +103,7 @@ impl StructOptions {
     pub fn to_serde_attrs(&self) -> Vec<String> {
         let mut serde_attrs = vec![];
         if let Some(casing) = &self.field_casing.as_maybe_str() {
-            serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            serde_attrs.push(format!("rename_all = \"{casing}\""));
         }
         serde_attrs
     }
@@ -138,7 +138,7 @@ impl Parse for StructOptions {
                 other => {
                     return Err(Error::new(
                         content.span(),
-                        format!("Unexpected attribute: {}", other),
+                        format!("Unexpected attribute: {other}"),
                     ))
                 }
             }
@@ -245,24 +245,24 @@ impl FieldAttrs {
             if default.is_empty() {
                 serde_attrs.push("default".to_owned());
             } else {
-                serde_attrs.push(format!("default = \"{}\"", default));
+                serde_attrs.push(format!("default = \"{default}\""));
             }
         }
         match (self.deserialize_with.as_ref(), self.serialize_with.as_ref()) {
             (Some(deserialize_with), Some(serialize_with))
                 if deserialize_with == serialize_with =>
             {
-                serde_attrs.push(format!("with = \"{}\"", deserialize_with));
+                serde_attrs.push(format!("with = \"{deserialize_with}\""));
             }
             (Some(deserialize_with), Some(serialize_with)) => {
-                serde_attrs.push(format!("deserialize_with = \"{}\"", deserialize_with));
-                serde_attrs.push(format!("serialize_with = \"{}\"", serialize_with));
+                serde_attrs.push(format!("deserialize_with = \"{deserialize_with}\""));
+                serde_attrs.push(format!("serialize_with = \"{serialize_with}\""));
             }
             (Some(deserialize_with), None) => {
-                serde_attrs.push(format!("deserialize_with = \"{}\"", deserialize_with));
+                serde_attrs.push(format!("deserialize_with = \"{deserialize_with}\""));
             }
             (None, Some(serialize_with)) => {
-                serde_attrs.push(format!("serialize_with = \"{}\"", serialize_with));
+                serde_attrs.push(format!("serialize_with = \"{serialize_with}\""));
             }
             (None, None) => {}
         }
@@ -270,10 +270,10 @@ impl FieldAttrs {
             serde_attrs.push("flatten".to_owned());
         }
         if let Some(rename) = self.rename.as_ref() {
-            serde_attrs.push(format!("rename = \"{}\"", rename));
+            serde_attrs.push(format!("rename = \"{rename}\""));
         }
         if let Some(skip_serializing_if) = self.skip_serializing_if.as_ref() {
-            serde_attrs.push(format!("skip_serializing_if = \"{}\"", skip_serializing_if));
+            serde_attrs.push(format!("skip_serializing_if = \"{skip_serializing_if}\""));
         }
         serde_attrs
     }
@@ -320,7 +320,7 @@ impl Parse for FieldAttrs {
                 other => {
                     return Err(Error::new(
                         content.span(),
-                        format!("Unexpected field attribute: {}", other),
+                        format!("Unexpected field attribute: {other}"),
                     ))
                 }
             }

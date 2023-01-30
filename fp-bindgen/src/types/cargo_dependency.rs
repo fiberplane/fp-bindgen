@@ -102,7 +102,7 @@ impl fmt::Display for CargoDependency {
         }
 
         if let Some(default_features) = self.default_features {
-            attributes.push(format!("default_features = {}", default_features));
+            attributes.push(format!("default_features = {default_features}"));
         }
 
         if !self.features.is_empty() {

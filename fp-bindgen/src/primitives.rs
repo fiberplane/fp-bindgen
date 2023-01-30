@@ -69,7 +69,7 @@ impl FromStr for Primitive {
             "u16" => Primitive::U16,
             "u32" => Primitive::U32,
             "u64" => Primitive::U64,
-            string => return Err(format!("Unknown primitive type: \"{}\"", string)),
+            string => return Err(format!("Unknown primitive type: \"{string}\"")),
         };
         Ok(primitive)
     }

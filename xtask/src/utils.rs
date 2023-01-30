@@ -74,6 +74,6 @@ impl ProgressReporter {
     /// Reports status within a step, but doesn't include the step or increase the current step
     pub fn report<'a, 'b>(&mut self, emoji: impl Into<Option<Emoji<'a, 'b>>>, msg: &str) {
         let emoji = emoji.into().unwrap_or(EMPTY_EMOJI);
-        println!("      {}{}", emoji, msg);
+        println!("      {emoji}{msg}");
     }
 }

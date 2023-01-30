@@ -26,7 +26,7 @@ enum Commands {
 
 fn main() {
     if let Err(e) = handle_cli() {
-        println!("      {}{}", ERROR, style(format!("Error: {}", e)).red());
+        println!("      {}{}", ERROR, style(format!("Error: {e}")).red());
     }
 }
 

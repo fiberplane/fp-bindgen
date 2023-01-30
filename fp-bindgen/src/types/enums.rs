@@ -207,14 +207,14 @@ impl EnumOptions {
         if self.untagged {
             serde_attrs.push("untagged".to_owned());
         } else if let Some(prop_name) = &self.tag_prop_name {
-            serde_attrs.push(format!("tag = \"{}\"", prop_name));
+            serde_attrs.push(format!("tag = \"{prop_name}\""));
 
             if let Some(prop_name) = &self.content_prop_name {
-                serde_attrs.push(format!("content = \"{}\"", prop_name));
+                serde_attrs.push(format!("content = \"{prop_name}\""));
             }
         }
         if let Some(casing) = &self.variant_casing.as_maybe_str() {
-            serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            serde_attrs.push(format!("rename_all = \"{casing}\""));
         }
         serde_attrs
     }
@@ -252,7 +252,7 @@ impl Parse for EnumOptions {
                 other => {
                     return Err(Error::new(
                         content.span(),
-                        format!("Unexpected attribute: {}", other),
+                        format!("Unexpected attribute: {other}"),
                     ))
                 }
             }
@@ -313,10 +313,10 @@ impl VariantAttrs {
     pub fn to_serde_attrs(&self) -> Vec<String> {
         let mut serde_attrs = vec![];
         if let Some(rename) = self.rename.as_ref() {
-            serde_attrs.push(format!("rename = \"{}\"", rename));
+            serde_attrs.push(format!("rename = \"{rename}\""));
         }
         if let Some(casing) = &self.field_casing.as_maybe_str() {
-            serde_attrs.push(format!("rename_all = \"{}\"", casing));
+            serde_attrs.push(format!("rename_all = \"{casing}\""));
         }
         serde_attrs
     }
@@ -349,7 +349,7 @@ impl Parse for VariantAttrs {
                 other => {
                     return Err(Error::new(
                         content.span(),
-                        format!("Unexpected variant attribute: {}", other),
+                        format!("Unexpected variant attribute: {other}"),
                     ))
                 }
             }
