@@ -35,7 +35,10 @@ The following table is intended to highlight the major differences between the d
 
 ## Quickstart
 
-To quickly build an example protocol and plugin and run all available tests use: `cargo xtask test`
+* Check out the repository, using `git clone`. We use symlinks in the repo, so on Windows use
+  `git clone -c core.symlinks=true` instead.
+* To quickly build an example protocol and plugin and run all available tests use:
+  `cargo xtask test`
 
 ## Usage
 
@@ -122,7 +125,7 @@ definition instead of generating a new one:
 use fp_bindgen::prelude::Serializable;
 
 #[derive(Serializable)]
-#[fp(rust_wasmer_runtime_module = "my_crate::prelude")]
+#[fp(rust_module = "my_crate::prelude")]
 pub struct MyStruct {
     pub foo: i32,
     pub bar_qux: String,
@@ -321,21 +324,28 @@ Note that, because of the above guidelines, you should never need to define a ve
 your first iteration. Because plugin exports are optional, the absense of a versioning function can
 simply be interpreted as meaning the plugin is at version 1.
 
-## Community
+## Getting Help
 
-Do you want help using `fp-bindgen`? Want to discuss new features?
-
-Please come visit us in the `#fp-bindgen` channel on our [Discord](https://discord.gg/fAt2xgMSGS).
+Please see
+[COMMUNITY.md](https://github.com/fiberplane/fiberplane-rs/blob/main/COMMUNITY.md)
+for ways to reach out to us.
 
 ## Contributing
 
-Please follow our [Contributing Guidelines](CONTRIBUTING.md) to learn how best to contribute to
-this project.
+Please follow our [Contributing Guidelines](CONTRIBUTING.md) to learn how best
+to contribute to this project.
+
+## Code of Conduct
+
+See
+[CODE_OF_CONDUCT.md](https://github.com/fiberplane/fiberplane-rs/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
-This project is licensed under Apache License, version 2.0
-([LICENSE.txt](https://github.com/fiberplane/fp-bindgen/blob/main/LICENSE.txt)).
+This project is distributed under the terms of both the MIT license and the
+Apache License (Version 2.0).
+
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT).
 
 */
 

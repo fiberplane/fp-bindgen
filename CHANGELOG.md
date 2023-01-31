@@ -16,6 +16,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Added MIT as an option to the project licensing.
 - Replace the `rust_plugin_module` and `rust_wasmer_runtime_module` annotations
   with a single `rust_module` annotation.
 - Struct fields annotated with `skip_serializing_if` are treated as optional by

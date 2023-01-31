@@ -1,15 +1,15 @@
 [package]
 name = "fp-bindgen"
 description = "Bindings generator for full-stack WASM plugins"
-homepage = "https://github.com/fiberplane/fp-bindgen/"
-repository = "https://github.com/fiberplane/fp-bindgen/"
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "../README.md"
 keywords = ["WebAssembly", "WASM", "bindgen"]
 categories = ["development-tools::ffi", "wasm"]
-version = "2.4.0"
-authors = ["Fiberplane <info@fiberplane.com>"]
-edition = "2018"
-license = "Apache-2.0"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true
@@ -33,7 +33,7 @@ generators = ["rustfmt-wrapper"]
 
 [dependencies]
 bytes = { version = "1", features = ["serde"], optional = true }
-fp-bindgen-macros = { version = "2.4.0", path = "../macros" }
+fp-bindgen-macros = { workspace = true }
 http = { version = "0.2", optional = true }
 Inflector = "0.11"
 pretty_assertions = "1"
