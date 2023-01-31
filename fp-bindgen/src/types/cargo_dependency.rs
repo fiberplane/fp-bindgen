@@ -15,6 +15,18 @@ pub struct CargoDependency {
 }
 
 impl CargoDependency {
+    pub fn from_workspace() -> Self {
+        Self::from_workspace_with_features(BTreeSet::new())
+    }
+
+    pub fn from_workspace_with_features(features: BTreeSet<&'static str>) -> Self {
+        Self {
+            features,
+            workspace: Some(true),
+            ..Default::default()
+        }
+    }
+
     /// Merges or replaces this dependency with another.
     ///
     /// The algorithm used attempts to reuse as much of the current
