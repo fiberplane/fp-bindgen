@@ -1,19 +1,19 @@
 [package]
 name = "fp-bindgen-support"
 description = "Support crate for fp-bindgen"
-homepage = "https://github.com/fiberplane/fp-bindgen/"
-repository = "https://github.com/fiberplane/fp-bindgen/"
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
-version = "2.4.0"
-authors = ["Fiberplane <info@fiberplane.com>"]
-edition = "2018"
-license = "Apache-2.0"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-fp-bindgen-macros = { version = "2.4.0", path = "../macros" }
+fp-bindgen-macros = { workspace = true }
 http = { version = "0.2", optional = true }
 once_cell = "1"
 rmp-serde = "1.0.0"

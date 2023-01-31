@@ -1,13 +1,13 @@
 [package]
 name = "fp-bindgen-macros"
 description = "Macros for fp-bindgen"
-homepage = "https://github.com/fiberplane/fp-bindgen/"
-repository = "https://github.com/fiberplane/fp-bindgen/"
+homepage = { workspace = true }
+repository = { workspace = true }
 readme = "README.md"
-version = "2.4.0"
-authors = ["Fiberplane <info@fiberplane.com>"]
-edition = "2018"
-license = "Apache-2.0"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
 
 [lib]
 proc-macro = true

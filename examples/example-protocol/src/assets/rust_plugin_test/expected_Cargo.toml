@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 bytes = { version = "1", features = ["serde"] }
-fp-bindgen-support = { path = "../../../../fp-bindgen-support", version = "2.4.0", features = ["async", "guest", "http"] }
+fp-bindgen-support = { path = "../../../../fp-bindgen-support", version = "3.0.0-alpha.1", features = ["async", "guest", "http"] }
 http = { version = "0.2" }
 once_cell = { version = "1" }
 redux-example = { path = "../../../redux-example" }
