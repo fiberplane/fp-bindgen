@@ -13,6 +13,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Add support for `serde_json::Map`
   (https://github.com/fiberplane/fp-bindgen/pull/163).
 - Added support for specifying custom Cargo registries with `CargoDependency`.
+- Added helpers for building `CargoDependency` with a git repository.
 
 ### Changed
 
