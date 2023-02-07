@@ -128,10 +128,7 @@ impl CargoDependency {
         Self::with_git_and_features(git, BTreeSet::new())
     }
 
-    pub fn with_git_and_features(
-        git: &'static str,
-        features: BTreeSet<&'static str>,
-    ) -> Self {
+    pub fn with_git_and_features(git: &'static str, features: BTreeSet<&'static str>) -> Self {
         Self {
             features,
             git: Some(git),
