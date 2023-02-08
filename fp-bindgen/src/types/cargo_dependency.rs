@@ -123,6 +123,35 @@ impl CargoDependency {
             ..Default::default()
         }
     }
+
+    pub fn with_git(git: &'static str) -> Self {
+        Self::with_git_and_features(git, BTreeSet::new())
+    }
+
+    pub fn with_git_and_features(git: &'static str, features: BTreeSet<&'static str>) -> Self {
+        Self {
+            features,
+            git: Some(git),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_git_and_branch(git: &'static str, branch: &'static str) -> Self {
+        Self::with_git_and_branch_and_features(git, branch, BTreeSet::new())
+    }
+
+    pub fn with_git_and_branch_and_features(
+        git: &'static str,
+        branch: &'static str,
+        features: BTreeSet<&'static str>,
+    ) -> Self {
+        Self {
+            features,
+            git: Some(git),
+            branch: Some(branch),
+            ..Default::default()
+        }
+    }
 }
 
 impl fmt::Display for CargoDependency {
