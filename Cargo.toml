@@ -15,10 +15,10 @@ members = [
 ]
 
 [workspace.dependencies]
-fp-bindgen-macros = { version = "3.0.0-alpha.1", path = "macros" }
+fp-bindgen-macros = { version = "3.0.0-beta.1", path = "macros" }
 
 [workspace.package]
-version = "3.0.0-alpha.1"
+version = "3.0.0-beta.1"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"

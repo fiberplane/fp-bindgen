@@ -6,7 +6,7 @@ The format of this file is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0-beta.1] - 2023-02-14
 
 ### Added
 
@@ -18,7 +18,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 
 - Added MIT as an option to the project licensing.
-- Replace the `rust_plugin_module` and `rust_wasmer_runtime_module` annotations
+- Replaced the `rust_plugin_module` and `rust_wasmer_runtime_module` annotations
   with a single `rust_module` annotation.
 - Struct fields annotated with `skip_serializing_if` are treated as optional by
   the TypeScript binding generator.
