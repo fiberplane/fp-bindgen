@@ -15,6 +15,8 @@ mod types;
 use types::*;
 
 fp_import! {
+    use Event;
+    use CoreEventList;
     // Aliases need to be explicitly mentioned in either `fp_import!` or
     // `fp_export!`.
     //

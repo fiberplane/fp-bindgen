@@ -27,3 +27,8 @@ pub use self::time::*;
 
 mod use_statements;
 pub use use_statements::*;
+
+mod module1;
+pub use module1::*;
+
+mod module2;
