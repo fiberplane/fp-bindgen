@@ -26,6 +26,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   annotations that were not there in the original protocol definition.
 - `CargoDependency` is now marked as non-exhaustive to prevent future breaking
   changes.
+- Add `description` and `license` fields to `RustPluginConfig`. These are optional
+  so to upgrade from earlier versions of `fp-bindgen` you may set these fields to `None`.
 
 ### Fixed
 

@@ -220,6 +220,8 @@ fp_export! {
 const VERSION: &str = "1.0.0";
 const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
 const NAME: &str = "example-bindings";
+const DESCRIPTION: &str = r#"Bindings to the fp-bindgen example protocol"#;
+const LICENSE: &str = r#"MIT OR Apache-2.0"#;
 
 static PLUGIN_DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
     BTreeMap::from([
@@ -247,6 +249,8 @@ fn main() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
+            description: Some(DESCRIPTION),
+            license: Some(LICENSE),
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         BindingsType::RustWasmerRuntime,
@@ -297,6 +301,8 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
+            description: None,
+            license: None,
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         path: "bindings/rust-plugin",

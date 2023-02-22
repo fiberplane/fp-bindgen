@@ -58,6 +58,12 @@ pub struct RustPluginConfig<'a> {
     /// these dependencies yourself can be useful if you want to explicitly bump
     /// a dependency version or you want to enable a Cargo feature in them.
     pub dependencies: BTreeMap<&'a str, CargoDependency>,
+
+    /// The human-readable description for the generated crate.
+    pub description: Option<&'a str>,
+
+    /// The license of the generated crate.
+    pub license: Option<&'a str>,
 }
 
 #[non_exhaustive]

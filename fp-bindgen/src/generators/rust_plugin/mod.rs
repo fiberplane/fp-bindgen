@@ -102,7 +102,7 @@ fn generate_cargo_file(
 name = \"{}\"
 version = \"{}\"
 authors = {}
-edition = \"2018\"
+edition = \"2018\"{}{}
 
 [dependencies]
 {}
@@ -110,6 +110,14 @@ edition = \"2018\"
             config.name,
             config.version,
             config.authors,
+            config
+                .description
+                .map(|description| format!("\ndescription = \"{description}\""))
+                .unwrap_or_default(),
+            config
+                .license
+                .map(|license| format!("\nlicense = \"{license}\""))
+                .unwrap_or_default(),
             dependencies
                 .iter()
                 .map(|(name, value)| format!("{name} = {value}"))
