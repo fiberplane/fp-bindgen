@@ -6,6 +6,15 @@ The format of this file is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0-beta.2] - Unreleased
+
+### Changed
+
+- Add `description` and `license` fields to `RustPluginConfig`. These are optional
+  so to upgrade from earlier versions of `fp-bindgen` you may set these fields to `None`.
+- The `authors`, `description` and `license` fields in `RustPluginConfig` will not add quotes
+  if they are not needed (e.g. when setting them to values like `{ workspace = true }`).
+
 ## [3.0.0-beta.1] - 2023-02-14
 
 ### Added
@@ -26,10 +35,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   annotations that were not there in the original protocol definition.
 - `CargoDependency` is now marked as non-exhaustive to prevent future breaking
   changes.
-- Add `description` and `license` fields to `RustPluginConfig`. These are optional
-  so to upgrade from earlier versions of `fp-bindgen` you may set these fields to `None`.
-- The `authors`, `description` and `license` fields in `RustPluginConfig` will not add quotes
-  if they are not needed (e.g. when setting them to values like `{ workspace = true }`).
 
 ### Fixed
 
