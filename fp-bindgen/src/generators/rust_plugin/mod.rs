@@ -100,7 +100,7 @@ fn generate_cargo_file(
         format!(
             "[package]
 name = \"{}\"
-version = \"{}\"
+version = {}
 authors = {}
 edition = \"2018\"{}{}
 
@@ -108,15 +108,21 @@ edition = \"2018\"{}{}
 {}
 ",
             config.name,
-            config.version,
+            maybe_quote_str(config.version),
             config.authors,
             config
                 .description
-                .map(|description| format!("\ndescription = \"{description}\""))
+                .map(|description| {
+                    let description = maybe_quote_str(description);
+                    format!("\ndescription = {description}")
+                })
                 .unwrap_or_default(),
             config
                 .license
-                .map(|license| format!("\nlicense = \"{license}\""))
+                .map(|license| {
+                    let license = maybe_quote_str(license);
+                    format!("\nlicense = {license}")
+                })
                 .unwrap_or_default(),
             dependencies
                 .iter()
@@ -585,4 +591,12 @@ where
     C: AsRef<[u8]>,
 {
     fs::write(file_path, &contents).expect("Could not write bindings file");
+}
+
+fn maybe_quote_str(input: &str) -> String {
+    if input.trim_start().starts_with('{') {
+        input.to_string()
+    } else {
+        format!("\"{input}\"")
+    }
 }

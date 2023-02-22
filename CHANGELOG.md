@@ -28,6 +28,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   changes.
 - Add `description` and `license` fields to `RustPluginConfig`. These are optional
   so to upgrade from earlier versions of `fp-bindgen` you may set these fields to `None`.
+- The `authors`, `description` and `license` fields in `RustPluginConfig` will not add quotes
+  if they are not needed (e.g. when setting them to values like `{ workspace = true }`).
 
 ### Fixed
 

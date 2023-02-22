@@ -302,7 +302,7 @@ fn test_generate_rust_plugin() {
             authors: AUTHORS,
             version: VERSION,
             description: Some(DESCRIPTION),
-            license: Some(LICENSE),
+            license: Some("{ workspace = true }"),
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         path: "bindings/rust-plugin",
