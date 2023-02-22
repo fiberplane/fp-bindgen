@@ -301,8 +301,8 @@ fn test_generate_rust_plugin() {
             name: NAME,
             authors: AUTHORS,
             version: VERSION,
-            description: None,
-            license: None,
+            description: Some(DESCRIPTION),
+            license: Some(LICENSE),
             dependencies: PLUGIN_DEPENDENCIES.clone(),
         }),
         path: "bindings/rust-plugin",
@@ -311,6 +311,26 @@ fn test_generate_rust_plugin() {
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
     }
+}
+
+#[test]
+fn test_generate_rust_plugin_without_optional_fields() {
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustPlugin(RustPluginConfig {
+            name: NAME,
+            authors: AUTHORS,
+            version: VERSION,
+            description: None,
+            license: None,
+            dependencies: PLUGIN_DEPENDENCIES.clone(),
+        }),
+        path: "bindings/rust-plugin-no-optionals",
+    });
+
+    tests::assert_file_eq(
+        "bindings/rust-plugin-no-optionals/Cargo.toml",
+        include_bytes!("assets/rust_plugin_test/expected_Cargo_no_optionals.toml"),
+    );
 }
 
 #[test]

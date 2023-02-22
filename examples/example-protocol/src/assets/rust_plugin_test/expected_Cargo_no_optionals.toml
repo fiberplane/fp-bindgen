@@ -3,8 +3,6 @@ name = "example-bindings"
 version = "1.0.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
-description = "Bindings to the fp-bindgen example protocol"
-license = "MIT OR Apache-2.0"
 
 [dependencies]
 bytes = { version = "1", features = ["serde"] }
