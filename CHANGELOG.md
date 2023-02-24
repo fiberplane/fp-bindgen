@@ -6,6 +6,16 @@ The format of this file is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0-beta.2] - Unreleased
+
+### Changed
+
+- `RustPluginConfig` now needs to be initialized using `RustPluginConfig::builder()`. Struct
+  initialization syntax will not work anymore.
+- Every field in the `RustPluginConfig` builder can be set to `RustPluginConfigValue::Workspace`
+  to indicate the value in the generated `Cargo.toml` should come from the workspace instead.
+- Add `description`, `readme` and `license` fields to `RustPluginConfig`.
+
 ## [3.0.0-beta.1] - 2023-02-14
 
 ### Added

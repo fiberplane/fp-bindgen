@@ -29,7 +29,7 @@ rmpv-compat = ["rmpv"]
 serde-bytes-compat = ["serde_bytes"]
 serde-json-compat = ["serde_json"]
 time-compat = ["time"]
-generators = ["rustfmt-wrapper"]
+generators = ["rustfmt-wrapper", "toml_edit"]
 
 [dependencies]
 bytes = { version = "1", features = ["serde"], optional = true }
@@ -44,4 +44,5 @@ serde_bytes = { version = "0.11", optional = true }
 serde_json = { version = "1.0", optional = true }
 syn = { version = "1", features = ["full", "extra-traits"] }
 time = { version = "0.3", features = ["serde-human-readable"], optional = true }
+toml_edit = { version = "0.19", optional = true }
 rustfmt-wrapper = { version = "0.1.0", optional = true }

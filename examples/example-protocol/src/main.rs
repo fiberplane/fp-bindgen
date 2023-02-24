@@ -218,8 +218,13 @@ fp_export! {
 }
 
 const VERSION: &str = "1.0.0";
-const AUTHORS: &str = r#"["Fiberplane <info@fiberplane.com>"]"#;
 const NAME: &str = "example-bindings";
+const DESCRIPTION: &str = "Bindings to the fp-bindgen example protocol";
+const LICENSE: &str = "MIT OR Apache-2.0";
+
+fn authors() -> Vec<String> {
+    vec!["Fiberplane <info@fiberplane.com>".to_string()]
+}
 
 static PLUGIN_DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(|| {
     BTreeMap::from([
@@ -243,12 +248,16 @@ static PLUGIN_DEPENDENCIES: Lazy<BTreeMap<&str, CargoDependency>> = Lazy::new(||
 
 fn main() {
     for bindings_type in [
-        BindingsType::RustPlugin(RustPluginConfig {
-            name: NAME,
-            authors: AUTHORS,
-            version: VERSION,
-            dependencies: PLUGIN_DEPENDENCIES.clone(),
-        }),
+        BindingsType::RustPlugin(
+            RustPluginConfig::builder()
+                .name(NAME)
+                .authors(authors())
+                .version(VERSION)
+                .description(DESCRIPTION)
+                .license(LICENSE)
+                .dependencies(PLUGIN_DEPENDENCIES.clone())
+                .build(),
+        ),
         BindingsType::RustWasmerRuntime,
         BindingsType::RustWasmerWasiRuntime,
         BindingsType::TsRuntimeWithExtendedConfig(
@@ -293,18 +302,43 @@ fn test_generate_rust_plugin() {
     ];
 
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::RustPlugin(RustPluginConfig {
-            name: NAME,
-            authors: AUTHORS,
-            version: VERSION,
-            dependencies: PLUGIN_DEPENDENCIES.clone(),
-        }),
+        bindings_type: BindingsType::RustPlugin(
+            RustPluginConfig::builder()
+                .name(NAME)
+                .authors(authors())
+                .version(VERSION)
+                .description(DESCRIPTION)
+                .license(RustPluginConfigValue::Workspace)
+                .dependencies(PLUGIN_DEPENDENCIES.clone())
+                .readme("README.md")
+                .build()
+        ),
         path: "bindings/rust-plugin",
     });
 
     for (path, expected) in FILES {
         tests::assert_file_eq(path, expected)
     }
+}
+
+#[test]
+fn test_generate_rust_plugin_without_some_fields() {
+    fp_bindgen!(BindingConfig {
+        bindings_type: BindingsType::RustPlugin(
+            RustPluginConfig::builder()
+                .name(NAME)
+                .authors(authors())
+                .version(VERSION)
+                .dependencies(PLUGIN_DEPENDENCIES.clone())
+                .build()
+        ),
+        path: "bindings/rust-plugin-no-optionals",
+    });
+
+    tests::assert_file_eq(
+        "bindings/rust-plugin-no-optionals/Cargo.toml",
+        include_bytes!("assets/rust_plugin_test/expected_Cargo_no_optionals.toml"),
+    );
 }
 
 #[test]
