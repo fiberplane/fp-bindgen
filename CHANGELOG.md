@@ -14,7 +14,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   initialization syntax will not work anymore.
 - Every field in the `RustPluginConfig` builder can be set to `RustPluginConfigValue::Workspace`
   to indicate the value in the generated `Cargo.toml` should come from the workspace instead.
-- Add `description` and `license` fields to `RustPluginConfig`.
+- Add `description`, `readme` and `license` fields to `RustPluginConfig`.
 
 ## [3.0.0-beta.1] - 2023-02-14
 

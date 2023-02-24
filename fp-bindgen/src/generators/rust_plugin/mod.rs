@@ -102,7 +102,7 @@ fn generate_cargo_file(
         format!(
             "[package]
 {}{}{}edition = \"2018\"
-{}{}
+{}{}{}
 [dependencies]
 {}
 ",
@@ -110,6 +110,7 @@ fn generate_cargo_file(
             format_cargo_key("version", config.version),
             format_cargo_key("authors", config.authors),
             format_cargo_key("description", config.description),
+            format_cargo_key("readme", config.readme),
             format_cargo_key("license", config.license),
             dependencies
                 .iter()

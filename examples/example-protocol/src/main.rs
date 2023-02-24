@@ -310,6 +310,7 @@ fn test_generate_rust_plugin() {
                 .description(DESCRIPTION)
                 .license(RustPluginConfigValue::Workspace)
                 .dependencies(PLUGIN_DEPENDENCIES.clone())
+                .readme("README.md")
                 .build()
         ),
         path: "bindings/rust-plugin",
@@ -321,7 +322,7 @@ fn test_generate_rust_plugin() {
 }
 
 #[test]
-fn test_generate_rust_plugin_without_optional_fields() {
+fn test_generate_rust_plugin_without_some_fields() {
     fp_bindgen!(BindingConfig {
         bindings_type: BindingsType::RustPlugin(
             RustPluginConfig::builder()

@@ -63,6 +63,9 @@ pub struct RustPluginConfig {
     /// The human-readable description for the generated crate.
     pub description: Option<RustPluginConfigValue>,
 
+    /// A readme file containing some information for the generated crate.
+    pub readme: Option<RustPluginConfigValue>,
+
     /// The license of the generated crate.
     pub license: Option<RustPluginConfigValue>,
 }
@@ -76,6 +79,7 @@ impl RustPluginConfig {
                 version: None,
                 dependencies: Default::default(),
                 description: None,
+                readme: None,
                 license: None,
             },
         }
@@ -134,8 +138,26 @@ impl RustPluginConfigBuilder {
         self
     }
 
+    pub fn author(mut self, value: impl Into<String>) -> Self {
+        match &mut self.config.authors {
+            Some(RustPluginConfigValue::Vec(vec)) => {
+                vec.push(value.into());
+            }
+            None => {
+                self.config.authors = Some(RustPluginConfigValue::Vec(vec![value.into()]));
+            }
+            _ => panic!("Cannot add an author to a non-vector 'authors' field"),
+        }
+        self
+    }
+
     pub fn description(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
         self.config.description = Some(value.into());
+        self
+    }
+
+    pub fn readme(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
+        self.config.readme = Some(value.into());
         self
     }
 
