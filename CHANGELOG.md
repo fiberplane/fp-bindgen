@@ -10,10 +10,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
-- Add `description` and `license` fields to `RustPluginConfig`. These are optional
-  so to upgrade from earlier versions of `fp-bindgen` you may set these fields to `None`.
-- The `authors`, `description` and `license` fields in `RustPluginConfig` will not add quotes
-  if they are not needed (e.g. when setting them to values like `{ workspace = true }`).
+- `RustPluginConfig` now needs to be initialized using `RustPluginConfig::builder()`. Struct
+  initialization syntax will not work anymore.
+- Every field in the `RustPluginConfig` builder can be set to `RustPluginConfigValue::Workspace`
+  to indicate the value in the generated `Cargo.toml` should come from the workspace instead.
+- Add `description` and `license` fields to `RustPluginConfig`.
 
 ## [3.0.0-beta.1] - 2023-02-14
 

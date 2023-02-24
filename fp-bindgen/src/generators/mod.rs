@@ -15,14 +15,14 @@ pub mod ts_runtime;
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub enum BindingsType<'a> {
-    RustPlugin(RustPluginConfig<'a>),
+pub enum BindingsType {
+    RustPlugin(RustPluginConfig),
     RustWasmerRuntime,
     RustWasmerWasiRuntime,
     TsRuntimeWithExtendedConfig(TsExtendedRuntimeConfig),
 }
 
-impl<'a> Display for BindingsType<'a> {
+impl Display for BindingsType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             BindingsType::RustPlugin { .. } => "rust-plugin",
@@ -35,20 +35,21 @@ impl<'a> Display for BindingsType<'a> {
 
 #[derive(Debug)]
 pub struct BindingConfig<'a> {
-    pub bindings_type: BindingsType<'a>,
+    pub bindings_type: BindingsType,
     pub path: &'a str,
 }
 
+#[non_exhaustive]
 #[derive(Debug, Clone)]
-pub struct RustPluginConfig<'a> {
+pub struct RustPluginConfig {
     /// Name of the plugin crate that will be generated.
-    pub name: &'a str,
+    pub name: Option<RustPluginConfigValue>,
 
     /// Authors to be listed in the plugin crate that will be generated.
-    pub authors: &'a str,
+    pub authors: Option<RustPluginConfigValue>,
 
     /// Version of the plugin crate that will be generated.
-    pub version: &'a str,
+    pub version: Option<RustPluginConfigValue>,
 
     /// *Additional* dependencies to be listed in the plugin crate that will be
     /// generated.
@@ -57,13 +58,116 @@ pub struct RustPluginConfig<'a> {
     /// for the plugin to work and which will always be included. Specifying
     /// these dependencies yourself can be useful if you want to explicitly bump
     /// a dependency version or you want to enable a Cargo feature in them.
-    pub dependencies: BTreeMap<&'a str, CargoDependency>,
+    pub dependencies: BTreeMap<String, CargoDependency>,
 
     /// The human-readable description for the generated crate.
-    pub description: Option<&'a str>,
+    pub description: Option<RustPluginConfigValue>,
 
     /// The license of the generated crate.
-    pub license: Option<&'a str>,
+    pub license: Option<RustPluginConfigValue>,
+}
+
+impl RustPluginConfig {
+    pub fn builder() -> RustPluginConfigBuilder {
+        RustPluginConfigBuilder {
+            config: RustPluginConfig {
+                name: None,
+                authors: None,
+                version: None,
+                dependencies: Default::default(),
+                description: None,
+                license: None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum RustPluginConfigValue {
+    String(String),
+    Vec(Vec<String>),
+    Workspace,
+}
+
+impl From<&str> for RustPluginConfigValue {
+    fn from(value: &str) -> Self {
+        Self::String(value.into())
+    }
+}
+
+impl From<String> for RustPluginConfigValue {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl From<Vec<&str>> for RustPluginConfigValue {
+    fn from(value: Vec<&str>) -> Self {
+        Self::Vec(value.into_iter().map(|value| value.to_string()).collect())
+    }
+}
+
+impl From<Vec<String>> for RustPluginConfigValue {
+    fn from(value: Vec<String>) -> Self {
+        Self::Vec(value)
+    }
+}
+
+pub struct RustPluginConfigBuilder {
+    config: RustPluginConfig,
+}
+
+impl RustPluginConfigBuilder {
+    pub fn name(mut self, value: impl Into<String>) -> Self {
+        self.config.name = Some(RustPluginConfigValue::String(value.into()));
+        self
+    }
+
+    pub fn version(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
+        self.config.version = Some(value.into());
+        self
+    }
+
+    pub fn authors(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
+        self.config.authors = Some(value.into());
+        self
+    }
+
+    pub fn description(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
+        self.config.description = Some(value.into());
+        self
+    }
+
+    pub fn license(mut self, value: impl Into<RustPluginConfigValue>) -> Self {
+        self.config.license = Some(value.into());
+        self
+    }
+
+    pub fn dependencies<'a>(
+        mut self,
+        value: impl Into<BTreeMap<&'a str, CargoDependency>>,
+    ) -> Self {
+        let dependencies = value.into();
+        self.config.dependencies = dependencies
+            .into_iter()
+            .map(|(key, value)| (key.to_string(), value))
+            .collect();
+        self
+    }
+
+    pub fn dependency(mut self, name: impl Into<String>, dependency: CargoDependency) -> Self {
+        self.config.dependencies.insert(name.into(), dependency);
+        self
+    }
+
+    pub fn build(self) -> RustPluginConfig {
+        assert!(
+            self.config.name.is_some(),
+            "'name' is required in RustPluginConfig"
+        );
+        self.config
+    }
 }
 
 #[non_exhaustive]

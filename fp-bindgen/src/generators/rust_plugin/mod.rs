@@ -1,10 +1,12 @@
 use crate::functions::Function;
+use crate::generators::RustPluginConfigValue;
 use crate::types::is_runtime_bound;
 use crate::{
     functions::FunctionList,
     types::{CargoDependency, Enum, Field, Struct, Type, TypeIdent, TypeMap},
     RustPluginConfig,
 };
+use std::iter::FromIterator;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -86,9 +88,9 @@ fn generate_cargo_file(
     }
 
     // Inject dependencies passed through the config:
-    for (name, dependency) in config.dependencies {
-        let dependency = if let Some(existing_dependency) = dependencies.remove(name) {
-            existing_dependency.merge_or_replace_with(&dependency)
+    for (name, dependency) in &config.dependencies {
+        let dependency = if let Some(existing_dependency) = dependencies.remove(name.as_str()) {
+            existing_dependency.merge_or_replace_with(dependency)
         } else {
             dependency.clone()
         };
@@ -99,31 +101,16 @@ fn generate_cargo_file(
         format!("{path}/Cargo.toml"),
         format!(
             "[package]
-name = \"{}\"
-version = {}
-authors = {}
-edition = \"2018\"{}{}
-
+{}{}{}edition = \"2018\"
+{}{}
 [dependencies]
 {}
 ",
-            config.name,
-            maybe_quote_str(config.version),
-            config.authors,
-            config
-                .description
-                .map(|description| {
-                    let description = maybe_quote_str(description);
-                    format!("\ndescription = {description}")
-                })
-                .unwrap_or_default(),
-            config
-                .license
-                .map(|license| {
-                    let license = maybe_quote_str(license);
-                    format!("\nlicense = {license}")
-                })
-                .unwrap_or_default(),
+            format_cargo_key("name", config.name),
+            format_cargo_key("version", config.version),
+            format_cargo_key("authors", config.authors),
+            format_cargo_key("description", config.description),
+            format_cargo_key("license", config.license),
             dependencies
                 .iter()
                 .map(|(name, value)| format!("{name} = {value}"))
@@ -593,10 +580,22 @@ where
     fs::write(file_path, &contents).expect("Could not write bindings file");
 }
 
-fn maybe_quote_str(input: &str) -> String {
-    if input.trim_start().starts_with('{') {
-        input.to_string()
+fn format_cargo_key(key: &str, value: Option<RustPluginConfigValue>) -> String {
+    if let Some(value) = value {
+        let toml_value = match value {
+            RustPluginConfigValue::String(str) => toml_edit::value(str),
+            RustPluginConfigValue::Vec(vec) => toml_edit::value(toml_edit::Array::from_iter(vec)),
+            RustPluginConfigValue::Workspace => {
+                let mut inline = toml_edit::InlineTable::new();
+                inline.insert("workspace", true.into());
+                toml_edit::value(inline)
+            }
+        };
+
+        let mut doc = toml_edit::Document::new();
+        doc[key] = toml_value;
+        doc.to_string()
     } else {
-        format!("\"{input}\"")
+        "".to_string()
     }
 }
