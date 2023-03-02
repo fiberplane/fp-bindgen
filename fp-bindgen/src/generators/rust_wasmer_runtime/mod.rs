@@ -279,7 +279,7 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         println!("Waiting for result...");
     let result = futures::executor::block_on(async {
         println!("Waiting for result...inside block_on");
-        let v = result.await.unwrap();
+        let v = result.await;
         println!("Waiting for result...after block_on");
         v
     });
