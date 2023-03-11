@@ -14,38 +14,38 @@ fn import_void_function_empty_return() -> () {}
 fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>) {
     todo!()
 }
-fn import_primitive_bool(arg: bool) -> bool {
-    todo!()
+fn import_primitive_bool_negate(arg: bool) -> bool {
+    !arg
 }
-fn import_primitive_f32(arg: f32) -> f32 {
-    todo!()
+fn import_primitive_f32_add_one(arg: f32) -> f32 {
+    arg + 1.0
 }
-fn import_primitive_f64(arg: f64) -> f64 {
-    todo!()
+fn import_primitive_f64_add_one(arg: f64) -> f64 {
+    arg + 1.0
 }
-fn import_primitive_i8(arg: i8) -> i8 {
-    todo!()
+fn import_primitive_i8_add_one(arg: i8) -> i8 {
+    arg + 1
 }
-fn import_primitive_i16(arg: i16) -> i16 {
-    todo!()
+fn import_primitive_i16_add_one(arg: i16) -> i16 {
+    arg + 1
 }
-fn import_primitive_i32(arg: i32) -> i32 {
-    todo!()
+fn import_primitive_i32_add_one(arg: i32) -> i32 {
+    arg + 1
 }
-fn import_primitive_i64(arg: i64) -> i64 {
-    todo!()
+fn import_primitive_i64_add_one(arg: i64) -> i64 {
+    arg + 1
 }
-fn import_primitive_u8(arg: u8) -> u8 {
-    todo!()
+fn import_primitive_u8_add_one(arg: u8) -> u8 {
+    arg + 1
 }
-fn import_primitive_u16(arg: u16) -> u16 {
-    todo!()
+fn import_primitive_u16_add_one(arg: u16) -> u16 {
+    arg + 1
 }
-fn import_primitive_u32(arg: u32) -> u32 {
-    todo!()
+fn import_primitive_u32_add_one(arg: u32) -> u32 {
+    arg + 1
 }
-fn import_primitive_u64(arg: u64) -> u64 {
-    todo!()
+fn import_primitive_u64_add_one(arg: u64) -> u64 {
+    arg + 1
 }
 
 fn import_array_u8(arg: [u8; 3]) -> [u8; 3] {
