@@ -34,12 +34,12 @@ fn export_primitive_bool_negate(arg: bool) -> bool {
 
 #[fp_export_impl(example_bindings)]
 fn export_primitive_f32_add_three(arg: f32) -> f32 {
-    import_primitive_f32_add_one(arg + 1.0) + 1.0
+    import_primitive_f32_add_one([arg + 1.0]) + 1.0
 }
 
 #[fp_export_impl(example_bindings)]
 fn export_primitive_f64_add_three(arg: f64) -> f64 {
-    import_primitive_f64_add_one(arg + 1.0) + 1.0
+    import_primitive_f64_add_one([arg + 1.0]) + 1.0
 }
 
 #[fp_export_impl(example_bindings)]

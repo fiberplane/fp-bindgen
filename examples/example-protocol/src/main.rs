@@ -49,8 +49,11 @@ fp_import! {
 
     // Passing primitives:
     fn import_primitive_bool_negate(arg: bool) -> bool;
-    fn import_primitive_f32_add_one(arg: f32) -> f32;
-    fn import_primitive_f64_add_one(arg: f64) -> f64;
+    // FIXME: Imported functions get 0.0 instead of the float values when called from a plugin.
+    // This is a bug in wasmer 2.3, but can be worked around by using a one-sized array instead.
+    // See https://github.com/fiberplane/fp-bindgen/issues/180
+    fn import_primitive_f32_add_one(arg: [f32; 1]) -> f32;
+    fn import_primitive_f64_add_one(arg: [f64; 1]) -> f64;
     fn import_primitive_i8_add_one(arg: i8) -> i8;
     fn import_primitive_i16_add_one(arg: i16) -> i16;
     fn import_primitive_i32_add_one(arg: i32) -> i32;
