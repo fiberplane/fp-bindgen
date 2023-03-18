@@ -122,6 +122,14 @@ const imports: Imports = {
     return arg + 1.0;
   },
 
+  importPrimitiveF32AddOneWasmer2: (arg: Float32Array): number => {
+    return arg[0] + 1.0;
+  },
+
+  importPrimitiveF64AddOneWasmer2: (arg: Float64Array): number => {
+    return arg[0] + 1.0;
+  },
+
   importPrimitiveI16AddOne: (arg: number): number => {
     return arg + 1;
   },
@@ -328,6 +336,10 @@ Deno.test("primitives", async () => {
   // Precise float comparison is fine as long as the denominator is a power of two
   assertEquals(plugin.exportPrimitiveF32AddThree?.(3.5), 3.5 + 3.0);
   assertEquals(plugin.exportPrimitiveF64AddThree?.(2.5), 2.5 + 3.0);
+
+  // We need to define the workarounf methods for wasmer2, so we might as well test them
+  assertEquals(plugin.exportPrimitiveF32AddThreeWasmer2?.(13.5), 13.5 + 3.0);
+  assertEquals(plugin.exportPrimitiveF64AddThreeWasmer2?.(12.5), 12.5 + 3.0);
 });
 
 Deno.test("arrays", async () => {
