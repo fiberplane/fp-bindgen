@@ -268,7 +268,7 @@ async fn fetch_async_data() -> Result<()> {
 
     let response = rt.fetch_data("sign-up".to_string()).await?;
 
-    assert_eq!(response, Ok(r#"status: "confirmed"#.to_string()));
+    assert_eq!(response, Ok(r#"status: "confirmed""#.to_string()));
     Ok(())
 }
 
