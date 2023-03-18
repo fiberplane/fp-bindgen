@@ -58,37 +58,43 @@ pub fn export_get_serde_bytes() -> Result<serde_bytes::ByteBuf, String>;
 pub fn export_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_bool(arg: bool) -> bool;
+pub fn export_primitive_bool_negate(arg: bool) -> bool;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_f32(arg: f32) -> f32;
+pub fn export_primitive_f32_add_three(arg: f32) -> f32;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_f64(arg: f64) -> f64;
+pub fn export_primitive_f32_add_three_wasmer2(arg: f32) -> f32;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_i16(arg: i16) -> i16;
+pub fn export_primitive_f64_add_three(arg: f64) -> f64;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_i32(arg: i32) -> i32;
+pub fn export_primitive_f64_add_three_wasmer2(arg: f64) -> f64;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_i64(arg: i64) -> i64;
+pub fn export_primitive_i16_add_three(arg: i16) -> i16;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_i8(arg: i8) -> i8;
+pub fn export_primitive_i32_add_three(arg: i32) -> i32;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_u16(arg: u16) -> u16;
+pub fn export_primitive_i64_add_three(arg: i64) -> i64;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_u32(arg: u32) -> u32;
+pub fn export_primitive_i8_add_three(arg: i8) -> i8;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_u64(arg: u64) -> u64;
+pub fn export_primitive_u16_add_three(arg: u16) -> u16;
 
 #[fp_bindgen_support::fp_export_signature]
-pub fn export_primitive_u8(arg: u8) -> u8;
+pub fn export_primitive_u32_add_three(arg: u32) -> u32;
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_primitive_u64_add_three(arg: u64) -> u64;
+
+#[fp_bindgen_support::fp_export_signature]
+pub fn export_primitive_u8_add_three(arg: u8) -> u8;
 
 #[fp_bindgen_support::fp_export_signature]
 pub fn export_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;
