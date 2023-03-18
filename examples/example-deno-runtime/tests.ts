@@ -110,58 +110,48 @@ const imports: Imports = {
     return -64n;
   },
 
-  importPrimitiveBool: (arg: boolean): boolean => {
-    return arg;
+  importPrimitiveBoolNegate: (arg: boolean): boolean => {
+    return !arg;
   },
 
-  importPrimitiveF32: (arg: number): number => {
-    assertAlmostEquals(arg, 3.1415926535);
-    return 3.1415926535;
+  importPrimitiveF32AddOne: (arg: number): number => {
+    return arg + 1.0;
   },
 
-  importPrimitiveF64: (arg: number): number => {
-    assertAlmostEquals(arg, 2.718281828459);
-    return 2.718281828459;
+  importPrimitiveF64AddOne: (arg: number): number => {
+    return arg + 1.0;
   },
 
-  importPrimitiveI16: (arg: number): number => {
-    assertEquals(arg, -16);
-    return -16;
+  importPrimitiveI16AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
-  importPrimitiveI32: (arg: number): number => {
-    assertEquals(arg, -32);
-    return -32;
+  importPrimitiveI32AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
-  importPrimitiveI64: (arg: bigint): bigint => {
-    assertEquals(arg, -64n);
-    return -64n;
+  importPrimitiveI64AddOne: (arg: bigint): bigint => {
+    return arg + 1n;
   },
 
-  importPrimitiveI8: (arg: number): number => {
-    assertEquals(arg, -8);
-    return -8;
+  importPrimitiveI8AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
-  importPrimitiveU16: (arg: number): number => {
-    assertEquals(arg, 16);
-    return 16;
+  importPrimitiveU16AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
-  importPrimitiveU32: (arg: number): number => {
-    assertEquals(arg, 32);
-    return 32;
+  importPrimitiveU32AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
-  importPrimitiveU64: (arg: bigint): bigint => {
-    assertEquals(arg, 64n);
-    return 64n;
+  importPrimitiveU64AddOne: (arg: bigint): bigint => {
+    return arg + 1n;
   },
 
-  importPrimitiveU8: (arg: number): number => {
-    assertEquals(arg, 8);
-    return 8;
+  importPrimitiveU8AddOne: (arg: number): number => {
+    return arg + 1;
   },
 
   importArrayU8: (arg: Uint8Array): Uint8Array => {
