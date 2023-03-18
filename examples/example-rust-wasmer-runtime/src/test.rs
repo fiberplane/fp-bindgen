@@ -48,11 +48,9 @@ fn primitives() -> Result<()> {
     //     2.5 + 3.0
     // );
 
+    // Precise float comparison is fine as long as the denominator is a power of two
     assert_eq!(rt.export_primitive_f32_add_three_wasmer2(3.5)?, 3.5 + 3.0);
-    assert_eq!(
-        rt.export_primitive_f64_add_three_wasmer2(2.5)?,
-        2.5 + 3.0
-    );
+    assert_eq!(rt.export_primitive_f64_add_three_wasmer2(2.5)?, 2.5 + 3.0);
 
     Ok(())
 }
