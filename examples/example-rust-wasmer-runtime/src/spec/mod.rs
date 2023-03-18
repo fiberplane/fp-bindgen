@@ -17,10 +17,16 @@ fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>) {
 fn import_primitive_bool_negate(arg: bool) -> bool {
     !arg
 }
-fn import_primitive_f32_add_one(arg: [f32; 1]) -> f32 {
+fn import_primitive_f32_add_one(arg: f32) -> f32 {
+    arg + 1.0
+}
+fn import_primitive_f64_add_one(arg: f64) -> f64 {
+    arg + 1.0
+}
+fn import_primitive_f32_add_one_wasmer2(arg: [f32; 1]) -> f32 {
     arg[0] + 1.0
 }
-fn import_primitive_f64_add_one(arg: [f64; 1]) -> f64 {
+fn import_primitive_f64_add_one_wasmer2(arg: [f64; 1]) -> f64 {
     arg[0] + 1.0
 }
 fn import_primitive_i8_add_one(arg: i8) -> i8 {

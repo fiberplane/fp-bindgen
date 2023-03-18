@@ -40,11 +40,20 @@ fn primitives() -> Result<()> {
         -64
     );
 
-    assert_eq!(rt.export_primitive_f32_add_three(3.5)?, 3.5 + 3.0);
+    // FIXME: because of a bug in wasmer 2, we must use a workaround to pass float values to host.
+    // Uncomment these tests in the wasmer3 branch, since the bug is fixed there.
+    // assert_eq!(rt.export_primitive_f32_add_three(3.5)?, 3.5 + 3.0);
+    // assert_eq!(
+    //     rt.export_primitive_f64_add_three(2.5)?,
+    //     2.5 + 3.0
+    // );
+
+    assert_eq!(rt.export_primitive_f32_add_three_wasmer2(3.5)?, 3.5 + 3.0);
     assert_eq!(
-        rt.export_primitive_f64_add_three(2.5)?,
+        rt.export_primitive_f64_add_three_wasmer2(2.5)?,
         2.5 + 3.0
     );
+
     Ok(())
 }
 
