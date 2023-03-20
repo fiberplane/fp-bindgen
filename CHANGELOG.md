@@ -15,6 +15,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Every field in the `RustPluginConfig` builder can be set to `RustPluginConfigValue::Workspace`
   to indicate the value in the generated `Cargo.toml` should come from the workspace instead.
 - Add `description`, `readme` and `license` fields to `RustPluginConfig`.
+- Changed primitive tests in example to go call imported functions from the plugin.
+
+### Fixed
+
+- Added workaround for imported functions with float arguments for wasmer2 in example,
+  see [#180](https://github.com/fiberplane/fp-bindgen/issues/180).
 
 ## [3.0.0-beta.1] - 2023-02-14
 
