@@ -48,17 +48,25 @@ fp_import! {
     fn import_void_function_empty_result() -> Result<(), u32>;
 
     // Passing primitives:
-    fn import_primitive_bool(arg: bool) -> bool;
-    fn import_primitive_f32(arg: f32) -> f32;
-    fn import_primitive_f64(arg: f64) -> f64;
-    fn import_primitive_i8(arg: i8) -> i8;
-    fn import_primitive_i16(arg: i16) -> i16;
-    fn import_primitive_i32(arg: i32) -> i32;
-    fn import_primitive_i64(arg: i64) -> i64;
-    fn import_primitive_u8(arg: u8) -> u8;
-    fn import_primitive_u16(arg: u16) -> u16;
-    fn import_primitive_u32(arg: u32) -> u32;
-    fn import_primitive_u64(arg: u64) -> u64;
+    fn import_primitive_bool_negate(arg: bool) -> bool;
+    fn import_primitive_f32_add_one(arg: f32) -> f32;
+    fn import_primitive_f64_add_one(arg: f64) -> f64;
+
+    // NOTICE: This is a workaround for a bug in wasmer 2.3, where imported functions
+    // receive 0.0 instead of the the float value they were called with.
+    // This bug is fixed in wasmer 3, but in the meantime, you can use this workaround.
+    // See https://github.com/fiberplane/fp-bindgen/issues/180
+    fn import_primitive_f32_add_one_wasmer2(arg: [f32; 1]) -> f32;
+    fn import_primitive_f64_add_one_wasmer2(arg: [f64; 1]) -> f64;
+
+    fn import_primitive_i8_add_one(arg: i8) -> i8;
+    fn import_primitive_i16_add_one(arg: i16) -> i16;
+    fn import_primitive_i32_add_one(arg: i32) -> i32;
+    fn import_primitive_i64_add_one(arg: i64) -> i64;
+    fn import_primitive_u8_add_one(arg: u8) -> u8;
+    fn import_primitive_u16_add_one(arg: u16) -> u16;
+    fn import_primitive_u32_add_one(arg: u32) -> u32;
+    fn import_primitive_u64_add_one(arg: u64) -> u64;
 
     // Passing arrays:
     fn import_array_u8(arg: [u8; 3]) -> [u8; 3];
@@ -137,17 +145,19 @@ fp_export! {
     fn export_void_function();
 
     // Passing primitives:
-    fn export_primitive_bool(arg: bool) -> bool;
-    fn export_primitive_f32(arg: f32) -> f32;
-    fn export_primitive_f64(arg: f64) -> f64;
-    fn export_primitive_i8(arg: i8) -> i8;
-    fn export_primitive_i16(arg: i16) -> i16;
-    fn export_primitive_i32(arg: i32) -> i32;
-    fn export_primitive_i64(arg: i64) -> i64;
-    fn export_primitive_u8(arg: u8) -> u8;
-    fn export_primitive_u16(arg: u16) -> u16;
-    fn export_primitive_u32(arg: u32) -> u32;
-    fn export_primitive_u64(arg: u64) -> u64;
+    fn export_primitive_bool_negate(arg: bool) -> bool;
+    fn export_primitive_f32_add_three(arg: f32) -> f32;
+    fn export_primitive_f64_add_three(arg: f64) -> f64;
+    fn export_primitive_f32_add_three_wasmer2(arg: f32) -> f32;
+    fn export_primitive_f64_add_three_wasmer2(arg: f64) -> f64;
+    fn export_primitive_i8_add_three(arg: i8) -> i8;
+    fn export_primitive_i16_add_three(arg: i16) -> i16;
+    fn export_primitive_i32_add_three(arg: i32) -> i32;
+    fn export_primitive_i64_add_three(arg: i64) -> i64;
+    fn export_primitive_u8_add_three(arg: u8) -> u8;
+    fn export_primitive_u16_add_three(arg: u16) -> u16;
+    fn export_primitive_u32_add_three(arg: u32) -> u32;
+    fn export_primitive_u64_add_three(arg: u64) -> u64;
 
     // Passing arrays:
     fn export_array_u8(arg: [u8; 3]) -> [u8; 3];

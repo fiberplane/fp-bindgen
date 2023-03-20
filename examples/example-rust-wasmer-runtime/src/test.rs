@@ -23,28 +23,35 @@ const WASM_BYTES: &'static [u8] =
 fn primitives() -> Result<()> {
     let rt = new_runtime()?;
 
-    assert_eq!(rt.export_primitive_bool(true)?, true);
-    assert_eq!(rt.export_primitive_bool(false)?, false);
+    assert_eq!(rt.export_primitive_bool_negate(true)?, false);
+    assert_eq!(rt.export_primitive_bool_negate(false)?, true);
 
-    assert_eq!(rt.export_primitive_u8(8)?, 8);
-    assert_eq!(rt.export_primitive_u16(16)?, 16);
-    assert_eq!(rt.export_primitive_u32(32)?, 32);
-    assert_eq!(rt.export_primitive_u64(64)?, 64);
-    assert_eq!(rt.export_primitive_i8(-8)?, -8);
-    assert_eq!(rt.export_primitive_i16(-16)?, -16);
-    assert_eq!(rt.export_primitive_i32(-32)?, -32);
-    assert_eq!(rt.export_primitive_i64(-64)?, -64);
+    assert_eq!(rt.export_primitive_u8_add_three(8)?, 8 + 3);
+    assert_eq!(rt.export_primitive_u16_add_three(16)?, 16 + 3);
+    assert_eq!(rt.export_primitive_u32_add_three(32)?, 32 + 3);
+    assert_eq!(rt.export_primitive_u64_add_three(64)?, 64 + 3);
+    assert_eq!(rt.export_primitive_i8_add_three(-8)?, -8 + 3);
+    assert_eq!(rt.export_primitive_i16_add_three(-16)?, -16 + 3);
+    assert_eq!(rt.export_primitive_i32_add_three(-32)?, -32 + 3);
+    assert_eq!(rt.export_primitive_i64_add_three(-64)?, -64 + 3);
 
     assert_eq!(
         rt.export_multiple_primitives(-8, "Hello, 🇳🇱!".to_string())?,
         -64
     );
 
-    assert_eq!(rt.export_primitive_f32(3.1415926535)?, 3.1415926535);
-    assert_eq!(
-        rt.export_primitive_f64(2.718281828459f64)?,
-        2.718281828459f64
-    );
+    // FIXME: because of a bug in wasmer 2, we must use a workaround to pass float values to host.
+    // Uncomment these tests in the wasmer3 branch, since the bug is fixed there.
+    // assert_eq!(rt.export_primitive_f32_add_three(3.5)?, 3.5 + 3.0);
+    // assert_eq!(
+    //     rt.export_primitive_f64_add_three(2.5)?,
+    //     2.5 + 3.0
+    // );
+
+    // Precise float comparison is fine as long as the denominator is a power of two
+    assert_eq!(rt.export_primitive_f32_add_three_wasmer2(3.5)?, 3.5 + 3.0);
+    assert_eq!(rt.export_primitive_f64_add_three_wasmer2(2.5)?, 2.5 + 3.0);
+
     Ok(())
 }
 
@@ -261,7 +268,7 @@ async fn fetch_async_data() -> Result<()> {
 
     let response = rt.fetch_data("sign-up".to_string()).await?;
 
-    assert_eq!(response, Ok(r#"status: "confirmed"#.to_string()));
+    assert_eq!(response, Ok(r#"status: "confirmed""#.to_string()));
     Ok(())
 }
 

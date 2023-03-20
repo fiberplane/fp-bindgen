@@ -31,17 +31,19 @@ export type Imports = {
     importGetBytes: () => types.Result<Uint8Array, string>;
     importGetSerdeBytes: () => types.Result<ArrayBuffer, string>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
-    importPrimitiveBool: (arg: boolean) => boolean;
-    importPrimitiveF32: (arg: number) => number;
-    importPrimitiveF64: (arg: number) => number;
-    importPrimitiveI16: (arg: number) => number;
-    importPrimitiveI32: (arg: number) => number;
-    importPrimitiveI64: (arg: bigint) => bigint;
-    importPrimitiveI8: (arg: number) => number;
-    importPrimitiveU16: (arg: number) => number;
-    importPrimitiveU32: (arg: number) => number;
-    importPrimitiveU64: (arg: bigint) => bigint;
-    importPrimitiveU8: (arg: number) => number;
+    importPrimitiveBoolNegate: (arg: boolean) => boolean;
+    importPrimitiveF32AddOne: (arg: number) => number;
+    importPrimitiveF32AddOneWasmer2: (arg: Float32Array) => number;
+    importPrimitiveF64AddOne: (arg: number) => number;
+    importPrimitiveF64AddOneWasmer2: (arg: Float64Array) => number;
+    importPrimitiveI16AddOne: (arg: number) => number;
+    importPrimitiveI32AddOne: (arg: number) => number;
+    importPrimitiveI64AddOne: (arg: bigint) => bigint;
+    importPrimitiveI8AddOne: (arg: number) => number;
+    importPrimitiveU16AddOne: (arg: number) => number;
+    importPrimitiveU32AddOne: (arg: number) => number;
+    importPrimitiveU64AddOne: (arg: bigint) => bigint;
+    importPrimitiveU8AddOne: (arg: number) => number;
     importSerdeAdjacentlyTagged: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
     importSerdeEnum: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
     importSerdeFlatten: (arg: types.SerdeFlatten) => types.SerdeFlatten;
@@ -78,17 +80,19 @@ export type Exports = {
     exportGetBytes?: () => types.Result<Uint8Array, string>;
     exportGetSerdeBytes?: () => types.Result<ArrayBuffer, string>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
-    exportPrimitiveBool?: (arg: boolean) => boolean;
-    exportPrimitiveF32?: (arg: number) => number;
-    exportPrimitiveF64?: (arg: number) => number;
-    exportPrimitiveI16?: (arg: number) => number;
-    exportPrimitiveI32?: (arg: number) => number;
-    exportPrimitiveI64?: (arg: bigint) => bigint;
-    exportPrimitiveI8?: (arg: number) => number;
-    exportPrimitiveU16?: (arg: number) => number;
-    exportPrimitiveU32?: (arg: number) => number;
-    exportPrimitiveU64?: (arg: bigint) => bigint;
-    exportPrimitiveU8?: (arg: number) => number;
+    exportPrimitiveBoolNegate?: (arg: boolean) => boolean;
+    exportPrimitiveF32AddThree?: (arg: number) => number;
+    exportPrimitiveF32AddThreeWasmer2?: (arg: number) => number;
+    exportPrimitiveF64AddThree?: (arg: number) => number;
+    exportPrimitiveF64AddThreeWasmer2?: (arg: number) => number;
+    exportPrimitiveI16AddThree?: (arg: number) => number;
+    exportPrimitiveI32AddThree?: (arg: number) => number;
+    exportPrimitiveI64AddThree?: (arg: bigint) => bigint;
+    exportPrimitiveI8AddThree?: (arg: number) => number;
+    exportPrimitiveU16AddThree?: (arg: number) => number;
+    exportPrimitiveU32AddThree?: (arg: number) => number;
+    exportPrimitiveU64AddThree?: (arg: bigint) => bigint;
+    exportPrimitiveU8AddThree?: (arg: number) => number;
     exportSerdeAdjacentlyTagged?: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
     exportSerdeEnum?: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
     exportSerdeFlatten?: (arg: types.SerdeFlatten) => types.SerdeFlatten;
@@ -121,11 +125,11 @@ export type Exports = {
     exportGetBytesRaw?: () => Uint8Array;
     exportGetSerdeBytesRaw?: () => Uint8Array;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
-    exportPrimitiveBoolRaw?: (arg: boolean) => boolean;
-    exportPrimitiveI16Raw?: (arg: number) => number;
-    exportPrimitiveI32Raw?: (arg: number) => number;
-    exportPrimitiveI64Raw?: (arg: bigint) => bigint;
-    exportPrimitiveI8Raw?: (arg: number) => number;
+    exportPrimitiveBoolNegateRaw?: (arg: boolean) => boolean;
+    exportPrimitiveI16AddThreeRaw?: (arg: number) => number;
+    exportPrimitiveI32AddThreeRaw?: (arg: number) => number;
+    exportPrimitiveI64AddThreeRaw?: (arg: bigint) => bigint;
+    exportPrimitiveI8AddThreeRaw?: (arg: number) => number;
     exportSerdeAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeEnumRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeFlattenRaw?: (arg: Uint8Array) => Uint8Array;
@@ -328,38 +332,46 @@ export async function createRuntime(
                 const arg2 = parseObject<string>(arg2_ptr);
                 return interpretBigSign(importFunctions.importMultiplePrimitives(arg1, arg2), 9223372036854775808n);
             },
-            __fp_gen_import_primitive_bool: (arg: boolean): boolean => {
-                return !!importFunctions.importPrimitiveBool(arg);
+            __fp_gen_import_primitive_bool_negate: (arg: boolean): boolean => {
+                return !!importFunctions.importPrimitiveBoolNegate(arg);
             },
-            __fp_gen_import_primitive_f32: (arg: number): number => {
-                return importFunctions.importPrimitiveF32(arg);
+            __fp_gen_import_primitive_f32_add_one: (arg: number): number => {
+                return importFunctions.importPrimitiveF32AddOne(arg);
             },
-            __fp_gen_import_primitive_f64: (arg: number): number => {
-                return importFunctions.importPrimitiveF64(arg);
+            __fp_gen_import_primitive_f32_add_one_wasmer2: (arg_ptr: FatPtr): number => {
+                const arg = parseObject<Float32Array>(arg_ptr);
+                return importFunctions.importPrimitiveF32AddOneWasmer2(arg);
             },
-            __fp_gen_import_primitive_i16: (arg: number): number => {
-                return interpretSign(importFunctions.importPrimitiveI16(arg), 32768);
+            __fp_gen_import_primitive_f64_add_one: (arg: number): number => {
+                return importFunctions.importPrimitiveF64AddOne(arg);
             },
-            __fp_gen_import_primitive_i32: (arg: number): number => {
-                return interpretSign(importFunctions.importPrimitiveI32(arg), 2147483648);
+            __fp_gen_import_primitive_f64_add_one_wasmer2: (arg_ptr: FatPtr): number => {
+                const arg = parseObject<Float64Array>(arg_ptr);
+                return importFunctions.importPrimitiveF64AddOneWasmer2(arg);
             },
-            __fp_gen_import_primitive_i64: (arg: bigint): bigint => {
-                return interpretBigSign(importFunctions.importPrimitiveI64(arg), 9223372036854775808n);
+            __fp_gen_import_primitive_i16_add_one: (arg: number): number => {
+                return interpretSign(importFunctions.importPrimitiveI16AddOne(arg), 32768);
             },
-            __fp_gen_import_primitive_i8: (arg: number): number => {
-                return interpretSign(importFunctions.importPrimitiveI8(arg), 128);
+            __fp_gen_import_primitive_i32_add_one: (arg: number): number => {
+                return interpretSign(importFunctions.importPrimitiveI32AddOne(arg), 2147483648);
             },
-            __fp_gen_import_primitive_u16: (arg: number): number => {
-                return importFunctions.importPrimitiveU16(arg);
+            __fp_gen_import_primitive_i64_add_one: (arg: bigint): bigint => {
+                return interpretBigSign(importFunctions.importPrimitiveI64AddOne(arg), 9223372036854775808n);
             },
-            __fp_gen_import_primitive_u32: (arg: number): number => {
-                return importFunctions.importPrimitiveU32(arg);
+            __fp_gen_import_primitive_i8_add_one: (arg: number): number => {
+                return interpretSign(importFunctions.importPrimitiveI8AddOne(arg), 128);
             },
-            __fp_gen_import_primitive_u64: (arg: bigint): bigint => {
-                return importFunctions.importPrimitiveU64(arg);
+            __fp_gen_import_primitive_u16_add_one: (arg: number): number => {
+                return importFunctions.importPrimitiveU16AddOne(arg);
             },
-            __fp_gen_import_primitive_u8: (arg: number): number => {
-                return importFunctions.importPrimitiveU8(arg);
+            __fp_gen_import_primitive_u32_add_one: (arg: number): number => {
+                return importFunctions.importPrimitiveU32AddOne(arg);
+            },
+            __fp_gen_import_primitive_u64_add_one: (arg: bigint): bigint => {
+                return importFunctions.importPrimitiveU64AddOne(arg);
+            },
+            __fp_gen_import_primitive_u8_add_one: (arg: number): number => {
+                return importFunctions.importPrimitiveU8AddOne(arg);
             },
             __fp_gen_import_serde_adjacently_tagged: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<types.SerdeAdjacentlyTagged>(arg_ptr);
@@ -608,42 +620,44 @@ export async function createRuntime(
                 return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
         })(),
-        exportPrimitiveBool: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_bool as any;
+        exportPrimitiveBoolNegate: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool_negate as any;
             if (!export_fn) return;
 
             return (arg: boolean) => !!export_fn(arg);
         })(),
-        exportPrimitiveF32: instance.exports.__fp_gen_export_primitive_f32 as any,
-        exportPrimitiveF64: instance.exports.__fp_gen_export_primitive_f64 as any,
-        exportPrimitiveI16: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;
+        exportPrimitiveF32AddThree: instance.exports.__fp_gen_export_primitive_f32_add_three as any,
+        exportPrimitiveF32AddThreeWasmer2: instance.exports.__fp_gen_export_primitive_f32_add_three_wasmer2 as any,
+        exportPrimitiveF64AddThree: instance.exports.__fp_gen_export_primitive_f64_add_three as any,
+        exportPrimitiveF64AddThreeWasmer2: instance.exports.__fp_gen_export_primitive_f64_add_three_wasmer2 as any,
+        exportPrimitiveI16AddThree: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 32768);
         })(),
-        exportPrimitiveI32: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i32 as any;
+        exportPrimitiveI32AddThree: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 2147483648);
         })(),
-        exportPrimitiveI64: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i64 as any;
+        exportPrimitiveI64AddThree: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three as any;
             if (!export_fn) return;
 
             return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
         })(),
-        exportPrimitiveI8: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i8 as any;
+        exportPrimitiveI8AddThree: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 128);
         })(),
-        exportPrimitiveU16: instance.exports.__fp_gen_export_primitive_u16 as any,
-        exportPrimitiveU32: instance.exports.__fp_gen_export_primitive_u32 as any,
-        exportPrimitiveU64: instance.exports.__fp_gen_export_primitive_u64 as any,
-        exportPrimitiveU8: instance.exports.__fp_gen_export_primitive_u8 as any,
+        exportPrimitiveU16AddThree: instance.exports.__fp_gen_export_primitive_u16_add_three as any,
+        exportPrimitiveU32AddThree: instance.exports.__fp_gen_export_primitive_u32_add_three as any,
+        exportPrimitiveU64AddThree: instance.exports.__fp_gen_export_primitive_u64_add_three as any,
+        exportPrimitiveU8AddThree: instance.exports.__fp_gen_export_primitive_u8_add_three as any,
         exportSerdeAdjacentlyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_adjacently_tagged as any;
             if (!export_fn) return;
@@ -910,32 +924,32 @@ export async function createRuntime(
                 return interpretBigSign(export_fn(arg1, arg2_ptr), 9223372036854775808n);
             };
         })(),
-        exportPrimitiveBoolRaw: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_bool as any;
+        exportPrimitiveBoolNegateRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool_negate as any;
             if (!export_fn) return;
 
             return (arg: boolean) => !!export_fn(arg);
         })(),
-        exportPrimitiveI16Raw: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i16 as any;
+        exportPrimitiveI16AddThreeRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 32768);
         })(),
-        exportPrimitiveI32Raw: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i32 as any;
+        exportPrimitiveI32AddThreeRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 2147483648);
         })(),
-        exportPrimitiveI64Raw: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i64 as any;
+        exportPrimitiveI64AddThreeRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three as any;
             if (!export_fn) return;
 
             return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
         })(),
-        exportPrimitiveI8Raw: (() => {
-            const export_fn = instance.exports.__fp_gen_export_primitive_i8 as any;
+        exportPrimitiveI8AddThreeRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 128);
