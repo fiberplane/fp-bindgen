@@ -4,6 +4,7 @@ pub mod types;
 use bytes::Bytes;
 use serde_bytes::ByteBuf;
 use types::*;
+use super::GLOBAL_STATE;
 
 fn import_void_function() {}
 fn import_void_function_empty_result() -> Result<(), u32> {
@@ -173,6 +174,19 @@ async fn import_primitive_u32_add_one_async(arg: u32) -> u32 {
 }
 async fn import_primitive_u64_add_one_async(arg: u64) -> u64 {
     arg + 1
+}
+
+async fn import_reset_global_state() {
+    //GLOBAL_STATE.set(0);
+    *GLOBAL_STATE.lock().unwrap() = 0;
+}
+async fn import_increment_global_state() {
+    // Possible "race condition", but we don't mind here
+    // let val = GLOBAL_STATE.get();
+    // GLOBAL_STATE.set(val + 1);
+    let mut lock = GLOBAL_STATE.lock().unwrap();
+    let value = *lock + 1;
+    *lock = value;
 }
 
 fn import_struct_with_options(arg: StructWithOptions) {

@@ -137,6 +137,11 @@ fp_import! {
     async fn import_primitive_u32_add_one_async(arg: u32) -> u32;
     async fn import_primitive_u64_add_one_async(arg: u64) -> u64;
 
+    // Test that void return works with async as well.
+    // Intentionally explicit unit struct return in only one declaration, to test both variants.
+    async fn import_reset_global_state() -> ();
+    async fn import_increment_global_state();
+
     // Async function:
     async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
 
@@ -239,6 +244,11 @@ fp_export! {
     async fn export_primitive_u16_add_three_async(arg: u16) -> u16;
     async fn export_primitive_u32_add_three_async(arg: u32) -> u32;
     async fn export_primitive_u64_add_three_async(arg: u64) -> u64;
+
+    // Test that void return works with async as well.
+    // Intentionally explicit unit struct return in only one declaration, to test both variants.
+    async fn export_reset_global_state() -> ();
+    async fn export_increment_global_state();
 
     // Async function:
     async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;

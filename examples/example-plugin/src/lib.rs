@@ -373,6 +373,16 @@ async fn export_primitive_u64_add_three_async(arg: u64) -> u64 {
 }
 
 #[fp_export_impl(example_bindings)]
+async fn export_reset_global_state() {
+    import_reset_global_state().await
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_increment_global_state() {
+    import_increment_global_state().await
+}
+
+#[fp_export_impl(example_bindings)]
 async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming {
     assert_eq!(
         arg1,

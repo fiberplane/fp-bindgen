@@ -30,6 +30,7 @@ import { Result } from "../example-protocol/bindings/ts-runtime/types.ts";
 import { loadPlugin } from "./loader.ts";
 
 let voidFunctionCalled = false;
+let globalState = 0;
 
 const imports: Imports = {
   importExplicitBoundPoint: (arg: ExplicitBoundPoint<number>) => {
@@ -310,6 +311,16 @@ const imports: Imports = {
     return Promise.resolve(Number(arg) + 1);
   },
 
+  importIncrementGlobalState: (): Promise<void> => {
+    globalState = globalState + 1;
+    return Promise.resolve();
+  },
+
+  importResetGlobalState: (): Promise<void> => {
+    globalState = 0;
+    return Promise.resolve();
+  },
+
   log: (message: string): void => {
     console.log("Plugin log: " + message);
   },
@@ -565,6 +576,15 @@ Deno.test("async primitives", async () => {
   assertEquals(await plugin.exportPrimitiveI16AddThreeAsync?.(-16), -16 + 3);
   assertEquals(await plugin.exportPrimitiveI32AddThreeAsync?.(-32), -32 + 3);
   assertEquals(await plugin.exportPrimitiveI64AddThreeAsync?.(-64n), -64 + 3);
+
+  await plugin.exportResetGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  assertEquals(globalState, 1);
+
+  await plugin.exportResetGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  assertEquals(globalState, 2);
 });
 
 Deno.test("async struct", async () => {

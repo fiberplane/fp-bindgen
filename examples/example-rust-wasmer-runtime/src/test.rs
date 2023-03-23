@@ -11,6 +11,7 @@ use bytes::Bytes;
 use serde_bytes::ByteBuf;
 use std::collections::BTreeMap;
 use time::{macros::datetime, OffsetDateTime};
+use super::GLOBAL_STATE;
 
 #[cfg(not(feature="wasi"))]
 const WASM_BYTES: &'static [u8] =
@@ -18,6 +19,7 @@ const WASM_BYTES: &'static [u8] =
 #[cfg(feature="wasi")]
 const WASM_BYTES: &'static [u8] =
     include_bytes!("../../example-plugin/target/wasm32-wasi/debug/example_plugin.wasm");
+
 
 #[test]
 fn primitives() -> Result<()> {
@@ -259,6 +261,16 @@ async fn async_primitives() -> Result<()> {
     assert_eq!(rt.export_primitive_i16_add_three_async(-16).await?, -16 + 3);
     assert_eq!(rt.export_primitive_i32_add_three_async(-32).await?, -32 + 3);
     assert_eq!(rt.export_primitive_i64_add_three_async(-64).await?, -64 + 3);
+
+    // Test void primitive return as well
+    rt.export_reset_global_state().await?;
+    rt.export_increment_global_state().await?;
+    assert_eq!(*GLOBAL_STATE.lock().unwrap(), 1);
+
+    rt.export_reset_global_state().await?;
+    rt.export_increment_global_state().await?;
+    rt.export_increment_global_state().await?;
+    assert_eq!(*GLOBAL_STATE.lock().unwrap(), 2);
 
     Ok(())
 }
