@@ -185,7 +185,7 @@ fn log(msg: String) {
 
 async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
     Ok(Response {
-        body: ByteBuf::from(r#"status: "confirmed""#.to_string()),
+        body: ByteBuf::from(r#"{"status":"confirmed"}"#.to_string()),
         headers: opts.headers,
         status_code: 200,
     })
