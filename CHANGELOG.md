@@ -21,6 +21,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Added workaround for imported functions with float arguments for wasmer2 in example,
   see [#180](https://github.com/fiberplane/fp-bindgen/issues/180).
+- Fixed async functions returning primitive values, including void async functions,
+  see [#178](https://github.com/fiberplane/fp-bindgen/issues/178).
 
 ## [3.0.0-beta.1] - 2023-02-14
 
