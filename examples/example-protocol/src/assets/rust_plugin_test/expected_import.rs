@@ -55,13 +55,22 @@ pub fn import_get_bytes() -> Result<bytes::Bytes, String>;
 pub fn import_get_serde_bytes() -> Result<serde_bytes::ByteBuf, String>;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_increment_global_state();
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_multiple_primitives(arg1: i8, arg2: String) -> i64;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_bool_negate(arg: bool) -> bool;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_bool_negate_async(arg: bool) -> bool;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_f32_add_one(arg: f32) -> f32;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_f32_add_one_async(arg: f32) -> f32;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_f32_add_one_wasmer2(arg: [f32; 1]) -> f32;
@@ -70,31 +79,61 @@ pub fn import_primitive_f32_add_one_wasmer2(arg: [f32; 1]) -> f32;
 pub fn import_primitive_f64_add_one(arg: f64) -> f64;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_f64_add_one_async(arg: f64) -> f64;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_f64_add_one_wasmer2(arg: [f64; 1]) -> f64;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_i16_add_one(arg: i16) -> i16;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_i16_add_one_async(arg: i16) -> i16;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_i32_add_one(arg: i32) -> i32;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_i32_add_one_async(arg: i32) -> i32;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_i64_add_one(arg: i64) -> i64;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_i64_add_one_async(arg: i64) -> i64;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_i8_add_one(arg: i8) -> i8;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_i8_add_one_async(arg: i8) -> i8;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_u16_add_one(arg: u16) -> u16;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_u16_add_one_async(arg: u16) -> u16;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_u32_add_one(arg: u32) -> u32;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_u32_add_one_async(arg: u32) -> u32;
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_u64_add_one(arg: u64) -> u64;
 
 #[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_u64_add_one_async(arg: u64) -> u64;
+
+#[fp_bindgen_support::fp_import_signature]
 pub fn import_primitive_u8_add_one(arg: u8) -> u8;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_primitive_u8_add_one_async(arg: u8) -> u8;
+
+#[fp_bindgen_support::fp_import_signature]
+pub async fn import_reset_global_state();
 
 #[fp_bindgen_support::fp_import_signature]
 pub fn import_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;

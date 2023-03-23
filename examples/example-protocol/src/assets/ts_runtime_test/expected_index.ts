@@ -30,20 +30,33 @@ export type Imports = {
     importGenerics: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
     importGetBytes: () => types.Result<Uint8Array, string>;
     importGetSerdeBytes: () => types.Result<ArrayBuffer, string>;
+    importIncrementGlobalState: () => Promise<void>;
     importMultiplePrimitives: (arg1: number, arg2: string) => bigint;
     importPrimitiveBoolNegate: (arg: boolean) => boolean;
+    importPrimitiveBoolNegateAsync: (arg: boolean) => Promise<boolean>;
     importPrimitiveF32AddOne: (arg: number) => number;
+    importPrimitiveF32AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveF32AddOneWasmer2: (arg: Float32Array) => number;
     importPrimitiveF64AddOne: (arg: number) => number;
+    importPrimitiveF64AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveF64AddOneWasmer2: (arg: Float64Array) => number;
     importPrimitiveI16AddOne: (arg: number) => number;
+    importPrimitiveI16AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveI32AddOne: (arg: number) => number;
+    importPrimitiveI32AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveI64AddOne: (arg: bigint) => bigint;
+    importPrimitiveI64AddOneAsync: (arg: bigint) => Promise<number>;
     importPrimitiveI8AddOne: (arg: number) => number;
+    importPrimitiveI8AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveU16AddOne: (arg: number) => number;
+    importPrimitiveU16AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveU32AddOne: (arg: number) => number;
+    importPrimitiveU32AddOneAsync: (arg: number) => Promise<number>;
     importPrimitiveU64AddOne: (arg: bigint) => bigint;
+    importPrimitiveU64AddOneAsync: (arg: bigint) => Promise<number>;
     importPrimitiveU8AddOne: (arg: number) => number;
+    importPrimitiveU8AddOneAsync: (arg: number) => Promise<number>;
+    importResetGlobalState: () => Promise<void>;
     importSerdeAdjacentlyTagged: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
     importSerdeEnum: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
     importSerdeFlatten: (arg: types.SerdeFlatten) => types.SerdeFlatten;
@@ -79,20 +92,33 @@ export type Exports = {
     exportGenerics?: (arg: types.StructWithGenerics<number>) => types.StructWithGenerics<number>;
     exportGetBytes?: () => types.Result<Uint8Array, string>;
     exportGetSerdeBytes?: () => types.Result<ArrayBuffer, string>;
+    exportIncrementGlobalState?: () => Promise<void>;
     exportMultiplePrimitives?: (arg1: number, arg2: string) => bigint;
     exportPrimitiveBoolNegate?: (arg: boolean) => boolean;
+    exportPrimitiveBoolNegateAsync?: (arg: boolean) => Promise<boolean>;
     exportPrimitiveF32AddThree?: (arg: number) => number;
+    exportPrimitiveF32AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveF32AddThreeWasmer2?: (arg: number) => number;
     exportPrimitiveF64AddThree?: (arg: number) => number;
+    exportPrimitiveF64AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveF64AddThreeWasmer2?: (arg: number) => number;
     exportPrimitiveI16AddThree?: (arg: number) => number;
+    exportPrimitiveI16AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveI32AddThree?: (arg: number) => number;
+    exportPrimitiveI32AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveI64AddThree?: (arg: bigint) => bigint;
+    exportPrimitiveI64AddThreeAsync?: (arg: bigint) => Promise<number>;
     exportPrimitiveI8AddThree?: (arg: number) => number;
+    exportPrimitiveI8AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveU16AddThree?: (arg: number) => number;
+    exportPrimitiveU16AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveU32AddThree?: (arg: number) => number;
+    exportPrimitiveU32AddThreeAsync?: (arg: number) => Promise<number>;
     exportPrimitiveU64AddThree?: (arg: bigint) => bigint;
+    exportPrimitiveU64AddThreeAsync?: (arg: bigint) => Promise<number>;
     exportPrimitiveU8AddThree?: (arg: number) => number;
+    exportPrimitiveU8AddThreeAsync?: (arg: number) => Promise<number>;
+    exportResetGlobalState?: () => Promise<void>;
     exportSerdeAdjacentlyTagged?: (arg: types.SerdeAdjacentlyTagged) => types.SerdeAdjacentlyTagged;
     exportSerdeEnum?: (arg: types.SerdeVariantRenaming) => types.SerdeVariantRenaming;
     exportSerdeFlatten?: (arg: types.SerdeFlatten) => types.SerdeFlatten;
@@ -124,12 +150,25 @@ export type Exports = {
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
     exportGetBytesRaw?: () => Uint8Array;
     exportGetSerdeBytesRaw?: () => Uint8Array;
+    exportIncrementGlobalStateRaw?: () => Promise<void>;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
     exportPrimitiveBoolNegateRaw?: (arg: boolean) => boolean;
+    exportPrimitiveBoolNegateAsyncRaw?: (arg: boolean) => Promise<boolean>;
+    exportPrimitiveF32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveF64AddThreeAsyncRaw?: (arg: number) => Promise<number>;
     exportPrimitiveI16AddThreeRaw?: (arg: number) => number;
+    exportPrimitiveI16AddThreeAsyncRaw?: (arg: number) => Promise<number>;
     exportPrimitiveI32AddThreeRaw?: (arg: number) => number;
+    exportPrimitiveI32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
     exportPrimitiveI64AddThreeRaw?: (arg: bigint) => bigint;
+    exportPrimitiveI64AddThreeAsyncRaw?: (arg: bigint) => Promise<bigint>;
     exportPrimitiveI8AddThreeRaw?: (arg: number) => number;
+    exportPrimitiveI8AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveU16AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveU32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveU64AddThreeAsyncRaw?: (arg: bigint) => Promise<bigint>;
+    exportPrimitiveU8AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportResetGlobalStateRaw?: () => Promise<void>;
     exportSerdeAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeEnumRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeFlattenRaw?: (arg: Uint8Array) => Uint8Array;
@@ -328,6 +367,20 @@ export async function createRuntime(
             __fp_gen_import_get_serde_bytes: (): FatPtr => {
                 return serializeObject(importFunctions.importGetSerdeBytes());
             },
+            __fp_gen_import_increment_global_state: () => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importIncrementGlobalState()
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, 0);
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_increment_global_state"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_multiple_primitives: (arg1: number, arg2_ptr: FatPtr): bigint => {
                 const arg2 = parseObject<string>(arg2_ptr);
                 return interpretBigSign(importFunctions.importMultiplePrimitives(arg1, arg2), 9223372036854775808n);
@@ -335,8 +388,36 @@ export async function createRuntime(
             __fp_gen_import_primitive_bool_negate: (arg: boolean): boolean => {
                 return !!importFunctions.importPrimitiveBoolNegate(arg);
             },
+            __fp_gen_import_primitive_bool_negate_async: (arg: boolean): boolean => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveBoolNegateAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_bool_negate_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_f32_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveF32AddOne(arg);
+            },
+            __fp_gen_import_primitive_f32_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveF32AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_f32_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
             },
             __fp_gen_import_primitive_f32_add_one_wasmer2: (arg_ptr: FatPtr): number => {
                 const arg = parseObject<Float32Array>(arg_ptr);
@@ -345,6 +426,20 @@ export async function createRuntime(
             __fp_gen_import_primitive_f64_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveF64AddOne(arg);
             },
+            __fp_gen_import_primitive_f64_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveF64AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_f64_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_f64_add_one_wasmer2: (arg_ptr: FatPtr): number => {
                 const arg = parseObject<Float64Array>(arg_ptr);
                 return importFunctions.importPrimitiveF64AddOneWasmer2(arg);
@@ -352,26 +447,152 @@ export async function createRuntime(
             __fp_gen_import_primitive_i16_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI16AddOne(arg), 32768);
             },
+            __fp_gen_import_primitive_i16_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveI16AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_i16_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_i32_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI32AddOne(arg), 2147483648);
+            },
+            __fp_gen_import_primitive_i32_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveI32AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_i32_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
             },
             __fp_gen_import_primitive_i64_add_one: (arg: bigint): bigint => {
                 return interpretBigSign(importFunctions.importPrimitiveI64AddOne(arg), 9223372036854775808n);
             },
+            __fp_gen_import_primitive_i64_add_one_async: (arg: bigint): bigint => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveI64AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_i64_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_i8_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI8AddOne(arg), 128);
+            },
+            __fp_gen_import_primitive_i8_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveI8AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_i8_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
             },
             __fp_gen_import_primitive_u16_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU16AddOne(arg);
             },
+            __fp_gen_import_primitive_u16_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveU16AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_u16_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_u32_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU32AddOne(arg);
+            },
+            __fp_gen_import_primitive_u32_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveU32AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_u32_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
             },
             __fp_gen_import_primitive_u64_add_one: (arg: bigint): bigint => {
                 return importFunctions.importPrimitiveU64AddOne(arg);
             },
+            __fp_gen_import_primitive_u64_add_one_async: (arg: bigint): bigint => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveU64AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_u64_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
             __fp_gen_import_primitive_u8_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU8AddOne(arg);
+            },
+            __fp_gen_import_primitive_u8_add_one_async: (arg: number): number => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importPrimitiveU8AddOneAsync(arg)
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, serializeObject(result));
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_primitive_u8_add_one_async"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
+            },
+            __fp_gen_import_reset_global_state: () => {
+                const _async_result_ptr = createAsyncValue();
+                importFunctions.importResetGlobalState()
+                    .then((result) => {
+                        resolveFuture(_async_result_ptr, 0);
+                    })
+                    .catch((error) => {
+                        console.error(
+                            'Unrecoverable exception trying to call async host function "import_reset_global_state"',
+                            error
+                        );
+                    });
+                return _async_result_ptr;
             },
             __fp_gen_import_serde_adjacently_tagged: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<types.SerdeAdjacentlyTagged>(arg_ptr);
@@ -611,6 +832,12 @@ export async function createRuntime(
 
             return () => parseObject<types.Result<ArrayBuffer, string>>(export_fn());
         })(),
+        exportIncrementGlobalState: (() => {
+            const export_fn = instance.exports.__fp_gen_export_increment_global_state as any;
+            if (!export_fn) return;
+
+            return () => promiseFromPtr(export_fn()).then((ptr) => parseObject<void>(ptr));
+        })(),
         exportMultiplePrimitives: (() => {
             const export_fn = instance.exports.__fp_gen_export_multiple_primitives as any;
             if (!export_fn) return;
@@ -626,9 +853,27 @@ export async function createRuntime(
 
             return (arg: boolean) => !!export_fn(arg);
         })(),
+        exportPrimitiveBoolNegateAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool_negate_async as any;
+            if (!export_fn) return;
+
+            return (arg: boolean) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<boolean>(ptr));
+        })(),
         exportPrimitiveF32AddThree: instance.exports.__fp_gen_export_primitive_f32_add_three as any,
+        exportPrimitiveF32AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_f32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveF32AddThreeWasmer2: instance.exports.__fp_gen_export_primitive_f32_add_three_wasmer2 as any,
         exportPrimitiveF64AddThree: instance.exports.__fp_gen_export_primitive_f64_add_three as any,
+        exportPrimitiveF64AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_f64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveF64AddThreeWasmer2: instance.exports.__fp_gen_export_primitive_f64_add_three_wasmer2 as any,
         exportPrimitiveI16AddThree: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three as any;
@@ -636,11 +881,23 @@ export async function createRuntime(
 
             return (arg: number) => interpretSign(export_fn(arg), 32768);
         })(),
+        exportPrimitiveI16AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveI32AddThree: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 2147483648);
+        })(),
+        exportPrimitiveI32AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
         })(),
         exportPrimitiveI64AddThree: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three as any;
@@ -648,16 +905,58 @@ export async function createRuntime(
 
             return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
         })(),
+        exportPrimitiveI64AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveI8AddThree: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 128);
         })(),
+        exportPrimitiveI8AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveU16AddThree: instance.exports.__fp_gen_export_primitive_u16_add_three as any,
+        exportPrimitiveU16AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u16_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveU32AddThree: instance.exports.__fp_gen_export_primitive_u32_add_three as any,
+        exportPrimitiveU32AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveU64AddThree: instance.exports.__fp_gen_export_primitive_u64_add_three as any,
+        exportPrimitiveU64AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
         exportPrimitiveU8AddThree: instance.exports.__fp_gen_export_primitive_u8_add_three as any,
+        exportPrimitiveU8AddThreeAsync: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u8_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then((ptr) => parseObject<number>(ptr));
+        })(),
+        exportResetGlobalState: (() => {
+            const export_fn = instance.exports.__fp_gen_export_reset_global_state as any;
+            if (!export_fn) return;
+
+            return () => promiseFromPtr(export_fn()).then((ptr) => parseObject<void>(ptr));
+        })(),
         exportSerdeAdjacentlyTagged: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_adjacently_tagged as any;
             if (!export_fn) return;
@@ -915,6 +1214,12 @@ export async function createRuntime(
 
             return () => importFromMemory(export_fn());
         })(),
+        exportIncrementGlobalStateRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_increment_global_state as any;
+            if (!export_fn) return;
+
+            return () => promiseFromPtr(export_fn()).then(importFromMemory);
+        })(),
         exportMultiplePrimitivesRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_multiple_primitives as any;
             if (!export_fn) return;
@@ -930,11 +1235,35 @@ export async function createRuntime(
 
             return (arg: boolean) => !!export_fn(arg);
         })(),
+        exportPrimitiveBoolNegateAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_bool_negate_async as any;
+            if (!export_fn) return;
+
+            return (arg: boolean) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveF32AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_f32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveF64AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_f64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
         exportPrimitiveI16AddThreeRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 32768);
+        })(),
+        exportPrimitiveI16AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i16_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
         })(),
         exportPrimitiveI32AddThreeRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three as any;
@@ -942,17 +1271,65 @@ export async function createRuntime(
 
             return (arg: number) => interpretSign(export_fn(arg), 2147483648);
         })(),
+        exportPrimitiveI32AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
         exportPrimitiveI64AddThreeRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three as any;
             if (!export_fn) return;
 
             return (arg: bigint) => interpretBigSign(export_fn(arg), 9223372036854775808n);
         })(),
+        exportPrimitiveI64AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
         exportPrimitiveI8AddThreeRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three as any;
             if (!export_fn) return;
 
             return (arg: number) => interpretSign(export_fn(arg), 128);
+        })(),
+        exportPrimitiveI8AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_i8_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveU16AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u16_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveU32AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u32_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveU64AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u64_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: bigint) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportPrimitiveU8AddThreeAsyncRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_primitive_u8_add_three_async as any;
+            if (!export_fn) return;
+
+            return (arg: number) => promiseFromPtr(export_fn(arg)).then(importFromMemory);
+        })(),
+        exportResetGlobalStateRaw: (() => {
+            const export_fn = instance.exports.__fp_gen_export_reset_global_state as any;
+            if (!export_fn) return;
+
+            return () => promiseFromPtr(export_fn()).then(importFromMemory);
         })(),
         exportSerdeAdjacentlyTaggedRaw: (() => {
             const export_fn = instance.exports.__fp_gen_export_serde_adjacently_tagged as any;
