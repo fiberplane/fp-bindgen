@@ -240,6 +240,30 @@ fn tagged_enums() -> Result<()> {
 }
 
 #[tokio::test]
+async fn async_primitives() -> Result<()> {
+    let rt = new_runtime()?;
+
+    assert_eq!(rt.export_primitive_bool_negate_async(true).await?, false);
+    assert_eq!(rt.export_primitive_bool_negate_async(false).await?, true);
+
+    // FIXME: Imported functions get passed 0.0 instead of the float argument when called from a plugin.
+    // See https://github.com/fiberplane/fp-bindgen/issues/180
+    // assert_eq!(rt.export_primitive_f32_add_three_async(3.5).await?, 3.5 + 3.0);
+    // assert_eq!(rt.export_primitive_f64_add_three_async(2.5).await?, 2.5 + 3.0);
+
+    assert_eq!(rt.export_primitive_u8_add_three_async(8).await?, 8 + 3);
+    assert_eq!(rt.export_primitive_u16_add_three_async(16).await?, 16 + 3);
+    assert_eq!(rt.export_primitive_u32_add_three_async(32).await?, 32 + 3);
+    assert_eq!(rt.export_primitive_u64_add_three_async(64).await?, 64 + 3);
+    assert_eq!(rt.export_primitive_i8_add_three_async(-8).await?, -8 + 3);
+    assert_eq!(rt.export_primitive_i16_add_three_async(-16).await?, -16 + 3);
+    assert_eq!(rt.export_primitive_i32_add_three_async(-32).await?, -32 + 3);
+    assert_eq!(rt.export_primitive_i64_add_three_async(-64).await?, -64 + 3);
+
+    Ok(())
+}
+
+#[tokio::test]
 async fn async_struct() -> Result<()> {
     let rt = new_runtime()?;
 
