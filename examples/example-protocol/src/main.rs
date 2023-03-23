@@ -124,6 +124,19 @@ fp_import! {
     fn import_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;
     fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
 
+    // Passing primitives as async:
+    async fn import_primitive_bool_negate_async(arg: bool) -> bool;
+    async fn import_primitive_f32_add_one_async(arg: f32) -> f32;
+    async fn import_primitive_f64_add_one_async(arg: f64) -> f64;
+    async fn import_primitive_i8_add_one_async(arg: i8) -> i8;
+    async fn import_primitive_i16_add_one_async(arg: i16) -> i16;
+    async fn import_primitive_i32_add_one_async(arg: i32) -> i32;
+    async fn import_primitive_i64_add_one_async(arg: i64) -> i64;
+    async fn import_primitive_u8_add_one_async(arg: u8) -> u8;
+    async fn import_primitive_u16_add_one_async(arg: u16) -> u16;
+    async fn import_primitive_u32_add_one_async(arg: u32) -> u32;
+    async fn import_primitive_u64_add_one_async(arg: u64) -> u64;
+
     // Async function:
     async fn import_fp_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
 
@@ -213,6 +226,19 @@ fp_export! {
     fn export_serde_internally_tagged(arg: SerdeInternallyTagged) -> SerdeInternallyTagged;
     fn export_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged;
     fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged;
+
+    // Passing primitives with async:
+    async fn export_primitive_bool_negate_async(arg: bool) -> bool;
+    async fn export_primitive_f32_add_three_async(arg: f32) -> f32;
+    async fn export_primitive_f64_add_three_async(arg: f64) -> f64;
+    async fn export_primitive_i8_add_three_async(arg: i8) -> i8;
+    async fn export_primitive_i16_add_three_async(arg: i16) -> i16;
+    async fn export_primitive_i32_add_three_async(arg: i32) -> i32;
+    async fn export_primitive_i64_add_three_async(arg: i64) -> i64;
+    async fn export_primitive_u8_add_three_async(arg: u8) -> u8;
+    async fn export_primitive_u16_add_three_async(arg: u16) -> u16;
+    async fn export_primitive_u32_add_three_async(arg: u32) -> u32;
+    async fn export_primitive_u64_add_three_async(arg: u64) -> u64;
 
     // Async function:
     async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming;
