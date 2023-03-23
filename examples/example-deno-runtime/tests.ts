@@ -547,6 +547,26 @@ Deno.test("tagged enums", async () => {
   });
 });
 
+Deno.test("async primitives", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(await plugin.exportPrimitiveBoolNegateAsync?.(true), false);
+  assertEquals(await plugin.exportPrimitiveBoolNegateAsync?.(false), true);
+
+  // Precise float comparison is fine as long as the denominator is a power of two
+  assertEquals(await plugin.exportPrimitiveF32AddThreeAsync?.(3.5), 3.5 + 3.0);
+  assertEquals(await plugin.exportPrimitiveF64AddThreeAsync?.(2.5), 2.5 + 3.0);
+
+  assertEquals(await plugin.exportPrimitiveU8AddThreeAsync?.(8), 8 + 3);
+  assertEquals(await plugin.exportPrimitiveU16AddThreeAsync?.(16), 16 + 3);
+  assertEquals(await plugin.exportPrimitiveU32AddThreeAsync?.(32), 32 + 3);
+  assertEquals(await plugin.exportPrimitiveU64AddThreeAsync?.(64n), 64 + 3);
+  assertEquals(await plugin.exportPrimitiveI8AddThreeAsync?.(-8), -8 + 3);
+  assertEquals(await plugin.exportPrimitiveI16AddThreeAsync?.(-16), -16 + 3);
+  assertEquals(await plugin.exportPrimitiveI32AddThreeAsync?.(-32), -32 + 3);
+  assertEquals(await plugin.exportPrimitiveI64AddThreeAsync?.(-64n), -64 + 3);
+});
+
 Deno.test("async struct", async () => {
   const { exportAsyncStruct } = await loadExamplePlugin();
   assert(exportAsyncStruct);
