@@ -150,25 +150,25 @@ export type Exports = {
     exportGenericsRaw?: (arg: Uint8Array) => Uint8Array;
     exportGetBytesRaw?: () => Uint8Array;
     exportGetSerdeBytesRaw?: () => Uint8Array;
-    exportIncrementGlobalStateRaw?: () => Promise<void>;
+    exportIncrementGlobalStateRaw?: () => Promise<Uint8Array>;
     exportMultiplePrimitivesRaw?: (arg1: number, arg2: Uint8Array) => bigint;
     exportPrimitiveBoolNegateRaw?: (arg: boolean) => boolean;
-    exportPrimitiveBoolNegateAsyncRaw?: (arg: boolean) => Promise<boolean>;
-    exportPrimitiveF32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
-    exportPrimitiveF64AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveBoolNegateAsyncRaw?: (arg: boolean) => Promise<Uint8Array>;
+    exportPrimitiveF32AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
+    exportPrimitiveF64AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
     exportPrimitiveI16AddThreeRaw?: (arg: number) => number;
-    exportPrimitiveI16AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveI16AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
     exportPrimitiveI32AddThreeRaw?: (arg: number) => number;
-    exportPrimitiveI32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
+    exportPrimitiveI32AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
     exportPrimitiveI64AddThreeRaw?: (arg: bigint) => bigint;
-    exportPrimitiveI64AddThreeAsyncRaw?: (arg: bigint) => Promise<bigint>;
+    exportPrimitiveI64AddThreeAsyncRaw?: (arg: bigint) => Promise<Uint8Array>;
     exportPrimitiveI8AddThreeRaw?: (arg: number) => number;
-    exportPrimitiveI8AddThreeAsyncRaw?: (arg: number) => Promise<number>;
-    exportPrimitiveU16AddThreeAsyncRaw?: (arg: number) => Promise<number>;
-    exportPrimitiveU32AddThreeAsyncRaw?: (arg: number) => Promise<number>;
-    exportPrimitiveU64AddThreeAsyncRaw?: (arg: bigint) => Promise<bigint>;
-    exportPrimitiveU8AddThreeAsyncRaw?: (arg: number) => Promise<number>;
-    exportResetGlobalStateRaw?: () => Promise<void>;
+    exportPrimitiveI8AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
+    exportPrimitiveU16AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
+    exportPrimitiveU32AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
+    exportPrimitiveU64AddThreeAsyncRaw?: (arg: bigint) => Promise<Uint8Array>;
+    exportPrimitiveU8AddThreeAsyncRaw?: (arg: number) => Promise<Uint8Array>;
+    exportResetGlobalStateRaw?: () => Promise<Uint8Array>;
     exportSerdeAdjacentlyTaggedRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeEnumRaw?: (arg: Uint8Array) => Uint8Array;
     exportSerdeFlattenRaw?: (arg: Uint8Array) => Uint8Array;
@@ -367,11 +367,11 @@ export async function createRuntime(
             __fp_gen_import_get_serde_bytes: (): FatPtr => {
                 return serializeObject(importFunctions.importGetSerdeBytes());
             },
-            __fp_gen_import_increment_global_state: () => {
+            __fp_gen_import_increment_global_state: (): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importIncrementGlobalState()
                     .then((result) => {
-                        resolveFuture(_async_result_ptr, 0);
+                        resolveFuture(_async_result_ptr, serializeObject(result));
                     })
                     .catch((error) => {
                         console.error(
@@ -388,7 +388,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_bool_negate: (arg: boolean): boolean => {
                 return !!importFunctions.importPrimitiveBoolNegate(arg);
             },
-            __fp_gen_import_primitive_bool_negate_async: (arg: boolean): boolean => {
+            __fp_gen_import_primitive_bool_negate_async: (arg: boolean): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveBoolNegateAsync(arg)
                     .then((result) => {
@@ -405,7 +405,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_f32_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveF32AddOne(arg);
             },
-            __fp_gen_import_primitive_f32_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_f32_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveF32AddOneAsync(arg)
                     .then((result) => {
@@ -426,7 +426,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_f64_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveF64AddOne(arg);
             },
-            __fp_gen_import_primitive_f64_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_f64_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveF64AddOneAsync(arg)
                     .then((result) => {
@@ -447,7 +447,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_i16_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI16AddOne(arg), 32768);
             },
-            __fp_gen_import_primitive_i16_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_i16_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveI16AddOneAsync(arg)
                     .then((result) => {
@@ -464,7 +464,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_i32_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI32AddOne(arg), 2147483648);
             },
-            __fp_gen_import_primitive_i32_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_i32_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveI32AddOneAsync(arg)
                     .then((result) => {
@@ -481,7 +481,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_i64_add_one: (arg: bigint): bigint => {
                 return interpretBigSign(importFunctions.importPrimitiveI64AddOne(arg), 9223372036854775808n);
             },
-            __fp_gen_import_primitive_i64_add_one_async: (arg: bigint): bigint => {
+            __fp_gen_import_primitive_i64_add_one_async: (arg: bigint): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveI64AddOneAsync(arg)
                     .then((result) => {
@@ -498,7 +498,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_i8_add_one: (arg: number): number => {
                 return interpretSign(importFunctions.importPrimitiveI8AddOne(arg), 128);
             },
-            __fp_gen_import_primitive_i8_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_i8_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveI8AddOneAsync(arg)
                     .then((result) => {
@@ -515,7 +515,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_u16_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU16AddOne(arg);
             },
-            __fp_gen_import_primitive_u16_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_u16_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveU16AddOneAsync(arg)
                     .then((result) => {
@@ -532,7 +532,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_u32_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU32AddOne(arg);
             },
-            __fp_gen_import_primitive_u32_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_u32_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveU32AddOneAsync(arg)
                     .then((result) => {
@@ -549,7 +549,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_u64_add_one: (arg: bigint): bigint => {
                 return importFunctions.importPrimitiveU64AddOne(arg);
             },
-            __fp_gen_import_primitive_u64_add_one_async: (arg: bigint): bigint => {
+            __fp_gen_import_primitive_u64_add_one_async: (arg: bigint): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveU64AddOneAsync(arg)
                     .then((result) => {
@@ -566,7 +566,7 @@ export async function createRuntime(
             __fp_gen_import_primitive_u8_add_one: (arg: number): number => {
                 return importFunctions.importPrimitiveU8AddOne(arg);
             },
-            __fp_gen_import_primitive_u8_add_one_async: (arg: number): number => {
+            __fp_gen_import_primitive_u8_add_one_async: (arg: number): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importPrimitiveU8AddOneAsync(arg)
                     .then((result) => {
@@ -580,11 +580,11 @@ export async function createRuntime(
                     });
                 return _async_result_ptr;
             },
-            __fp_gen_import_reset_global_state: () => {
+            __fp_gen_import_reset_global_state: (): FatPtr => {
                 const _async_result_ptr = createAsyncValue();
                 importFunctions.importResetGlobalState()
                     .then((result) => {
-                        resolveFuture(_async_result_ptr, 0);
+                        resolveFuture(_async_result_ptr, serializeObject(result));
                     })
                     .catch((error) => {
                         console.error(
