@@ -141,6 +141,40 @@ fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
     todo!()
 }
 
+async fn import_primitive_bool_negate_async(arg: bool) -> bool {
+    !arg
+}
+async fn import_primitive_f32_add_one_async(arg: f32) -> f32 {
+    arg + 1.0
+}
+async fn import_primitive_f64_add_one_async(arg: f64) -> f64 {
+    arg + 1.0
+}
+async fn import_primitive_i8_add_one_async(arg: i8) -> i8 {
+    arg + 1
+}
+async fn import_primitive_i16_add_one_async(arg: i16) -> i16 {
+    arg + 1
+}
+async fn import_primitive_i32_add_one_async(arg: i32) -> i32 {
+    arg + 1
+}
+async fn import_primitive_i64_add_one_async(arg: i64) -> i64 {
+    arg + 1
+}
+async fn import_primitive_u8_add_one_async(arg: u8) -> u8 {
+    arg + 1
+}
+async fn import_primitive_u16_add_one_async(arg: u16) -> u16 {
+    arg + 1
+}
+async fn import_primitive_u32_add_one_async(arg: u32) -> u32 {
+    arg + 1
+}
+async fn import_primitive_u64_add_one_async(arg: u64) -> u64 {
+    arg + 1
+}
+
 fn import_struct_with_options(arg: StructWithOptions) {
     todo!()
 }
