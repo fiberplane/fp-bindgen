@@ -384,7 +384,7 @@ Deno.test("primitives", async () => {
   assertEquals(plugin.exportPrimitiveF32AddThree?.(3.5), 3.5 + 3.0);
   assertEquals(plugin.exportPrimitiveF64AddThree?.(2.5), 2.5 + 3.0);
 
-  // We need to define the workarounf methods for wasmer2, so we might as well test them
+  // We need to define the workaround methods for wasmer2, so we might as well test them
   assertEquals(plugin.exportPrimitiveF32AddThreeWasmer2?.(13.5), 13.5 + 3.0);
   assertEquals(plugin.exportPrimitiveF64AddThreeWasmer2?.(12.5), 12.5 + 3.0);
 });
