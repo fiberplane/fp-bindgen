@@ -445,11 +445,11 @@ impl Runtime {
         let result = result.map(|ref data| deserialize_from_slice(data));
         result
     }
-    pub async fn export_increment_global_state_raw(&self) -> Result<(), InvocationError> {
+    pub async fn export_increment_global_state_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<(), ()>("__fp_gen_export_increment_global_state")
+            .get_native_function::<(), FatPtr>("__fp_gen_export_increment_global_state")
             .map_err(|_| {
                 InvocationError::FunctionNotExported(
                     "__fp_gen_export_increment_global_state".to_owned(),
@@ -524,11 +524,11 @@ impl Runtime {
     pub async fn export_primitive_bool_negate_async_raw(
         &self,
         arg: bool,
-    ) -> Result<bool, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<bool as WasmAbi>::AbiType, <bool as WasmAbi>::AbiType>(
+            .get_native_function::<<bool as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_bool_negate_async",
             )
             .map_err(|_| {
@@ -574,11 +574,11 @@ impl Runtime {
     pub async fn export_primitive_f32_add_three_async_raw(
         &self,
         arg: f32,
-    ) -> Result<f32, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<f32 as WasmAbi>::AbiType, <f32 as WasmAbi>::AbiType>(
+            .get_native_function::<<f32 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_f32_add_three_async",
             )
             .map_err(|_| {
@@ -648,11 +648,11 @@ impl Runtime {
     pub async fn export_primitive_f64_add_three_async_raw(
         &self,
         arg: f64,
-    ) -> Result<f64, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<f64 as WasmAbi>::AbiType, <f64 as WasmAbi>::AbiType>(
+            .get_native_function::<<f64 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_f64_add_three_async",
             )
             .map_err(|_| {
@@ -722,11 +722,11 @@ impl Runtime {
     pub async fn export_primitive_i16_add_three_async_raw(
         &self,
         arg: i16,
-    ) -> Result<i16, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<i16 as WasmAbi>::AbiType, <i16 as WasmAbi>::AbiType>(
+            .get_native_function::<<i16 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_i16_add_three_async",
             )
             .map_err(|_| {
@@ -772,11 +772,11 @@ impl Runtime {
     pub async fn export_primitive_i32_add_three_async_raw(
         &self,
         arg: i32,
-    ) -> Result<i32, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<i32 as WasmAbi>::AbiType, <i32 as WasmAbi>::AbiType>(
+            .get_native_function::<<i32 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_i32_add_three_async",
             )
             .map_err(|_| {
@@ -822,11 +822,11 @@ impl Runtime {
     pub async fn export_primitive_i64_add_three_async_raw(
         &self,
         arg: i64,
-    ) -> Result<i64, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<i64 as WasmAbi>::AbiType, <i64 as WasmAbi>::AbiType>(
+            .get_native_function::<<i64 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_i64_add_three_async",
             )
             .map_err(|_| {
@@ -872,11 +872,11 @@ impl Runtime {
     pub async fn export_primitive_i8_add_three_async_raw(
         &self,
         arg: i8,
-    ) -> Result<i8, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<i8 as WasmAbi>::AbiType, <i8 as WasmAbi>::AbiType>(
+            .get_native_function::<<i8 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_i8_add_three_async",
             )
             .map_err(|_| {
@@ -922,11 +922,11 @@ impl Runtime {
     pub async fn export_primitive_u16_add_three_async_raw(
         &self,
         arg: u16,
-    ) -> Result<u16, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<u16 as WasmAbi>::AbiType, <u16 as WasmAbi>::AbiType>(
+            .get_native_function::<<u16 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_u16_add_three_async",
             )
             .map_err(|_| {
@@ -972,11 +972,11 @@ impl Runtime {
     pub async fn export_primitive_u32_add_three_async_raw(
         &self,
         arg: u32,
-    ) -> Result<u32, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<u32 as WasmAbi>::AbiType, <u32 as WasmAbi>::AbiType>(
+            .get_native_function::<<u32 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_u32_add_three_async",
             )
             .map_err(|_| {
@@ -1022,11 +1022,11 @@ impl Runtime {
     pub async fn export_primitive_u64_add_three_async_raw(
         &self,
         arg: u64,
-    ) -> Result<u64, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<u64 as WasmAbi>::AbiType, <u64 as WasmAbi>::AbiType>(
+            .get_native_function::<<u64 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_u64_add_three_async",
             )
             .map_err(|_| {
@@ -1072,11 +1072,11 @@ impl Runtime {
     pub async fn export_primitive_u8_add_three_async_raw(
         &self,
         arg: u8,
-    ) -> Result<u8, InvocationError> {
+    ) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<<u8 as WasmAbi>::AbiType, <u8 as WasmAbi>::AbiType>(
+            .get_native_function::<<u8 as WasmAbi>::AbiType, FatPtr>(
                 "__fp_gen_export_primitive_u8_add_three_async",
             )
             .map_err(|_| {
@@ -1095,11 +1095,11 @@ impl Runtime {
         let result = result.map(|ref data| deserialize_from_slice(data));
         result
     }
-    pub async fn export_reset_global_state_raw(&self) -> Result<(), InvocationError> {
+    pub async fn export_reset_global_state_raw(&self) -> Result<Vec<u8>, InvocationError> {
         let function = self
             .instance
             .exports
-            .get_native_function::<(), ()>("__fp_gen_export_reset_global_state")
+            .get_native_function::<(), FatPtr>("__fp_gen_export_reset_global_state")
             .map_err(|_| {
                 InvocationError::FunctionNotExported(
                     "__fp_gen_export_reset_global_state".to_owned(),
