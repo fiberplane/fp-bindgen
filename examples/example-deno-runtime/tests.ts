@@ -263,6 +263,53 @@ const imports: Imports = {
 
   importVoidFunctionEmptyReturn: (): void => {},
 
+  importPrimitiveBoolNegateAsync: (arg: boolean): Promise<boolean> => {
+    return Promise.resolve(!arg);
+  },
+
+  importPrimitiveF32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveF64AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI8AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI16AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  // Message pack doesn't support bigint yet, so 64-bit numbers are
+  // represented as `number` in complex structs, including promises.
+  // See https://github.com/msgpack/msgpack-javascript/pull/211
+  importPrimitiveI64AddOneAsync: (arg: bigint): Promise<number> => {
+    return Promise.resolve(Number(arg) + 1);
+  },
+
+  importPrimitiveU8AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU16AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU64AddOneAsync: (arg: bigint): Promise<number> => {
+    return Promise.resolve(Number(arg) + 1);
+  },
+
   log: (message: string): void => {
     console.log("Plugin log: " + message);
   },
