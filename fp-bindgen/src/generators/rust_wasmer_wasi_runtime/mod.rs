@@ -3,7 +3,7 @@ use crate::{
     generators::{
         rust_plugin::generate_type_bindings,
         rust_wasmer_runtime::{
-            format_export_function, format_function_bindings, generate_import_function_variables,
+            format_function_bindings, format_import_function, generate_export_function_variables,
         },
     },
     types::TypeMap,
@@ -53,7 +53,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
     )
 }
 
-fn format_import_function(function: &Function, types: &TypeMap) -> String {
+fn format_export_function(function: &Function, types: &TypeMap) -> String {
     let (
         doc,
         modifiers,
@@ -70,7 +70,7 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
         wasm_arg_names,
         raw_return_wrapper,
         return_wrapper,
-    ) = generate_import_function_variables(function, types);
+    ) = generate_export_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -97,12 +97,12 @@ fn generate_function_bindings(
 ) {
     let imports = import_functions
         .iter()
-        .map(|function| format_export_function(function, types))
+        .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
     let exports = export_functions
         .iter()
-        .map(|function| format_import_function(function, types))
+        .map(|function| format_export_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
     let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {

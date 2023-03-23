@@ -63,7 +63,7 @@ pub(crate) fn format_wasm_ident(ty: &TypeIdent) -> String {
 }
 
 #[allow(clippy::type_complexity)]
-pub(crate) fn generate_import_function_variables<'a>(
+pub(crate) fn generate_export_function_variables<'a>(
     function: &'a Function,
     types: &TypeMap,
 ) -> (
@@ -116,13 +116,15 @@ pub(crate) fn generate_import_function_variables<'a>(
         Some(ty) => format_ident(ty, types),
         None => "()".to_owned(),
     };
-    let raw_return_type = match &function.return_type {
-        Some(ty) => format_raw_ident(ty, types),
-        None => "()".to_owned(),
+    let raw_return_type = match (function.is_async, &function.return_type) {
+        (true, _) => "Vec<u8>".to_owned(),
+        (false, Some(ty)) => format_raw_ident(ty, types),
+        (false, None) => "()".to_owned(),
     };
-    let wasm_return_type = match &function.return_type {
-        Some(ty) => format_wasm_ident(ty),
-        None => "()".to_owned(),
+    let wasm_return_type = match (function.is_async, &function.return_type) {
+        (true, _) => "FatPtr".to_owned(),
+        (false, Some(ty)) => format_wasm_ident(ty),
+        (false, None) => "()".to_owned(),
     };
 
     let serialize_args = function
@@ -196,7 +198,7 @@ pub(crate) fn generate_import_function_variables<'a>(
     )
 }
 
-fn format_import_function(function: &Function, types: &TypeMap) -> String {
+fn format_export_function(function: &Function, types: &TypeMap) -> String {
     let (
         doc,
         modifiers,
@@ -213,7 +215,7 @@ fn format_import_function(function: &Function, types: &TypeMap) -> String {
         wasm_arg_names,
         raw_return_wrapper,
         return_wrapper,
-    ) = generate_import_function_variables(function, types);
+    ) = generate_export_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -241,7 +243,7 @@ pub(crate) fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> 
     }
 }
 
-pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> String {
+pub(crate) fn format_import_function(function: &Function, types: &TypeMap) -> String {
     let name = &function.name;
     let wasm_args = function
         .args
@@ -250,13 +252,10 @@ pub(crate) fn format_export_function(function: &Function, types: &TypeMap) -> St
         .collect::<Vec<_>>()
         .join("");
 
-    let wrapper_return_type = if function.is_async {
-        " -> FatPtr".to_owned()
-    } else {
-        match &function.return_type {
-            Some(ty) => format!(" -> {}", format_wasm_ident(ty)),
-            None => "".to_owned(),
-        }
+    let wrapper_return_type = match (function.is_async, &function.return_type) {
+        (true, _) => " -> FatPtr".to_owned(),
+        (false, Some(ty)) => format!(" -> {}", format_wasm_ident(ty)),
+        (false, None) => "".to_owned(),
     };
 
     let import_args = function
@@ -308,12 +307,12 @@ fn generate_function_bindings(
 ) {
     let imports = import_functions
         .iter()
-        .map(|function| format_export_function(function, types))
+        .map(|function| format_import_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
     let exports = export_functions
         .iter()
-        .map(|function| format_import_function(function, types))
+        .map(|function| format_export_function(function, types))
         .collect::<Vec<_>>()
         .join("\n\n");
     let new_func = r#"pub fn new(wasm_module: impl AsRef<[u8]>) -> Result<Self, RuntimeError> {
