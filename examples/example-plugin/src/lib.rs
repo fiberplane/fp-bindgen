@@ -318,6 +318,71 @@ fn export_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
 }
 
 #[fp_export_impl(example_bindings)]
+async fn export_primitive_bool_negate_async(arg: bool) -> bool {
+    !import_primitive_bool_negate_async(!arg).await
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_f32_add_three_async(arg: f32) -> f32 {
+    import_primitive_f32_add_one_async(arg + 1.0).await + 1.0
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_f64_add_three_async(arg: f64) -> f64 {
+    import_primitive_f64_add_one_async(arg + 1.0).await + 1.0
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_i8_add_three_async(arg: i8) -> i8 {
+    import_primitive_i8_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_i16_add_three_async(arg: i16) -> i16 {
+    import_primitive_i16_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_i32_add_three_async(arg: i32) -> i32 {
+    import_primitive_i32_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_i64_add_three_async(arg: i64) -> i64 {
+    import_primitive_i64_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_u8_add_three_async(arg: u8) -> u8 {
+    import_primitive_u8_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_u16_add_three_async(arg: u16) -> u16 {
+    import_primitive_u16_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_u32_add_three_async(arg: u32) -> u32 {
+    import_primitive_u32_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_primitive_u64_add_three_async(arg: u64) -> u64 {
+    import_primitive_u64_add_one_async(arg + 1).await + 1
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_reset_global_state() {
+    import_reset_global_state().await
+}
+
+#[fp_export_impl(example_bindings)]
+async fn export_increment_global_state() {
+    import_increment_global_state().await
+}
+
+#[fp_export_impl(example_bindings)]
 async fn export_async_struct(arg1: FpPropertyRenaming, arg2: u64) -> FpPropertyRenaming {
     assert_eq!(
         arg1,

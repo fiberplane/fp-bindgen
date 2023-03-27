@@ -30,6 +30,7 @@ import { Result } from "../example-protocol/bindings/ts-runtime/types.ts";
 import { loadPlugin } from "./loader.ts";
 
 let voidFunctionCalled = false;
+let globalState = 0;
 
 const imports: Imports = {
   importExplicitBoundPoint: (arg: ExplicitBoundPoint<number>) => {
@@ -263,6 +264,63 @@ const imports: Imports = {
 
   importVoidFunctionEmptyReturn: (): void => {},
 
+  importPrimitiveBoolNegateAsync: (arg: boolean): Promise<boolean> => {
+    return Promise.resolve(!arg);
+  },
+
+  importPrimitiveF32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveF64AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI8AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI16AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveI32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  // Message pack doesn't support bigint yet, so 64-bit numbers are
+  // represented as `number` in complex structs, including promises.
+  // See https://github.com/msgpack/msgpack-javascript/pull/211
+  importPrimitiveI64AddOneAsync: (arg: bigint): Promise<number> => {
+    return Promise.resolve(Number(arg) + 1);
+  },
+
+  importPrimitiveU8AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU16AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU32AddOneAsync: (arg: number): Promise<number> => {
+    return Promise.resolve(arg + 1);
+  },
+
+  importPrimitiveU64AddOneAsync: (arg: bigint): Promise<number> => {
+    return Promise.resolve(Number(arg) + 1);
+  },
+
+  importIncrementGlobalState: (): Promise<void> => {
+    globalState = globalState + 1;
+    return Promise.resolve();
+  },
+
+  importResetGlobalState: (): Promise<void> => {
+    globalState = 0;
+    return Promise.resolve();
+  },
+
   log: (message: string): void => {
     console.log("Plugin log: " + message);
   },
@@ -337,7 +395,7 @@ Deno.test("primitives", async () => {
   assertEquals(plugin.exportPrimitiveF32AddThree?.(3.5), 3.5 + 3.0);
   assertEquals(plugin.exportPrimitiveF64AddThree?.(2.5), 2.5 + 3.0);
 
-  // We need to define the workarounf methods for wasmer2, so we might as well test them
+  // We need to define the workaround methods for wasmer2, so we might as well test them
   assertEquals(plugin.exportPrimitiveF32AddThreeWasmer2?.(13.5), 13.5 + 3.0);
   assertEquals(plugin.exportPrimitiveF64AddThreeWasmer2?.(12.5), 12.5 + 3.0);
 });
@@ -498,6 +556,35 @@ Deno.test("tagged enums", async () => {
     a: -8,
     b: 64,
   });
+});
+
+Deno.test("async primitives", async () => {
+  const plugin = await loadExamplePlugin();
+
+  assertEquals(await plugin.exportPrimitiveBoolNegateAsync?.(true), false);
+  assertEquals(await plugin.exportPrimitiveBoolNegateAsync?.(false), true);
+
+  // Precise float comparison is fine as long as the denominator is a power of two
+  assertEquals(await plugin.exportPrimitiveF32AddThreeAsync?.(3.5), 3.5 + 3.0);
+  assertEquals(await plugin.exportPrimitiveF64AddThreeAsync?.(2.5), 2.5 + 3.0);
+
+  assertEquals(await plugin.exportPrimitiveU8AddThreeAsync?.(8), 8 + 3);
+  assertEquals(await plugin.exportPrimitiveU16AddThreeAsync?.(16), 16 + 3);
+  assertEquals(await plugin.exportPrimitiveU32AddThreeAsync?.(32), 32 + 3);
+  assertEquals(await plugin.exportPrimitiveU64AddThreeAsync?.(64n), 64 + 3);
+  assertEquals(await plugin.exportPrimitiveI8AddThreeAsync?.(-8), -8 + 3);
+  assertEquals(await plugin.exportPrimitiveI16AddThreeAsync?.(-16), -16 + 3);
+  assertEquals(await plugin.exportPrimitiveI32AddThreeAsync?.(-32), -32 + 3);
+  assertEquals(await plugin.exportPrimitiveI64AddThreeAsync?.(-64n), -64 + 3);
+
+  await plugin.exportResetGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  assertEquals(globalState, 1);
+
+  await plugin.exportResetGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  await plugin.exportIncrementGlobalState?.();
+  assertEquals(globalState, 2);
 });
 
 Deno.test("async struct", async () => {

@@ -269,7 +269,12 @@ pub fn fp_export_signature(_attributes: TokenStream, input: TokenStream) -> Toke
             sig.generics.params.push(
                 syn::parse::<GenericParam>(
                     //the 'static life time is ok since we give it a box::pin
-                    (quote! {FUT: std::future::Future<Output=#output> + 'static}).into(),
+                    match output {
+                        Some(output) => {
+                            (quote! {FUT: std::future::Future<Output=#output> + 'static}).into()
+                        }
+                        None => (quote! {FUT: std::future::Future<Output=()> + 'static}).into(),
+                    },
                 )
                 .unwrap_or_abort(),
             )

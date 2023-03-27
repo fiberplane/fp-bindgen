@@ -4,6 +4,7 @@ pub mod types;
 use bytes::Bytes;
 use serde_bytes::ByteBuf;
 use types::*;
+use super::GLOBAL_STATE;
 
 fn import_void_function() {}
 fn import_void_function_empty_result() -> Result<(), u32> {
@@ -141,6 +142,53 @@ fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
     todo!()
 }
 
+async fn import_primitive_bool_negate_async(arg: bool) -> bool {
+    !arg
+}
+async fn import_primitive_f32_add_one_async(arg: f32) -> f32 {
+    arg + 1.0
+}
+async fn import_primitive_f64_add_one_async(arg: f64) -> f64 {
+    arg + 1.0
+}
+async fn import_primitive_i8_add_one_async(arg: i8) -> i8 {
+    arg + 1
+}
+async fn import_primitive_i16_add_one_async(arg: i16) -> i16 {
+    arg + 1
+}
+async fn import_primitive_i32_add_one_async(arg: i32) -> i32 {
+    arg + 1
+}
+async fn import_primitive_i64_add_one_async(arg: i64) -> i64 {
+    arg + 1
+}
+async fn import_primitive_u8_add_one_async(arg: u8) -> u8 {
+    arg + 1
+}
+async fn import_primitive_u16_add_one_async(arg: u16) -> u16 {
+    arg + 1
+}
+async fn import_primitive_u32_add_one_async(arg: u32) -> u32 {
+    arg + 1
+}
+async fn import_primitive_u64_add_one_async(arg: u64) -> u64 {
+    arg + 1
+}
+
+async fn import_reset_global_state() {
+    //GLOBAL_STATE.set(0);
+    *GLOBAL_STATE.lock().unwrap() = 0;
+}
+async fn import_increment_global_state() {
+    // Possible "race condition", but we don't mind here
+    // let val = GLOBAL_STATE.get();
+    // GLOBAL_STATE.set(val + 1);
+    let mut lock = GLOBAL_STATE.lock().unwrap();
+    let value = *lock + 1;
+    *lock = value;
+}
+
 fn import_struct_with_options(arg: StructWithOptions) {
     todo!()
 }
@@ -151,7 +199,7 @@ fn log(msg: String) {
 
 async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
     Ok(Response {
-        body: ByteBuf::from(r#"status: "confirmed""#.to_string()),
+        body: ByteBuf::from(r#"{"status":"confirmed"}"#.to_string()),
         headers: opts.headers,
         status_code: 200,
     })
