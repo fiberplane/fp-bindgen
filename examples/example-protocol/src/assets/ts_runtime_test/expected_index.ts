@@ -196,12 +196,12 @@ export class FPRuntimeError extends Error {
 /**
  * Creates a runtime for executing the given plugin.
  *
- * @param plugin The raw WASM plugin.
+ * @param source The response for fetching the WASM plugin.
  * @param importFunctions The host functions that may be imported by the plugin.
  * @returns The functions that may be exported by the plugin.
  */
 export async function createRuntime(
-    plugin: ArrayBuffer,
+    source: Response | Promise<Response>,
     importFunctions: Imports
 ): Promise<Exports> {
     const promises = new Map<FatPtr, ((result: FatPtr) => void) | FatPtr>();
@@ -295,7 +295,7 @@ export async function createRuntime(
         return copy;
     }
 
-    const { instance } = await WebAssembly.instantiate(plugin, {
+    const { instance } = await WebAssembly.instantiateStreaming(source, {
         fp: {
             __fp_gen_import_array_f32: (arg_ptr: FatPtr): FatPtr => {
                 const arg = parseObject<Float32Array>(arg_ptr);

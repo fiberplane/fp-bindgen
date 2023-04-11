@@ -4,6 +4,6 @@ pub use crate::serializable::Serializable;
 pub use crate::types::{CustomType, Type, TypeIdent, TypeMap};
 #[cfg(feature = "generators")]
 pub use crate::{
-    BindingConfig, BindingsType, RustPluginConfig, RustPluginConfigValue, TsExtendedRuntimeConfig,
+    BindingConfig, BindingsType, RustPluginConfig, RustPluginConfigValue, TsRuntimeConfig,
 };
 pub use fp_bindgen_macros::*;

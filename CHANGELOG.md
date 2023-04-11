@@ -8,21 +8,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [3.0.0-beta.2] - Unreleased
 
+### Added
+
+- Add `description`, `readme` and `license` fields to `RustPluginConfig`.
+
 ### Changed
 
-- `RustPluginConfig` now needs to be initialized using `RustPluginConfig::builder()`. Struct
-  initialization syntax will not work anymore.
-- Every field in the `RustPluginConfig` builder can be set to `RustPluginConfigValue::Workspace`
-  to indicate the value in the generated `Cargo.toml` should come from the workspace instead.
-- Add `description`, `readme` and `license` fields to `RustPluginConfig`.
-- Changed primitive tests in example to go call imported functions from the plugin.
+- `RustPluginConfig` now needs to be initialized using
+  `RustPluginConfig::builder()`. Struct initialization syntax will not work
+  anymore.
+- Every field in the `RustPluginConfig` builder can be set to
+  `RustPluginConfigValue::Workspace` to indicate the value in the generated
+  `Cargo.toml` should come from the workspace instead.
+- Changed primitive tests in example to call imported functions from the plugin.
+- The TypeScript runtime now uses streaming instantiation for the WebAssembly
+  module by default.
+- `BindingsType::TsRuntimeWithExtendedConfig` has been renamed back to
+  `BindingsType::TsRuntime` (and the old `BindingsType::TsRuntime`, which was deprecated in 2.0.0, is now removed).
 
 ### Fixed
 
-- Added workaround for imported functions with float arguments for wasmer2 in example,
-  see [#180](https://github.com/fiberplane/fp-bindgen/issues/180).
-- Fixed async functions returning primitive values, including void async functions,
-  see [#178](https://github.com/fiberplane/fp-bindgen/issues/178).
+- Added workaround for imported functions with float arguments for wasmer2 in
+  example, see [#180](https://github.com/fiberplane/fp-bindgen/issues/180).
+- Fixed async functions returning primitive values, including void async
+  functions, see [#178](https://github.com/fiberplane/fp-bindgen/issues/178).
 
 ## [3.0.0-beta.1] - 2023-02-14
 
@@ -49,10 +58,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Make sure `cargo check` doesn't complain about unused imports in the generated
   plugin bindings.
-
-### Removed
-
-- `BindingsType::TsRuntime`, which was deprecated in 2.0.0, is now removed.
 
 ## [2.4.0] - 2022-10-04
 
