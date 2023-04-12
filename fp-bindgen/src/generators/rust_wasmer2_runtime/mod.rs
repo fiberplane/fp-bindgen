@@ -343,7 +343,7 @@ pub(crate) fn format_function_bindings(
 use super::types::*;
 use fp_bindgen_support::{{
     common::{{mem::FatPtr, abi::WasmAbi}},
-    host::{{
+    wasmer2_host::{{
         errors::{{InvocationError, RuntimeError}},
         mem::{{export_to_guest, export_to_guest_raw, import_from_guest, import_from_guest_raw, deserialize_from_slice, serialize_to_vec}},
         r#async::{{create_future_value, future::ModuleRawFuture, resolve_async_value}},

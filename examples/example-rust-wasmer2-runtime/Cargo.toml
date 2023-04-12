@@ -10,8 +10,8 @@ bytes = "1"
 redux-example = { path = "../redux-example" }
 fp-bindgen-support = { path = "../../fp-bindgen-support", features = [
   "async",
-  "host",
   "http",
+  "wasmer2_host",
 ] }
 http = "0.2"
 once_cell = "1"

@@ -1,13 +1,11 @@
-use crate::{
-    common::{
-        mem::FatPtr,
-        r#async::{FUTURE_STATUS_PENDING, FUTURE_STATUS_READY},
-    },
-    host::{
-        io::{to_fat_ptr, to_wasm_ptr},
-        mem::import_from_guest_raw,
-        runtime::RuntimeInstanceData,
-    },
+use crate::common::{
+    mem::FatPtr,
+    r#async::{FUTURE_STATUS_PENDING, FUTURE_STATUS_READY},
+};
+use crate::wasmer2_host::{
+    io::{to_fat_ptr, to_wasm_ptr},
+    mem::import_from_guest_raw,
+    runtime::RuntimeInstanceData,
 };
 use std::{future::Future, task::Poll};
 

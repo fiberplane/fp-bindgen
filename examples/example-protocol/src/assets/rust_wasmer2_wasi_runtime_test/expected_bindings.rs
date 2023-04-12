@@ -2,7 +2,7 @@
 use super::types::*;
 use fp_bindgen_support::{
     common::{abi::WasmAbi, mem::FatPtr},
-    host::{
+    wasmer2_host::{
         errors::{InvocationError, RuntimeError},
         mem::{
             deserialize_from_slice, export_to_guest, export_to_guest_raw, import_from_guest,
