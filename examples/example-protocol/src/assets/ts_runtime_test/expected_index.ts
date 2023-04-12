@@ -1434,10 +1434,7 @@ export async function createRuntime(
 }
 
 function fromFatPtr(fatPtr: FatPtr): [ptr: number, len: number] {
-    return [
-        Number.parseInt((fatPtr >> 32n).toString()),
-        Number.parseInt((fatPtr & 0xffff_ffffn).toString()),
-    ];
+    return [Number(fatPtr >> 32n), Number(fatPtr & 0xffff_ffffn)];
 }
 
 function toFatPtr(ptr: number, len: number): FatPtr {
