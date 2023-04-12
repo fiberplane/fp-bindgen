@@ -306,10 +306,11 @@ fn main() {
         ),
         BindingsType::RustWasmerRuntime,
         BindingsType::RustWasmerWasiRuntime,
-        BindingsType::TsRuntimeWithExtendedConfig(
-            TsExtendedRuntimeConfig::new()
+        BindingsType::TsRuntime(
+            TsRuntimeConfig::new()
                 .with_msgpack_module("https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts")
-                .with_raw_export_wrappers(),
+                .with_raw_export_wrappers()
+                .without_streaming_instantiation(),
         ),
     ] {
         let output_path = format!("bindings/{bindings_type}");
@@ -443,8 +444,8 @@ fn test_generate_ts_runtime() {
     ];
 
     fp_bindgen!(BindingConfig {
-        bindings_type: BindingsType::TsRuntimeWithExtendedConfig(
-            TsExtendedRuntimeConfig::new()
+        bindings_type: BindingsType::TsRuntime(
+            TsRuntimeConfig::new()
                 .with_msgpack_module("https://unpkg.com/@msgpack/msgpack@2.7.2/mod.ts")
                 .with_raw_export_wrappers()
         ),

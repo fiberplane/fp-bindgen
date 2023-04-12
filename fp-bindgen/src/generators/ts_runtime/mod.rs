@@ -3,7 +3,7 @@ use crate::{
     functions::{Function, FunctionList},
     prelude::Primitive,
     types::{CustomType, Enum, EnumOptions, Field, Struct, Type, TypeIdent, TypeMap, Variant},
-    TsExtendedRuntimeConfig,
+    TsRuntimeConfig,
 };
 use inflector::Inflector;
 use std::fs;
@@ -12,7 +12,7 @@ pub(crate) fn generate_bindings(
     import_functions: FunctionList,
     export_functions: FunctionList,
     types: TypeMap,
-    config: TsExtendedRuntimeConfig,
+    config: TsRuntimeConfig,
     path: &str,
 ) {
     generate_type_bindings(&types, path);
@@ -42,6 +42,31 @@ pub(crate) fn generate_bindings(
         Vec::new()
     };
 
+    let msgpack_module = config.msgpack_module;
+    // HACK: Import paths in TypeScript are a bit of a mess. Usually, you
+    // shouldn't need an extension, but with some configurations you do.
+    // For now, we just try to detect Deno users by looking at the
+    // `msgpack_module` and accomodate them here:
+    let import_path_extension = if msgpack_module.ends_with(".ts") {
+        ".ts"
+    } else {
+        ""
+    };
+
+    let import_lines = join_lines(&import_decls, |line| format!("    {line};"));
+    let export_lines = join_lines(&export_decls, |line| format!("    {line};"));
+    let raw_export_lines = join_lines(&raw_export_decls, |line| format!("    {line};"));
+
+    let (source_type, source_doc, streaming) = if config.streaming_instantiation {
+        (
+            "Response | Promise<Response>",
+            "The response for fetching the WASM plugin",
+            "Streaming",
+        )
+    } else {
+        ("ArrayBuffer", "The raw WASM plugin", "")
+    };
+
     let contents = format!(
         "// ============================================= //
 // WebAssembly runtime for TypeScript            //
@@ -50,17 +75,17 @@ pub(crate) fn generate_bindings(
 // ============================================= //
 // deno-lint-ignore-file no-explicit-any no-unused-vars
 
-import {{ encode, decode }} from \"{}\";
+import {{ encode, decode }} from \"{msgpack_module}\";
 
-import type * as types from \"./types{}\";
+import type * as types from \"./types{import_path_extension}\";
 
 type FatPtr = bigint;
 
 export type Imports = {{
-{}}};
+{import_lines}}};
 
 export type Exports = {{
-{}{}}};
+{export_lines}{raw_export_lines}}};
 
 /**
  * Represents an unrecoverable error in the FP runtime.
@@ -76,12 +101,12 @@ export class FPRuntimeError extends Error {{
 /**
  * Creates a runtime for executing the given plugin.
  *
- * @param plugin The raw WASM plugin.
+ * @param source {source_doc}.
  * @param importFunctions The host functions that may be imported by the plugin.
  * @returns The functions that may be exported by the plugin.
  */
 export async function createRuntime(
-    plugin: ArrayBuffer,
+    source: {source_type},
     importFunctions: Imports
 ): Promise<Exports> {{
     const promises = new Map<FatPtr, ((result: FatPtr) => void) | FatPtr>();
@@ -175,7 +200,7 @@ export async function createRuntime(
         return copy;
     }}
 
-    const {{ instance }} = await WebAssembly.instantiate(plugin, {{
+    const {{ instance }} = await WebAssembly.instantiate{streaming}(source, {{
         fp: {{
 {}        }},
     }});
@@ -204,19 +229,6 @@ function toFatPtr(ptr: number, len: number): FatPtr {{
     return (BigInt(ptr) << 32n) | BigInt(len);
 }}
 ",
-        config.msgpack_module,
-        // HACK: Import paths in TypeScript are a bit of a mess. Usually, you
-        // shouldn't need an extension, but with some configurations you do.
-        // For now, we just try to detect Deno users by looking at the
-        // `msgpack_module` and accomodate them here:
-        if config.msgpack_module.ends_with(".ts") {
-            ".ts"
-        } else {
-            ""
-        },
-        join_lines(&import_decls, |line| format!("    {line};")),
-        join_lines(&export_decls, |line| format!("    {line};")),
-        join_lines(&raw_export_decls, |line| format!("    {line};")),
         join_lines(&import_wrappers, |line| format!("            {line}")),
         if has_async_import_functions {
             "    const resolveFuture = getExport<(asyncValuePtr: FatPtr, resultPtr: FatPtr) => void>(\"__fp_guest_resolve_async_value\");\n"

@@ -19,7 +19,7 @@ pub enum BindingsType {
     RustPlugin(RustPluginConfig),
     RustWasmerRuntime,
     RustWasmerWasiRuntime,
-    TsRuntimeWithExtendedConfig(TsExtendedRuntimeConfig),
+    TsRuntime(TsRuntimeConfig),
 }
 
 impl Display for BindingsType {
@@ -28,7 +28,7 @@ impl Display for BindingsType {
             BindingsType::RustPlugin { .. } => "rust-plugin",
             BindingsType::RustWasmerRuntime { .. } => "rust-wasmer-runtime",
             BindingsType::RustWasmerWasiRuntime { .. } => "rust-wasmer-wasi-runtime",
-            BindingsType::TsRuntimeWithExtendedConfig { .. } => "ts-runtime",
+            BindingsType::TsRuntime { .. } => "ts-runtime",
         })
     }
 }
@@ -194,7 +194,7 @@ impl RustPluginConfigBuilder {
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
-pub struct TsExtendedRuntimeConfig {
+pub struct TsRuntimeConfig {
     /// The module from which to import the MessagePack dependency.
     ///
     /// By default, "@msgpack/msgpack" is used, which should work with Node.js
@@ -212,9 +212,22 @@ pub struct TsExtendedRuntimeConfig {
     /// Raw export wrappers are named similarly to the regular wrappers (which
     /// are generated in any case), but with a `Raw` suffix.
     pub generate_raw_export_wrappers: bool,
+
+    /// Use `WebAssembly.instantiateStreaming()` instead of
+    /// `WebAssembly.instantiate()` for optimizing instantiation in browser use
+    /// cases. This changes the signature of the `createRuntime()` function to
+    /// accept a `Response` instead of an `ArrayBuffer`.
+    ///
+    /// See also: https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/instantiateStreaming
+    ///
+    /// This setting is `true` by default, since MDN recommends it where
+    /// possible. You may wish to opt-out if you're using the runtime in an
+    /// environment that doesn't support streaming instantiation, such as
+    /// Node.js.
+    pub streaming_instantiation: bool,
 }
 
-impl TsExtendedRuntimeConfig {
+impl TsRuntimeConfig {
     /// Returns a new config instance with default settings.
     pub fn new() -> Self {
         Self::default()
@@ -231,18 +244,25 @@ impl TsExtendedRuntimeConfig {
         self.generate_raw_export_wrappers = true;
         self
     }
+
+    /// Disables the `streaming_instantiation` setting.
+    pub fn without_streaming_instantiation(mut self) -> Self {
+        self.streaming_instantiation = false;
+        self
+    }
 }
 
-impl Default for TsExtendedRuntimeConfig {
+impl Default for TsRuntimeConfig {
     fn default() -> Self {
         Self {
             generate_raw_export_wrappers: false,
             msgpack_module: "@msgpack/msgpack".to_owned(),
+            streaming_instantiation: true,
         }
     }
 }
 
-impl TsExtendedRuntimeConfig {}
+impl TsRuntimeConfig {}
 
 pub fn generate_bindings(
     import_functions: FunctionList,
@@ -274,7 +294,7 @@ pub fn generate_bindings(
             types,
             config.path,
         ),
-        BindingsType::TsRuntimeWithExtendedConfig(runtime_config) => ts_runtime::generate_bindings(
+        BindingsType::TsRuntime(runtime_config) => ts_runtime::generate_bindings(
             import_functions,
             export_functions,
             types,
