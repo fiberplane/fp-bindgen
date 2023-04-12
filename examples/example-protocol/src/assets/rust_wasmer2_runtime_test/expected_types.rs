@@ -1,4 +1,4 @@
-#![allow(unused_imports)]
+#![allow(dead_code, unused_imports)]
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, rc::Rc};
 

@@ -1,3 +1,4 @@
+#![allow(unused)]
 use super::types::*;
 use fp_bindgen_support::{
     common::{abi::WasmAbi, mem::FatPtr},
@@ -25,7 +26,10 @@ impl Runtime {
         let store = Self::default_store();
         let module = Module::new(&store, wasm_module)?;
         let mut env = RuntimeInstanceData::default();
-        let import_object = create_import_object(module.store(), &env);
+        let mut wasi_env = wasmer_wasi::WasiState::new("fp").finalize().unwrap();
+        let mut import_object = wasi_env.import_object(&module).unwrap();
+        let namespace = create_import_object(module.store(), &env);
+        import_object.register("fp", namespace);
         let instance = Instance::new(&module, &import_object).unwrap();
         env.init_with_instance(&instance).unwrap();
         Ok(Self { instance, env })
@@ -1398,185 +1402,345 @@ impl Runtime {
     }
 }
 
-fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> ImportObject {
-    imports! {
-        "fp" => {
-            "__fp_host_resolve_async_value" => Function::new_native_with_env(store, env.clone(), resolve_async_value),
-            "__fp_gen_import_array_f32" => Function::new_native_with_env(store, env.clone(), _import_array_f32),
-            "__fp_gen_import_array_f64" => Function::new_native_with_env(store, env.clone(), _import_array_f64),
-            "__fp_gen_import_array_i16" => Function::new_native_with_env(store, env.clone(), _import_array_i16),
-            "__fp_gen_import_array_i32" => Function::new_native_with_env(store, env.clone(), _import_array_i32),
-            "__fp_gen_import_array_i8" => Function::new_native_with_env(store, env.clone(), _import_array_i8),
-            "__fp_gen_import_array_u16" => Function::new_native_with_env(store, env.clone(), _import_array_u16),
-            "__fp_gen_import_array_u32" => Function::new_native_with_env(store, env.clone(), _import_array_u32),
-            "__fp_gen_import_array_u8" => Function::new_native_with_env(store, env.clone(), _import_array_u8),
-            "__fp_gen_import_explicit_bound_point" => Function::new_native_with_env(store, env.clone(), _import_explicit_bound_point),
-            "__fp_gen_import_fp_adjacently_tagged" => Function::new_native_with_env(store, env.clone(), _import_fp_adjacently_tagged),
-            "__fp_gen_import_fp_enum" => Function::new_native_with_env(store, env.clone(), _import_fp_enum),
-            "__fp_gen_import_fp_flatten" => Function::new_native_with_env(store, env.clone(), _import_fp_flatten),
-            "__fp_gen_import_fp_internally_tagged" => Function::new_native_with_env(store, env.clone(), _import_fp_internally_tagged),
-            "__fp_gen_import_fp_struct" => Function::new_native_with_env(store, env.clone(), _import_fp_struct),
-            "__fp_gen_import_fp_untagged" => Function::new_native_with_env(store, env.clone(), _import_fp_untagged),
-            "__fp_gen_import_generics" => Function::new_native_with_env(store, env.clone(), _import_generics),
-            "__fp_gen_import_get_bytes" => Function::new_native_with_env(store, env.clone(), _import_get_bytes),
-            "__fp_gen_import_get_serde_bytes" => Function::new_native_with_env(store, env.clone(), _import_get_serde_bytes),
-            "__fp_gen_import_increment_global_state" => Function::new_native_with_env(store, env.clone(), _import_increment_global_state),
-            "__fp_gen_import_multiple_primitives" => Function::new_native_with_env(store, env.clone(), _import_multiple_primitives),
-            "__fp_gen_import_primitive_bool_negate" => Function::new_native_with_env(store, env.clone(), _import_primitive_bool_negate),
-            "__fp_gen_import_primitive_bool_negate_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_bool_negate_async),
-            "__fp_gen_import_primitive_f32_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one),
-            "__fp_gen_import_primitive_f32_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one_async),
-            "__fp_gen_import_primitive_f32_add_one_wasmer2" => Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one_wasmer2),
-            "__fp_gen_import_primitive_f64_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one),
-            "__fp_gen_import_primitive_f64_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one_async),
-            "__fp_gen_import_primitive_f64_add_one_wasmer2" => Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one_wasmer2),
-            "__fp_gen_import_primitive_i16_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_i16_add_one),
-            "__fp_gen_import_primitive_i16_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_i16_add_one_async),
-            "__fp_gen_import_primitive_i32_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_i32_add_one),
-            "__fp_gen_import_primitive_i32_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_i32_add_one_async),
-            "__fp_gen_import_primitive_i64_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_i64_add_one),
-            "__fp_gen_import_primitive_i64_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_i64_add_one_async),
-            "__fp_gen_import_primitive_i8_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_i8_add_one),
-            "__fp_gen_import_primitive_i8_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_i8_add_one_async),
-            "__fp_gen_import_primitive_u16_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_u16_add_one),
-            "__fp_gen_import_primitive_u16_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_u16_add_one_async),
-            "__fp_gen_import_primitive_u32_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_u32_add_one),
-            "__fp_gen_import_primitive_u32_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_u32_add_one_async),
-            "__fp_gen_import_primitive_u64_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_u64_add_one),
-            "__fp_gen_import_primitive_u64_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_u64_add_one_async),
-            "__fp_gen_import_primitive_u8_add_one" => Function::new_native_with_env(store, env.clone(), _import_primitive_u8_add_one),
-            "__fp_gen_import_primitive_u8_add_one_async" => Function::new_native_with_env(store, env.clone(), _import_primitive_u8_add_one_async),
-            "__fp_gen_import_reset_global_state" => Function::new_native_with_env(store, env.clone(), _import_reset_global_state),
-            "__fp_gen_import_serde_adjacently_tagged" => Function::new_native_with_env(store, env.clone(), _import_serde_adjacently_tagged),
-            "__fp_gen_import_serde_enum" => Function::new_native_with_env(store, env.clone(), _import_serde_enum),
-            "__fp_gen_import_serde_flatten" => Function::new_native_with_env(store, env.clone(), _import_serde_flatten),
-            "__fp_gen_import_serde_internally_tagged" => Function::new_native_with_env(store, env.clone(), _import_serde_internally_tagged),
-            "__fp_gen_import_serde_struct" => Function::new_native_with_env(store, env.clone(), _import_serde_struct),
-            "__fp_gen_import_serde_untagged" => Function::new_native_with_env(store, env.clone(), _import_serde_untagged),
-            "__fp_gen_import_string" => Function::new_native_with_env(store, env.clone(), _import_string),
-            "__fp_gen_import_struct_with_options" => Function::new_native_with_env(store, env.clone(), _import_struct_with_options),
-            "__fp_gen_import_timestamp" => Function::new_native_with_env(store, env.clone(), _import_timestamp),
-            "__fp_gen_import_void_function" => Function::new_native_with_env(store, env.clone(), _import_void_function),
-            "__fp_gen_import_void_function_empty_result" => Function::new_native_with_env(store, env.clone(), _import_void_function_empty_result),
-            "__fp_gen_import_void_function_empty_return" => Function::new_native_with_env(store, env.clone(), _import_void_function_empty_return),
-            "__fp_gen_log" => Function::new_native_with_env(store, env.clone(), _log),
-            "__fp_gen_make_http_request" => Function::new_native_with_env(store, env.clone(), _make_http_request),
-        }
-    }
+fn create_import_object(store: &Store, env: &RuntimeInstanceData) -> wasmer::Exports {
+    let mut namespace = wasmer::Exports::new();
+    namespace.insert(
+        "__fp_host_resolve_async_value",
+        Function::new_native_with_env(store, env.clone(), resolve_async_value),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_f32",
+        Function::new_native_with_env(store, env.clone(), _import_array_f32),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_f64",
+        Function::new_native_with_env(store, env.clone(), _import_array_f64),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_i16",
+        Function::new_native_with_env(store, env.clone(), _import_array_i16),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_i32",
+        Function::new_native_with_env(store, env.clone(), _import_array_i32),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_i8",
+        Function::new_native_with_env(store, env.clone(), _import_array_i8),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_u16",
+        Function::new_native_with_env(store, env.clone(), _import_array_u16),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_u32",
+        Function::new_native_with_env(store, env.clone(), _import_array_u32),
+    );
+    namespace.insert(
+        "__fp_gen_import_array_u8",
+        Function::new_native_with_env(store, env.clone(), _import_array_u8),
+    );
+    namespace.insert(
+        "__fp_gen_import_explicit_bound_point",
+        Function::new_native_with_env(store, env.clone(), _import_explicit_bound_point),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_adjacently_tagged",
+        Function::new_native_with_env(store, env.clone(), _import_fp_adjacently_tagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_enum",
+        Function::new_native_with_env(store, env.clone(), _import_fp_enum),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_flatten",
+        Function::new_native_with_env(store, env.clone(), _import_fp_flatten),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_internally_tagged",
+        Function::new_native_with_env(store, env.clone(), _import_fp_internally_tagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_struct",
+        Function::new_native_with_env(store, env.clone(), _import_fp_struct),
+    );
+    namespace.insert(
+        "__fp_gen_import_fp_untagged",
+        Function::new_native_with_env(store, env.clone(), _import_fp_untagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_generics",
+        Function::new_native_with_env(store, env.clone(), _import_generics),
+    );
+    namespace.insert(
+        "__fp_gen_import_get_bytes",
+        Function::new_native_with_env(store, env.clone(), _import_get_bytes),
+    );
+    namespace.insert(
+        "__fp_gen_import_get_serde_bytes",
+        Function::new_native_with_env(store, env.clone(), _import_get_serde_bytes),
+    );
+    namespace.insert(
+        "__fp_gen_import_increment_global_state",
+        Function::new_native_with_env(store, env.clone(), _import_increment_global_state),
+    );
+    namespace.insert(
+        "__fp_gen_import_multiple_primitives",
+        Function::new_native_with_env(store, env.clone(), _import_multiple_primitives),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_bool_negate",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_bool_negate),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_bool_negate_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_bool_negate_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f32_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f32_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f32_add_one_wasmer2",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f32_add_one_wasmer2),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f64_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f64_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_f64_add_one_wasmer2",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_f64_add_one_wasmer2),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i16_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i16_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i16_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i16_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i32_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i32_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i32_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i32_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i64_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i64_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i64_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i64_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i8_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i8_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_i8_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_i8_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u16_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u16_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u16_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u16_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u32_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u32_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u32_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u32_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u64_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u64_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u64_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u64_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u8_add_one",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u8_add_one),
+    );
+    namespace.insert(
+        "__fp_gen_import_primitive_u8_add_one_async",
+        Function::new_native_with_env(store, env.clone(), _import_primitive_u8_add_one_async),
+    );
+    namespace.insert(
+        "__fp_gen_import_reset_global_state",
+        Function::new_native_with_env(store, env.clone(), _import_reset_global_state),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_adjacently_tagged",
+        Function::new_native_with_env(store, env.clone(), _import_serde_adjacently_tagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_enum",
+        Function::new_native_with_env(store, env.clone(), _import_serde_enum),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_flatten",
+        Function::new_native_with_env(store, env.clone(), _import_serde_flatten),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_internally_tagged",
+        Function::new_native_with_env(store, env.clone(), _import_serde_internally_tagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_struct",
+        Function::new_native_with_env(store, env.clone(), _import_serde_struct),
+    );
+    namespace.insert(
+        "__fp_gen_import_serde_untagged",
+        Function::new_native_with_env(store, env.clone(), _import_serde_untagged),
+    );
+    namespace.insert(
+        "__fp_gen_import_string",
+        Function::new_native_with_env(store, env.clone(), _import_string),
+    );
+    namespace.insert(
+        "__fp_gen_import_struct_with_options",
+        Function::new_native_with_env(store, env.clone(), _import_struct_with_options),
+    );
+    namespace.insert(
+        "__fp_gen_import_timestamp",
+        Function::new_native_with_env(store, env.clone(), _import_timestamp),
+    );
+    namespace.insert(
+        "__fp_gen_import_void_function",
+        Function::new_native_with_env(store, env.clone(), _import_void_function),
+    );
+    namespace.insert(
+        "__fp_gen_import_void_function_empty_result",
+        Function::new_native_with_env(store, env.clone(), _import_void_function_empty_result),
+    );
+    namespace.insert(
+        "__fp_gen_import_void_function_empty_return",
+        Function::new_native_with_env(store, env.clone(), _import_void_function_empty_return),
+    );
+    namespace.insert(
+        "__fp_gen_log",
+        Function::new_native_with_env(store, env.clone(), _log),
+    );
+    namespace.insert(
+        "__fp_gen_make_http_request",
+        Function::new_native_with_env(store, env.clone(), _make_http_request),
+    );
+    namespace
 }
 
 pub fn _import_array_f32(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[f32; 3]>(env, arg);
-    let result = super::import_array_f32(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_f32(arg))
 }
 
 pub fn _import_array_f64(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[f64; 3]>(env, arg);
-    let result = super::import_array_f64(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_f64(arg))
 }
 
 pub fn _import_array_i16(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[i16; 3]>(env, arg);
-    let result = super::import_array_i16(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_i16(arg))
 }
 
 pub fn _import_array_i32(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[i32; 3]>(env, arg);
-    let result = super::import_array_i32(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_i32(arg))
 }
 
 pub fn _import_array_i8(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[i8; 3]>(env, arg);
-    let result = super::import_array_i8(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_i8(arg))
 }
 
 pub fn _import_array_u16(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[u16; 3]>(env, arg);
-    let result = super::import_array_u16(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_u16(arg))
 }
 
 pub fn _import_array_u32(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[u32; 3]>(env, arg);
-    let result = super::import_array_u32(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_u32(arg))
 }
 
 pub fn _import_array_u8(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<[u8; 3]>(env, arg);
-    let result = super::import_array_u8(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_array_u8(arg))
 }
 
 pub fn _import_explicit_bound_point(env: &RuntimeInstanceData, arg: FatPtr) {
     let arg = import_from_guest::<ExplicitBoundPoint<u64>>(env, arg);
-    let result = super::import_explicit_bound_point(arg);
+    super::import_explicit_bound_point(arg)
 }
 
 pub fn _import_fp_adjacently_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpAdjacentlyTagged>(env, arg);
-    let result = super::import_fp_adjacently_tagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_adjacently_tagged(arg))
 }
 
 pub fn _import_fp_enum(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpVariantRenaming>(env, arg);
-    let result = super::import_fp_enum(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_enum(arg))
 }
 
 pub fn _import_fp_flatten(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpFlatten>(env, arg);
-    let result = super::import_fp_flatten(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_flatten(arg))
 }
 
 pub fn _import_fp_internally_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpInternallyTagged>(env, arg);
-    let result = super::import_fp_internally_tagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_internally_tagged(arg))
 }
 
 pub fn _import_fp_struct(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpPropertyRenaming>(env, arg);
-    let result = super::import_fp_struct(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_struct(arg))
 }
 
 pub fn _import_fp_untagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<FpUntagged>(env, arg);
-    let result = super::import_fp_untagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_fp_untagged(arg))
 }
 
 pub fn _import_generics(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<StructWithGenerics<u64>>(env, arg);
-    let result = super::import_generics(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_generics(arg))
 }
 
 pub fn _import_get_bytes(env: &RuntimeInstanceData) -> FatPtr {
-    let result = super::import_get_bytes();
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_get_bytes())
 }
 
 pub fn _import_get_serde_bytes(env: &RuntimeInstanceData) -> FatPtr {
-    let result = super::import_get_serde_bytes();
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_get_serde_bytes())
 }
 
 pub fn _import_increment_global_state(env: &RuntimeInstanceData) -> FatPtr {
-    let result = super::import_increment_global_state();
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_increment_global_state().await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1590,8 +1754,7 @@ pub fn _import_multiple_primitives(
 ) -> <i64 as WasmAbi>::AbiType {
     let arg1 = WasmAbi::from_abi(arg1);
     let arg2 = import_from_guest::<String>(env, arg2);
-    let result = super::import_multiple_primitives(arg1, arg2);
-    result.to_abi()
+    super::import_multiple_primitives(arg1, arg2).to_abi()
 }
 
 pub fn _import_primitive_bool_negate(
@@ -1599,8 +1762,7 @@ pub fn _import_primitive_bool_negate(
     arg: <bool as WasmAbi>::AbiType,
 ) -> <bool as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_bool_negate(arg);
-    result.to_abi()
+    super::import_primitive_bool_negate(arg).to_abi()
 }
 
 pub fn _import_primitive_bool_negate_async(
@@ -1608,12 +1770,11 @@ pub fn _import_primitive_bool_negate_async(
     arg: <bool as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_bool_negate_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_bool_negate_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1625,8 +1786,7 @@ pub fn _import_primitive_f32_add_one(
     arg: <f32 as WasmAbi>::AbiType,
 ) -> <f32 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_f32_add_one(arg);
-    result.to_abi()
+    super::import_primitive_f32_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_f32_add_one_async(
@@ -1634,12 +1794,11 @@ pub fn _import_primitive_f32_add_one_async(
     arg: <f32 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_f32_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_f32_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1651,8 +1810,7 @@ pub fn _import_primitive_f32_add_one_wasmer2(
     arg: FatPtr,
 ) -> <f32 as WasmAbi>::AbiType {
     let arg = import_from_guest::<[f32; 1]>(env, arg);
-    let result = super::import_primitive_f32_add_one_wasmer2(arg);
-    result.to_abi()
+    super::import_primitive_f32_add_one_wasmer2(arg).to_abi()
 }
 
 pub fn _import_primitive_f64_add_one(
@@ -1660,8 +1818,7 @@ pub fn _import_primitive_f64_add_one(
     arg: <f64 as WasmAbi>::AbiType,
 ) -> <f64 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_f64_add_one(arg);
-    result.to_abi()
+    super::import_primitive_f64_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_f64_add_one_async(
@@ -1669,12 +1826,11 @@ pub fn _import_primitive_f64_add_one_async(
     arg: <f64 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_f64_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_f64_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1686,8 +1842,7 @@ pub fn _import_primitive_f64_add_one_wasmer2(
     arg: FatPtr,
 ) -> <f64 as WasmAbi>::AbiType {
     let arg = import_from_guest::<[f64; 1]>(env, arg);
-    let result = super::import_primitive_f64_add_one_wasmer2(arg);
-    result.to_abi()
+    super::import_primitive_f64_add_one_wasmer2(arg).to_abi()
 }
 
 pub fn _import_primitive_i16_add_one(
@@ -1695,8 +1850,7 @@ pub fn _import_primitive_i16_add_one(
     arg: <i16 as WasmAbi>::AbiType,
 ) -> <i16 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i16_add_one(arg);
-    result.to_abi()
+    super::import_primitive_i16_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_i16_add_one_async(
@@ -1704,12 +1858,11 @@ pub fn _import_primitive_i16_add_one_async(
     arg: <i16 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i16_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_i16_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1721,8 +1874,7 @@ pub fn _import_primitive_i32_add_one(
     arg: <i32 as WasmAbi>::AbiType,
 ) -> <i32 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i32_add_one(arg);
-    result.to_abi()
+    super::import_primitive_i32_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_i32_add_one_async(
@@ -1730,12 +1882,11 @@ pub fn _import_primitive_i32_add_one_async(
     arg: <i32 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i32_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_i32_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1747,8 +1898,7 @@ pub fn _import_primitive_i64_add_one(
     arg: <i64 as WasmAbi>::AbiType,
 ) -> <i64 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i64_add_one(arg);
-    result.to_abi()
+    super::import_primitive_i64_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_i64_add_one_async(
@@ -1756,12 +1906,11 @@ pub fn _import_primitive_i64_add_one_async(
     arg: <i64 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i64_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_i64_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1773,8 +1922,7 @@ pub fn _import_primitive_i8_add_one(
     arg: <i8 as WasmAbi>::AbiType,
 ) -> <i8 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i8_add_one(arg);
-    result.to_abi()
+    super::import_primitive_i8_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_i8_add_one_async(
@@ -1782,12 +1930,11 @@ pub fn _import_primitive_i8_add_one_async(
     arg: <i8 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_i8_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_i8_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1799,8 +1946,7 @@ pub fn _import_primitive_u16_add_one(
     arg: <u16 as WasmAbi>::AbiType,
 ) -> <u16 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u16_add_one(arg);
-    result.to_abi()
+    super::import_primitive_u16_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_u16_add_one_async(
@@ -1808,12 +1954,11 @@ pub fn _import_primitive_u16_add_one_async(
     arg: <u16 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u16_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_u16_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1825,8 +1970,7 @@ pub fn _import_primitive_u32_add_one(
     arg: <u32 as WasmAbi>::AbiType,
 ) -> <u32 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u32_add_one(arg);
-    result.to_abi()
+    super::import_primitive_u32_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_u32_add_one_async(
@@ -1834,12 +1978,11 @@ pub fn _import_primitive_u32_add_one_async(
     arg: <u32 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u32_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_u32_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1851,8 +1994,7 @@ pub fn _import_primitive_u64_add_one(
     arg: <u64 as WasmAbi>::AbiType,
 ) -> <u64 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u64_add_one(arg);
-    result.to_abi()
+    super::import_primitive_u64_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_u64_add_one_async(
@@ -1860,12 +2002,11 @@ pub fn _import_primitive_u64_add_one_async(
     arg: <u64 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u64_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_u64_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1877,8 +2018,7 @@ pub fn _import_primitive_u8_add_one(
     arg: <u8 as WasmAbi>::AbiType,
 ) -> <u8 as WasmAbi>::AbiType {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u8_add_one(arg);
-    result.to_abi()
+    super::import_primitive_u8_add_one(arg).to_abi()
 }
 
 pub fn _import_primitive_u8_add_one_async(
@@ -1886,12 +2026,11 @@ pub fn _import_primitive_u8_add_one_async(
     arg: <u8 as WasmAbi>::AbiType,
 ) -> FatPtr {
     let arg = WasmAbi::from_abi(arg);
-    let result = super::import_primitive_u8_add_one_async(arg);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_primitive_u8_add_one_async(arg).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1899,12 +2038,11 @@ pub fn _import_primitive_u8_add_one_async(
 }
 
 pub fn _import_reset_global_state(env: &RuntimeInstanceData) -> FatPtr {
-    let result = super::import_reset_global_state();
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::import_reset_global_state().await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });
@@ -1913,84 +2051,73 @@ pub fn _import_reset_global_state(env: &RuntimeInstanceData) -> FatPtr {
 
 pub fn _import_serde_adjacently_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdeAdjacentlyTagged>(env, arg);
-    let result = super::import_serde_adjacently_tagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_adjacently_tagged(arg))
 }
 
 pub fn _import_serde_enum(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdeVariantRenaming>(env, arg);
-    let result = super::import_serde_enum(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_enum(arg))
 }
 
 pub fn _import_serde_flatten(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdeFlatten>(env, arg);
-    let result = super::import_serde_flatten(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_flatten(arg))
 }
 
 pub fn _import_serde_internally_tagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdeInternallyTagged>(env, arg);
-    let result = super::import_serde_internally_tagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_internally_tagged(arg))
 }
 
 pub fn _import_serde_struct(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdePropertyRenaming>(env, arg);
-    let result = super::import_serde_struct(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_struct(arg))
 }
 
 pub fn _import_serde_untagged(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<SerdeUntagged>(env, arg);
-    let result = super::import_serde_untagged(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_serde_untagged(arg))
 }
 
 pub fn _import_string(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<String>(env, arg);
-    let result = super::import_string(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_string(arg))
 }
 
 pub fn _import_struct_with_options(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<StructWithOptions>(env, arg);
-    let result = super::import_struct_with_options(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_struct_with_options(arg))
 }
 
 pub fn _import_timestamp(env: &RuntimeInstanceData, arg: FatPtr) -> FatPtr {
     let arg = import_from_guest::<MyDateTime>(env, arg);
-    let result = super::import_timestamp(arg);
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_timestamp(arg))
 }
 
 pub fn _import_void_function(env: &RuntimeInstanceData) {
-    let result = super::import_void_function();
+    super::import_void_function()
 }
 
 pub fn _import_void_function_empty_result(env: &RuntimeInstanceData) -> FatPtr {
-    let result = super::import_void_function_empty_result();
-    export_to_guest(env, &result)
+    export_to_guest(env, &super::import_void_function_empty_result())
 }
 
 pub fn _import_void_function_empty_return(env: &RuntimeInstanceData) {
-    let result = super::import_void_function_empty_return();
+    super::import_void_function_empty_return()
 }
 
 pub fn _log(env: &RuntimeInstanceData, message: FatPtr) {
     let message = import_from_guest::<String>(env, message);
-    let result = super::log(message);
+    super::log(message)
 }
 
 pub fn _make_http_request(env: &RuntimeInstanceData, request: FatPtr) -> FatPtr {
     let request = import_from_guest::<Request>(env, request);
-    let result = super::make_http_request(request);
     let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
     handle.spawn(async move {
-        let result = result.await;
+        let result = super::make_http_request(request).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
     });

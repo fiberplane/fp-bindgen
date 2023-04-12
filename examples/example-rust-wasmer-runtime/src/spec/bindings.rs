@@ -1,1 +1,0 @@
-../../../example-protocol/bindings/rust-wasmer-runtime/bindings.rs

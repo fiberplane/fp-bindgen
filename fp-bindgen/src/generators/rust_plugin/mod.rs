@@ -181,7 +181,7 @@ pub fn generate_type_bindings(types: &TypeMap, path: &str) {
     write_bindings_file(
         format!("{path}/types.rs"),
         format!(
-            "#![allow(unused_imports)]\n\
+            "#![allow(dead_code, unused_imports)]\n\
             use serde::{{Deserialize, Serialize}};\n{}\n{}{}\n",
             std_imports,
             type_imports,

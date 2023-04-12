@@ -15,8 +15,6 @@ pub(crate) fn generate_bindings(
 ) {
     fs::create_dir_all(path).expect("Could not create output directory");
 
-    // We use the same type generation as for the Rust plugin, only with the
-    // serializable and deserializable types inverted:
     generate_type_bindings(&types, path);
 
     generate_function_bindings(import_functions, export_functions, &types, path);
@@ -62,27 +60,28 @@ pub(crate) fn format_wasm_ident(ty: &TypeIdent) -> String {
     }
 }
 
-#[allow(clippy::type_complexity)]
+pub(crate) struct ExportFunctionVariables<'a> {
+    pub doc: String,
+    pub modifiers: String,
+    pub name: &'a str,
+    pub args: String,
+    pub raw_args: String,
+    pub wasm_args: String,
+    pub return_type: String,
+    pub raw_return_type: String,
+    pub wasm_return_type: String,
+    pub serialize_args: String,
+    pub serialize_raw_args: String,
+    pub arg_names: String,
+    pub wasm_arg_names: String,
+    pub raw_return_wrapper: String,
+    pub return_wrapper: String,
+}
+
 pub(crate) fn generate_export_function_variables<'a>(
     function: &'a Function,
     types: &TypeMap,
-) -> (
-    String,
-    String,
-    &'a String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-) {
+) -> ExportFunctionVariables<'a> {
     let doc = format_doc_lines(&function.doc_lines);
     let modifiers = format_modifiers(function);
 
@@ -179,7 +178,7 @@ pub(crate) fn generate_export_function_variables<'a>(
         )
     };
 
-    (
+    ExportFunctionVariables {
         doc,
         modifiers,
         name,
@@ -195,11 +194,11 @@ pub(crate) fn generate_export_function_variables<'a>(
         wasm_arg_names,
         raw_return_wrapper,
         return_wrapper,
-    )
+    }
 }
 
 fn format_export_function(function: &Function, types: &TypeMap) -> String {
-    let (
+    let ExportFunctionVariables {
         doc,
         modifiers,
         name,
@@ -215,7 +214,7 @@ fn format_export_function(function: &Function, types: &TypeMap) -> String {
         wasm_arg_names,
         raw_return_wrapper,
         return_wrapper,
-    ) = generate_export_function_variables(function, types);
+    } = generate_export_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -273,27 +272,28 @@ pub(crate) fn format_import_function(function: &Function, types: &TypeMap) -> St
         .join(", ");
 
     let return_wrapper = if function.is_async {
-        r#"let env = env.clone();
+        format!(
+            r#"let env = env.clone();
     let async_ptr = create_future_value(&env);
     let handle = tokio::runtime::Handle::current();
-    handle.spawn(async move {
-        let result = result.await;
+    handle.spawn(async move {{
+        let result = super::{name}({arg_names}).await;
         let result_ptr = export_to_guest(&env, &result);
         env.guest_resolve_async_value(async_ptr, result_ptr);
-    });
+    }});
     async_ptr"#
+        )
     } else {
         match &function.return_type {
-            None => "",
-            Some(ty) if ty.is_primitive() => "result.to_abi()",
-            _ => "export_to_guest(env, &result)",
+            None => format!("super::{name}({arg_names})"),
+            Some(ty) if ty.is_primitive() => format!("super::{name}({arg_names}).to_abi()"),
+            _ => format!("export_to_guest(env, &super::{name}({arg_names}))"),
         }
     };
 
     format!(
         r#"pub fn _{name}(env: &RuntimeInstanceData{wasm_args}){wrapper_return_type} {{
     {import_args}
-    let result = super::{name}({arg_names});
     {return_wrapper}
 }}"#
     )
@@ -326,7 +326,11 @@ fn generate_function_bindings(
     }"#
     .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(imports, exports, new_func, create_import_object_func, path);
+
+    write_bindings_file(
+        format!("{path}/bindings.rs"),
+        format_function_bindings(imports, exports, new_func, create_import_object_func),
+    );
 }
 
 pub(crate) fn format_function_bindings(
@@ -334,9 +338,9 @@ pub(crate) fn format_function_bindings(
     exports: String,
     new_func: String,
     create_import_object_func: String,
-    path: &str,
-) {
-    let full = rustfmt_wrapper::rustfmt(format!(r#"use super::types::*;
+) -> String {
+    rustfmt_wrapper::rustfmt(format!(r#"#![allow(unused)]
+use super::types::*;
 use fp_bindgen_support::{{
     common::{{mem::FatPtr, abi::WasmAbi}},
     host::{{
@@ -379,8 +383,7 @@ impl Runtime {{
 
 {imports}
 "#))
-    .unwrap();
-    write_bindings_file(format!("{path}/bindings.rs"), full);
+    .unwrap()
 }
 
 pub(crate) fn write_bindings_file<C>(file_path: String, contents: C)

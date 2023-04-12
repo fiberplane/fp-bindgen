@@ -9,16 +9,16 @@ use std::{
 };
 
 pub mod rust_plugin;
-pub mod rust_wasmer_runtime;
-pub mod rust_wasmer_wasi_runtime;
+pub mod rust_wasmer2_runtime;
+pub mod rust_wasmer2_wasi_runtime;
 pub mod ts_runtime;
 
 #[non_exhaustive]
 #[derive(Debug, Clone)]
 pub enum BindingsType {
     RustPlugin(RustPluginConfig),
-    RustWasmerRuntime,
-    RustWasmerWasiRuntime,
+    RustWasmer2Runtime,
+    RustWasmer2WasiRuntime,
     TsRuntime(TsRuntimeConfig),
 }
 
@@ -26,8 +26,8 @@ impl Display for BindingsType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             BindingsType::RustPlugin { .. } => "rust-plugin",
-            BindingsType::RustWasmerRuntime { .. } => "rust-wasmer-runtime",
-            BindingsType::RustWasmerWasiRuntime { .. } => "rust-wasmer-wasi-runtime",
+            BindingsType::RustWasmer2Runtime { .. } => "rust-wasmer2-runtime",
+            BindingsType::RustWasmer2WasiRuntime { .. } => "rust-wasmer2-wasi-runtime",
             BindingsType::TsRuntime { .. } => "ts-runtime",
         })
     }
@@ -282,13 +282,13 @@ pub fn generate_bindings(
             plugin_config,
             config.path,
         ),
-        BindingsType::RustWasmerRuntime => rust_wasmer_runtime::generate_bindings(
+        BindingsType::RustWasmer2Runtime => rust_wasmer2_runtime::generate_bindings(
             import_functions,
             export_functions,
             types,
             config.path,
         ),
-        BindingsType::RustWasmerWasiRuntime => rust_wasmer_wasi_runtime::generate_bindings(
+        BindingsType::RustWasmer2WasiRuntime => rust_wasmer2_wasi_runtime::generate_bindings(
             import_functions,
             export_functions,
             types,

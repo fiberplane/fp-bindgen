@@ -126,7 +126,6 @@ impl FromStr for TypeIdent {
                     .to_owned(),
                 generic_args: string[start_index + 1..end_index]
                     .split(',')
-                    .into_iter()
                     .map(|arg| {
                         let (arg, bounds) = arg.split_once(':').unwrap_or((arg, ""));
                         let ident = Self::from_str(arg.trim());

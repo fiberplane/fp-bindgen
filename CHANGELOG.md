@@ -24,7 +24,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The TypeScript runtime now uses streaming instantiation for the WebAssembly
   module by default.
 - `BindingsType::TsRuntimeWithExtendedConfig` has been renamed back to
-  `BindingsType::TsRuntime` (and the old `BindingsType::TsRuntime`, which was deprecated in 2.0.0, is now removed).
+  `BindingsType::TsRuntime` (and the old `BindingsType::TsRuntime`, which was
+  deprecated in 2.0.0, is now removed).
+- Renamed the `RustWasmerRuntime` and `RustWasmerWasiRuntime` to
+  `RustWasmer2Runtime` and `RustWasmer2WasiRuntime`, respectively. This is in
+  anticipation for supporting Wasmer 3 in an upcoming release. For more
+  information, please see: https://github.com/fiberplane/fp-bindgen/issues/185
 
 ### Fixed
 
