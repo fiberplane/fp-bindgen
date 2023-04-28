@@ -26,5 +26,5 @@ tracing = "0.1.37"
 [features]
 default = []
 async = []
-host = ["wasmer", "thiserror"]
 guest = []
+wasmer2_host = ["dep:wasmer", "dep:thiserror"]

@@ -42,9 +42,9 @@ Note that in order to run this runtime, you first need to generate the bindings 
 After that you can run the runtime using `deno main.ts`. It will load the plugin and verify all its
 functions can be called correctly.
 
-## `example-rust-wasmer-runtime/`
+## `example-rust-wasmer2-runtime/`
 
-This is an example of a Rust runtime that can load the example plugin.
+This is an example of a Rust Wasmer 2 runtime that can load the example plugin.
 
 Note that in order to run this runtime, you first need to generate the bindings by running
 `cargo run` inside the `example-protocol/` folder

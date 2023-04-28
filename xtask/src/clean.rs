@@ -10,7 +10,7 @@ pub fn clean() -> TaskResult<()> {
         "target",
         "examples/example-plugin/target",
         "examples/example-protocol/bindings",
-        "examples/example-rust-wasmer-runtime/target",
+        "examples/example-rust-wasmer2-runtime/target",
     ];
     let mut progress = ProgressReporter::new(paths.len());
 

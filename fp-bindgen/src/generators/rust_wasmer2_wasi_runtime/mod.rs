@@ -2,8 +2,9 @@ use crate::{
     functions::{Function, FunctionList},
     generators::{
         rust_plugin::generate_type_bindings,
-        rust_wasmer_runtime::{
+        rust_wasmer2_runtime::{
             format_function_bindings, format_import_function, generate_export_function_variables,
+            write_bindings_file, ExportFunctionVariables,
         },
     },
     types::TypeMap,
@@ -18,8 +19,6 @@ pub(crate) fn generate_bindings(
 ) {
     fs::create_dir_all(path).expect("Could not create output directory");
 
-    // We use the same type generation as for the Rust plugin, only with the
-    // serializable and deserializable types inverted:
     generate_type_bindings(&types, path);
 
     generate_function_bindings(import_functions, export_functions, &types, path);
@@ -54,7 +53,7 @@ fn generate_create_import_object_func(import_functions: &FunctionList) -> String
 }
 
 fn format_export_function(function: &Function, types: &TypeMap) -> String {
-    let (
+    let ExportFunctionVariables {
         doc,
         modifiers,
         name,
@@ -70,7 +69,7 @@ fn format_export_function(function: &Function, types: &TypeMap) -> String {
         wasm_arg_names,
         raw_return_wrapper,
         return_wrapper,
-    ) = generate_export_function_variables(function, types);
+    } = generate_export_function_variables(function, types);
 
     format!(
         r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
@@ -119,5 +118,9 @@ fn generate_function_bindings(
     }"#
     .to_string();
     let create_import_object_func = generate_create_import_object_func(&import_functions);
-    format_function_bindings(imports, exports, new_func, create_import_object_func, path);
+
+    write_bindings_file(
+        format!("{path}/bindings.rs"),
+        format_function_bindings(imports, exports, new_func, create_import_object_func),
+    );
 }

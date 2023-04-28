@@ -12,7 +12,7 @@ fn import_void_function_empty_result() -> Result<(), u32> {
 }
 fn import_void_function_empty_return() -> () {}
 
-fn import_explicit_bound_point(arg: ExplicitBoundPoint<u64>) {
+fn import_explicit_bound_point(_arg: ExplicitBoundPoint<u64>) {
     todo!()
 }
 fn import_primitive_bool_negate(arg: bool) -> bool {
@@ -55,51 +55,51 @@ fn import_primitive_u64_add_one(arg: u64) -> u64 {
     arg + 1
 }
 
-fn import_array_u8(arg: [u8; 3]) -> [u8; 3] {
+fn import_array_u8(_arg: [u8; 3]) -> [u8; 3] {
     todo!()
 }
-fn import_array_u16(arg: [u16; 3]) -> [u16; 3] {
+fn import_array_u16(_arg: [u16; 3]) -> [u16; 3] {
     todo!()
 }
-fn import_array_u32(arg: [u32; 3]) -> [u32; 3] {
+fn import_array_u32(_arg: [u32; 3]) -> [u32; 3] {
     todo!()
 }
-fn import_array_i8(arg: [i8; 3]) -> [i8; 3] {
+fn import_array_i8(_arg: [i8; 3]) -> [i8; 3] {
     todo!()
 }
-fn import_array_i16(arg: [i16; 3]) -> [i16; 3] {
+fn import_array_i16(_arg: [i16; 3]) -> [i16; 3] {
     todo!()
 }
-fn import_array_i32(arg: [i32; 3]) -> [i32; 3] {
+fn import_array_i32(_arg: [i32; 3]) -> [i32; 3] {
     todo!()
 }
-fn import_array_f32(arg: [f32; 3]) -> [f32; 3] {
+fn import_array_f32(_arg: [f32; 3]) -> [f32; 3] {
     todo!()
 }
-fn import_array_f64(arg: [f64; 3]) -> [f64; 3] {
-    todo!()
-}
-
-fn import_string(arg: String) -> String {
+fn import_array_f64(_arg: [f64; 3]) -> [f64; 3] {
     todo!()
 }
 
-fn import_multiple_primitives(arg1: i8, arg2: String) -> i64 {
+fn import_string(_arg: String) -> String {
     todo!()
 }
 
-fn import_timestamp(arg: MyDateTime) -> MyDateTime {
+fn import_multiple_primitives(_arg1: i8, _arg2: String) -> i64 {
     todo!()
 }
 
-fn import_fp_flatten(arg: FpFlatten) -> FpFlatten {
-    todo!()
-}
-fn import_serde_flatten(arg: SerdeFlatten) -> SerdeFlatten {
+fn import_timestamp(_arg: MyDateTime) -> MyDateTime {
     todo!()
 }
 
-fn import_generics(arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
+fn import_fp_flatten(_arg: FpFlatten) -> FpFlatten {
+    todo!()
+}
+fn import_serde_flatten(_arg: SerdeFlatten) -> SerdeFlatten {
+    todo!()
+}
+
+fn import_generics(_arg: StructWithGenerics<u64>) -> StructWithGenerics<u64> {
     todo!()
 }
 
@@ -110,35 +110,35 @@ fn import_get_serde_bytes() -> Result<ByteBuf, String> {
     Ok(ByteBuf::from("hello"))
 }
 
-fn import_fp_struct(arg: FpPropertyRenaming) -> FpPropertyRenaming {
+fn import_fp_struct(_arg: FpPropertyRenaming) -> FpPropertyRenaming {
     todo!()
 }
-fn import_fp_enum(arg: FpVariantRenaming) -> FpVariantRenaming {
+fn import_fp_enum(_arg: FpVariantRenaming) -> FpVariantRenaming {
     todo!()
 }
-fn import_serde_struct(arg: SerdePropertyRenaming) -> SerdePropertyRenaming {
+fn import_serde_struct(_arg: SerdePropertyRenaming) -> SerdePropertyRenaming {
     todo!()
 }
-fn import_serde_enum(arg: SerdeVariantRenaming) -> SerdeVariantRenaming {
+fn import_serde_enum(_arg: SerdeVariantRenaming) -> SerdeVariantRenaming {
     todo!()
 }
 
-fn import_fp_internally_tagged(arg: FpInternallyTagged) -> FpInternallyTagged {
+fn import_fp_internally_tagged(_arg: FpInternallyTagged) -> FpInternallyTagged {
     todo!()
 }
-fn import_fp_adjacently_tagged(arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged {
+fn import_fp_adjacently_tagged(_arg: FpAdjacentlyTagged) -> FpAdjacentlyTagged {
     todo!()
 }
-fn import_fp_untagged(arg: FpUntagged) -> FpUntagged {
+fn import_fp_untagged(_arg: FpUntagged) -> FpUntagged {
     todo!()
 }
-fn import_serde_internally_tagged(arg: SerdeInternallyTagged) -> SerdeInternallyTagged {
+fn import_serde_internally_tagged(_arg: SerdeInternallyTagged) -> SerdeInternallyTagged {
     todo!()
 }
-fn import_serde_adjacently_tagged(arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged {
+fn import_serde_adjacently_tagged(_arg: SerdeAdjacentlyTagged) -> SerdeAdjacentlyTagged {
     todo!()
 }
-fn import_serde_untagged(arg: SerdeUntagged) -> SerdeUntagged {
+fn import_serde_untagged(_arg: SerdeUntagged) -> SerdeUntagged {
     todo!()
 }
 
@@ -189,7 +189,7 @@ async fn import_increment_global_state() {
     *lock = value;
 }
 
-fn import_struct_with_options(arg: StructWithOptions) {
+fn import_struct_with_options(_arg: StructWithOptions) {
     todo!()
 }
 

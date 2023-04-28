@@ -1,8 +1,7 @@
 [workspace]
 exclude = [
   "examples/example-plugin",
-  "examples/example-rust-wasmer-runtime",
-  "examples/example-rust-wasmer-wasi-runtime",
+  "examples/example-rust-wasmer2-runtime",
   "bindings/rust-plugin",
 ]
 members = [

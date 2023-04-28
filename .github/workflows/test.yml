@@ -83,9 +83,9 @@ jobs:
           deno test --allow-read tests.ts
           popd
 
-      - name: Run end-to-end tests in wasmer runtime
+      - name: Run end-to-end tests in Wasmer 2 runtime
         run: |
-          pushd examples/example-rust-wasmer-runtime
+          pushd examples/example-rust-wasmer2-runtime
           cargo test
           cargo test -F wasi
           popd

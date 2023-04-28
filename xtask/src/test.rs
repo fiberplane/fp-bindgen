@@ -65,11 +65,11 @@ pub fn test() -> TaskResult<()> {
     run(cargo(["test"]).dir(from_root("")))?;
 
     progress.next_step(TEST, "Running end-to-end wasmer tests...");
-    run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer-runtime")))?;
+    run(cargo(["test"]).dir(from_root("examples/example-rust-wasmer2-runtime")))?;
 
     progress.next_step(TEST, "Running end-to-end wasmer-wasi tests...");
     run(cargo(["test", "--features", "wasi"])
-        .dir(from_root("examples/example-rust-wasmer-runtime")))?;
+        .dir(from_root("examples/example-rust-wasmer2-runtime")))?;
 
     Ok(())
 }
