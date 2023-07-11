@@ -256,6 +256,9 @@ fp_export! {
     /// Example how plugin could expose async data-fetching capabilities.
     async fn fetch_data(r#type: String) -> Result<String, String>;
 
+    /// Example that shows how to make parallel requests from the guest module.
+    async fn make_parallel_requests() -> String;
+
     /// Called on the plugin to give it a chance to initialize.
     fn init();
 

@@ -73,7 +73,7 @@ const imports: Imports = {
   },
 
   importGenerics: (
-    arg: StructWithGenerics<number>
+    arg: StructWithGenerics<number>,
   ): StructWithGenerics<number> => {
     assertEquals(arg, {
       list: [0, 64],
@@ -204,7 +204,7 @@ const imports: Imports = {
   },
 
   importSerdeAdjacentlyTagged: (
-    arg: SerdeAdjacentlyTagged
+    arg: SerdeAdjacentlyTagged,
   ): SerdeAdjacentlyTagged => {
     assertEquals(arg, { type: "Bar", payload: "Hello, plugin!" });
     return { type: "Baz", payload: { a: -8, b: 64 } };
@@ -226,7 +226,7 @@ const imports: Imports = {
   },
 
   importSerdeInternallyTagged: (
-    arg: SerdeInternallyTagged
+    arg: SerdeInternallyTagged,
   ): SerdeInternallyTagged => {
     assertEquals(arg, { type: "Foo" });
     return { type: "Baz", a: -8, b: 64 };
@@ -363,7 +363,7 @@ async function loadExamplePlugin() {
   if (!examplePlugin) {
     examplePlugin = await loadPlugin(
       "../example-plugin/target/wasm32-unknown-unknown/debug/example_plugin.wasm",
-      imports
+      imports,
     );
 
     const { init } = examplePlugin;
@@ -424,7 +424,7 @@ Deno.test("timestamp", async () => {
 
   assertEquals(
     plugin.exportTimestamp?.("2022-04-12T19:10:00Z"),
-    "2022-04-13T12:37:00Z"
+    "2022-04-13T12:37:00Z",
   );
 });
 
@@ -441,7 +441,7 @@ Deno.test("flattened structs", async () => {
       fooBar: "fooBar",
       QUX_BAZ: -64.0,
       rawStruct: 32,
-    }
+    },
   );
 
   assertEquals(plugin.exportFpEnum?.("foo_bar"), {
@@ -461,7 +461,7 @@ Deno.test("flattened structs", async () => {
       fooBar: "fooBar",
       QUX_BAZ: -64.0,
       rawStruct: 32,
-    }
+    },
   );
 
   assertEquals(plugin.exportSerdeEnum?.("foo_bar"), {
@@ -495,7 +495,7 @@ Deno.test("generics", async () => {
         twee: [{ value: 2.0 }],
       },
       optional_timestamp: "1970-01-01T00:00:00Z",
-    }
+    },
   );
 });
 
@@ -524,7 +524,7 @@ Deno.test("tagged enums", async () => {
     {
       type: "Baz",
       payload: { a: -8, b: 64 },
-    }
+    },
   );
 
   assertEquals(plugin.exportFpInternallyTagged?.({ type: "Foo" }), {
@@ -543,7 +543,7 @@ Deno.test("tagged enums", async () => {
     {
       type: "Baz",
       payload: { a: -8, b: 64 },
-    }
+    },
   );
 
   assertEquals(plugin.exportSerdeInternallyTagged?.({ type: "Foo" }), {
@@ -598,13 +598,13 @@ Deno.test("async struct", async () => {
         QUX_BAZ: 64.0,
         rawStruct: -32,
       },
-      64n
+      64n,
     ),
     {
       fooBar: "fooBar",
       QUX_BAZ: -64.0,
       rawStruct: 32,
-    }
+    },
   );
 });
 
@@ -616,6 +616,14 @@ Deno.test("fetch async data", async () => {
   assertEquals(data, {
     Ok: JSON.stringify({ status: "confirmed" }),
   });
+});
+
+Deno.test("invoke parallel requests", async () => {
+  const { makeParallelRequests } = await loadExamplePlugin();
+  assert(makeParallelRequests);
+
+  const data = await makeParallelRequests();
+  assertEquals(data, JSON.stringify({ status: "confirmed" }));
 });
 
 Deno.test("bytes", async () => {
