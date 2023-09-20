@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 exclude = [
   "examples/example-plugin",
   "examples/example-rust-wasmer2-runtime",
@@ -19,7 +20,7 @@ fp-bindgen-macros = { version = "3.0.0", path = "macros" }
 [workspace.package]
 version = "3.0.0"
 authors = ["Fiberplane <info@fiberplane.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/fiberplane/fp-bindgen/"
 repository = "https://github.com/fiberplane/fp-bindgen/"
