@@ -88,7 +88,7 @@ impl ToTokens for Primitive {
             U64 => "U64",
         };
         let ident = Ident::new(ident_str, Span::call_site());
-        tokens.extend(vec![TokenTree::Ident(ident)].into_iter());
+        tokens.extend(vec![TokenTree::Ident(ident)]);
     }
 }
 

@@ -20,7 +20,7 @@ pub fn cargo(args: impl IntoIterator<Item = impl Into<OsString>>) -> Expression 
 
 pub fn deno(args: impl IntoIterator<Item = impl Into<OsString>>) -> Expression {
     let args: VecDeque<OsString> = args.into_iter().map(|os| os.into()).collect();
-    cmd("deno", &args)
+    cmd("deno", args)
 }
 
 pub fn from_root(path: impl Into<PathBuf>) -> PathBuf {

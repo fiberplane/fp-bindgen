@@ -111,7 +111,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
         });
         quote! {
             where
-                #( #params#param_bounds ),*
+                #( #params #param_bounds ),*
         }
     };
 
@@ -131,7 +131,7 @@ pub(crate) fn impl_derive_serializable(item: TokenStream) -> TokenStream {
     };
 
     let implementation = quote! {
-        impl#generics fp_bindgen::prelude::Serializable for #item_name#generics#where_clause {
+        impl #generics fp_bindgen::prelude::Serializable for #item_name #generics #where_clause {
             fn ident() -> fp_bindgen::prelude::TypeIdent {
                 #ident
             }
