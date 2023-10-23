@@ -170,10 +170,7 @@ impl Ord for TypeIdent {
 
 impl PartialOrd for TypeIdent {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        // We only compare the name and array so that any type is only included once in
-        // a map, regardless of how many concrete instances are used with
-        // different generic arguments.
-        (&self.name, self.array).partial_cmp(&(&other.name, other.array))
+        Some(self.cmp(other))
     }
 }
 
