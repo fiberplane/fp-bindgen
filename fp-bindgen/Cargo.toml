@@ -6,7 +6,7 @@ repository = { workspace = true }
 readme = "../README.md"
 keywords = ["WebAssembly", "WASM", "bindgen"]
 categories = ["development-tools::ffi", "wasm"]
-version = { workspace = true }
+version = "3.0.0"
 authors = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
@@ -22,7 +22,7 @@ default = [
     "rmpv-compat",
     "serde-bytes-compat",
     "serde-json-compat",
-    "time-compat"
+    "time-compat",
 ]
 http-compat = ["http"]
 rmpv-compat = ["rmpv"]

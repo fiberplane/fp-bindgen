@@ -4,7 +4,7 @@ description = "Macros for fp-bindgen"
 homepage = { workspace = true }
 repository = { workspace = true }
 readme = "README.md"
-version = { workspace = true }
+version = "3.0.0"
 authors = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
