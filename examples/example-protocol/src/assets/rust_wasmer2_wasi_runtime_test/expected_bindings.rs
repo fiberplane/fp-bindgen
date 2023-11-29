@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(clippy::let_and_return, unused)]
 use super::types::*;
 use fp_bindgen_support::{
     common::{abi::WasmAbi, mem::FatPtr},
