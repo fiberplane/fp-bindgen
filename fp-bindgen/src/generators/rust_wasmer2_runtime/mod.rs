@@ -339,7 +339,7 @@ pub(crate) fn format_function_bindings(
     new_func: String,
     create_import_object_func: String,
 ) -> String {
-    rustfmt_wrapper::rustfmt(format!(r#"#![allow(unused)]
+    rustfmt_wrapper::rustfmt(format!(r#"#![allow(clippy::let_and_return, unused)]
 use super::types::*;
 use fp_bindgen_support::{{
     common::{{mem::FatPtr, abi::WasmAbi}},
