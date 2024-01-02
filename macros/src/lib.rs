@@ -345,7 +345,7 @@ pub fn fp_export_impl(attributes: TokenStream, input: TokenStream) -> TokenStrea
         syn::parse_macro_input::parse::<AttributeArgs>(attributes.clone()).unwrap_or_abort();
 
     let protocol_path = attrs
-        .get(0)
+        .first()
         .map(|om| match om {
             syn::NestedMeta::Meta(meta) => match meta {
                 syn::Meta::Path(path) => path,

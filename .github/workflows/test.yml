@@ -45,10 +45,12 @@ jobs:
           fi
 
       - name: Lint code
-        uses: actions-rs/clippy-check@v1
+        uses: giraffate/clippy-action@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          filter_mode: nofilter
+          fail_on_error: true
+          clippy_flags: --all-features
 
       - name: Check format
         run: cargo fmt -- --check
