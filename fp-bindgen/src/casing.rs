@@ -5,6 +5,7 @@ use std::convert::TryFrom;
 pub enum Casing {
     Original,
     CamelCase,
+    LowerCase,
     PascalCase,
     SnakeCase,
     ScreamingSnakeCase,
@@ -15,6 +16,7 @@ impl Casing {
         match self {
             Self::Original => None,
             Self::CamelCase => Some("camelCase"),
+            Self::LowerCase => Some("lowercase"),
             Self::PascalCase => Some("PascalCase"),
             Self::SnakeCase => Some("snake_case"),
             Self::ScreamingSnakeCase => Some("SCREAMING_SNAKE_CASE"),
@@ -25,6 +27,7 @@ impl Casing {
         match self {
             Self::Original => string.to_owned(),
             Self::CamelCase => string.to_camel_case(),
+            Self::LowerCase => string.to_lowercase(),
             Self::PascalCase => string.to_pascal_case(),
             Self::SnakeCase => string.to_snake_case(),
             Self::ScreamingSnakeCase => string.to_screaming_snake_case(),
@@ -44,6 +47,7 @@ impl TryFrom<&str> for Casing {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "camelCase" => Ok(Self::CamelCase),
+            "lowercase" => Ok(Self::LowerCase),
             "PascalCase" => Ok(Self::PascalCase),
             "snake_case" => Ok(Self::SnakeCase),
             "SCREAMING_SNAKE_CASE" => Ok(Self::ScreamingSnakeCase),
