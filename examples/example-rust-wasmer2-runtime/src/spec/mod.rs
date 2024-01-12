@@ -3,6 +3,7 @@ pub mod types;
 
 use bytes::Bytes;
 use serde_bytes::ByteBuf;
+use tokio::time::{sleep, Duration};
 use types::*;
 use super::GLOBAL_STATE;
 
@@ -198,6 +199,9 @@ fn log(msg: String) {
 }
 
 async fn make_http_request(opts: Request) -> Result<Response, RequestError> {
+    // Add a little randomized sleeping to see if we trigger potential race issues...
+    //sleep(Duration::from_millis(rand::random::<u8>().into())).await;
+
     Ok(Response {
         body: ByteBuf::from(r#"{"status":"confirmed"}"#.to_string()),
         headers: opts.headers,

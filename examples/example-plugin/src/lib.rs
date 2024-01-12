@@ -413,10 +413,7 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
         url: Uri::from_static("https://fiberplane.dev"),
         method: Method::POST,
         headers,
-        body: Some(ByteBuf::from(format!(
-            r#"{{"country":"🇳🇱","type":"{}"}}"#,
-            r#type
-        ))),
+        body: Some(ByteBuf::from(format!(r#"{{"country":"🇳🇱","type":"{}"}}"#, r#type))),
     })
     .await;
 
@@ -425,6 +422,22 @@ async fn fetch_data(r#type: String) -> Result<String, String> {
             String::from_utf8(response.body.to_vec()).map_err(|_| "Invalid utf8".to_owned())
         }
         Err(err) => Err(format!("Error: {:?}", err)),
+    }
+}
+
+#[fp_export_impl(example_bindings)]
+async fn make_parallel_requests() -> String {
+    let request1 = fetch_data("sign-up".to_owned());
+    let request2 = fetch_data("sign-up".to_owned());
+
+    match futures::future::join(request1, request2).await {
+        (Ok(response1), Ok(response2)) => {
+            assert_eq!(response1, response2);
+            response1
+        }
+        (maybe_error1, maybe_error2) => {
+            format!("Error of these is an error: {maybe_error1:?}, {maybe_error2:?}")
+        }
     }
 }
 

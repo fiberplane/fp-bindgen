@@ -308,6 +308,16 @@ async fn fetch_async_data() -> Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn make_parallel_requests() -> Result<()> {
+    let rt = new_runtime()?;
+
+    let response = rt.make_parallel_requests().await?;
+
+    assert_eq!(response, r#"{"status":"confirmed"}"#.to_string());
+    Ok(())
+}
+
 #[test]
 fn bytes() -> Result<()> {
     let rt = new_runtime()?;
