@@ -1,0 +1,26 @@
+---
+name: Audit Rust code
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - "**/deny.toml"
+  schedule:
+    - cron: "43 1 * * *"
+  workflow_dispatch:
+
+jobs:
+  rust_audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          credentials: https://fiberplanebot:${{ secrets.PRIVATE_GITHUB_TOKEN }}@github.com/
