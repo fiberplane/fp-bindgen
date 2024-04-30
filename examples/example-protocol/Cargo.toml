@@ -3,6 +3,7 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 name = "example-protocol"
 version = "0.1.0"
+publish = false
 
 [dependencies]
 bytes = { version = "1", features = ["serde"] }

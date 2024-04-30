@@ -3,6 +3,7 @@ authors = ["Fiberplane <info@fiberplane.com>"]
 edition = "2018"
 name = "example-plugin"
 version = "0.1.0"
+publish = false
 
 [lib]
 crate-type = ["cdylib"]

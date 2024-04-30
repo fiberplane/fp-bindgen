@@ -3,6 +3,7 @@ authors = ["Fiberplane <info@fiberplane.dev>"]
 edition = "2018"
 name = "redux-example"
 version = "0.1.0"
+publish = false
 
 [dependencies]
 fp-bindgen = {path = "../../fp-bindgen"}
