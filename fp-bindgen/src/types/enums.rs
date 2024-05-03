@@ -189,10 +189,10 @@ impl EnumOptions {
             self.variant_casing = other.variant_casing;
         }
         if other.content_prop_name.is_some() {
-            self.content_prop_name = other.content_prop_name.clone();
+            self.content_prop_name.clone_from(&other.content_prop_name);
         }
         if other.tag_prop_name.is_some() {
-            self.tag_prop_name = other.tag_prop_name.clone();
+            self.tag_prop_name.clone_from(&other.tag_prop_name);
         }
         if other.untagged {
             self.untagged = true;
@@ -306,7 +306,7 @@ impl VariantAttrs {
             self.field_casing = other.field_casing;
         }
         if other.rename.is_some() {
-            self.rename = other.rename.clone();
+            self.rename.clone_from(&other.rename);
         }
     }
 

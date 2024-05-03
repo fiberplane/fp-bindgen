@@ -220,22 +220,23 @@ impl FieldAttrs {
 
     fn merge_with(&mut self, other: &Self) {
         if other.default.is_some() {
-            self.default = other.default.clone();
+            self.default.clone_from(&other.default);
         }
         if other.deserialize_with.is_some() {
-            self.deserialize_with = other.deserialize_with.clone();
+            self.deserialize_with.clone_from(&other.deserialize_with);
         }
         if other.flatten {
             self.flatten = other.flatten;
         }
         if other.rename.is_some() {
-            self.rename = other.rename.clone();
+            self.rename.clone_from(&other.rename);
         }
         if other.serialize_with.is_some() {
-            self.serialize_with = other.serialize_with.clone();
+            self.serialize_with.clone_from(&other.serialize_with);
         }
         if other.skip_serializing_if.is_some() {
-            self.skip_serializing_if = other.skip_serializing_if.clone();
+            self.skip_serializing_if
+                .clone_from(&other.skip_serializing_if);
         }
     }
 
