@@ -20,6 +20,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.77"
+          components: clippy, rustfmt
 
       - name: Cache multiple paths
         id: cache
