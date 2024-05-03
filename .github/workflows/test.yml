@@ -17,13 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install latest stable compiler
-        id: toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: stable
-          override: true
-          components: clippy
+          toolchain: "1.77"
 
       - name: Cache multiple paths
         id: cache
