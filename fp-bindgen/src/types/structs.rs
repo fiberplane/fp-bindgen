@@ -235,7 +235,8 @@ impl FieldAttrs {
             self.serialize_with.clone_from(&other.serialize_with);
         }
         if other.skip_serializing_if.is_some() {
-            self.skip_serializing_if.clone_from(&other.skip_serializing_if);
+            self.skip_serializing_if
+                .clone_from(&other.skip_serializing_if);
         }
     }
 
