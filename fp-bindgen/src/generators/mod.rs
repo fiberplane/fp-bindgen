@@ -235,7 +235,7 @@ impl TsRuntimeConfig {
 
     /// Sets the `msgpack_module` setting.
     pub fn with_msgpack_module(mut self, msgpack_module: &str) -> Self {
-        self.msgpack_module = msgpack_module.to_owned();
+        msgpack_module.clone_into(&mut self.msgpack_module);
         self
     }
 
