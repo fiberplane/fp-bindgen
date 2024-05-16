@@ -592,6 +592,7 @@ fn format_cargo_key(key: &str, value: Option<RustPluginConfigValue>) -> String {
                 inline.insert("workspace", true.into());
                 toml_edit::value(inline)
             }
+            RustPluginConfigValue::Bool(value) => toml_edit::value(value),
         };
 
         let mut doc = toml_edit::Document::new();

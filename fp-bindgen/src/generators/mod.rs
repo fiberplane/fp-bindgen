@@ -97,6 +97,7 @@ pub enum RustPluginConfigValue {
     String(String),
     Vec(Vec<String>),
     Workspace,
+    Bool(bool),
 }
 
 impl From<&str> for RustPluginConfigValue {
@@ -120,6 +121,12 @@ impl From<Vec<&str>> for RustPluginConfigValue {
 impl From<Vec<String>> for RustPluginConfigValue {
     fn from(value: Vec<String>) -> Self {
         Self::Vec(value)
+    }
+}
+
+impl From<bool> for RustPluginConfigValue {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
     }
 }
 
@@ -184,7 +191,7 @@ impl RustPluginConfigBuilder {
     }
 
     pub fn publish(mut self, value: bool) -> Self {
-        self.config.publish = Some(RustPluginConfigValue::String(value.to_string()));
+        self.config.publish = Some(value.into());
         self
     }
 
