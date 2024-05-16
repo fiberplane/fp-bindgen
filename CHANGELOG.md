@@ -9,6 +9,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## unreleased
 
 - Add ability to add `publish` to the generated Cargo.toml file (#208)
+- Fix generating publish value as a toml bool (#209)
 
 ## [3.0.0] - 2023-04-28
 
