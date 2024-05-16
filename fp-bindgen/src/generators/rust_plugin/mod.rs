@@ -102,7 +102,7 @@ fn generate_cargo_file(
         format!(
             "[package]
 {}{}{}edition = \"2018\"
-{}{}{}
+{}{}{}{}
 [dependencies]
 {}
 ",
@@ -112,6 +112,7 @@ fn generate_cargo_file(
             format_cargo_key("description", config.description),
             format_cargo_key("readme", config.readme),
             format_cargo_key("license", config.license),
+            format_cargo_key("published", config.published),
             dependencies
                 .iter()
                 .map(|(name, value)| format!("{name} = {value}"))
