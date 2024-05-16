@@ -71,7 +71,7 @@ pub struct RustPluginConfig {
 
     /// Whether the crate is marked as published or not (note: this should
     /// the string value "true" or "false")
-    pub published: Option<RustPluginConfigValue>,
+    pub publish: Option<RustPluginConfigValue>,
 }
 
 impl RustPluginConfig {
@@ -85,7 +85,7 @@ impl RustPluginConfig {
                 description: None,
                 readme: None,
                 license: None,
-                published: None,
+                publish: None,
             },
         }
     }
@@ -183,8 +183,8 @@ impl RustPluginConfigBuilder {
         self
     }
 
-    pub fn published(mut self, value: bool) -> Self {
-        self.config.published = Some(RustPluginConfigValue::String(value.to_string()));
+    pub fn publish(mut self, value: bool) -> Self {
+        self.config.publish = Some(RustPluginConfigValue::String(value.to_string()));
         self
     }
 
