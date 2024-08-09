@@ -159,7 +159,7 @@ pub(crate) fn generate_export_function_variables<'a>(
     let (raw_return_wrapper, return_wrapper) = if function.is_async {
         (
             "let result = ModuleRawFuture::new(self.env.clone(), result).await;".to_string(),
-            "let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice(data));".to_string(),
+            format!("let result = result.await;\nlet result = result.map(|ref data| deserialize_from_slice::<{return_type}>(data));").to_string(),
         )
     } else if !function
         .return_type
@@ -216,8 +216,33 @@ fn format_export_function(function: &Function, types: &TypeMap) -> String {
         return_wrapper,
     } = generate_export_function_variables(function, types);
 
-    format!(
-        r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+    if function.is_async {
+        format!(
+            r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+    let this = self.clone();
+    let task = async move {{
+    {serialize_args}
+    let result = this.{name}_raw({arg_names});
+    {return_wrapper}result.unwrap()
+    }};
+    let mut recv = CURRENT_SPAWNER.spawn_async(task).await;
+    match recv.recv().await {{
+        Some(result) => Ok(*result.downcast::<{return_type}>().unwrap()),
+        None => Err(InvocationError::UnexpectedReturnType),
+    }}
+}}
+pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
+    {serialize_raw_args}let function = self.instance
+        .exports
+        .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
+        .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
+    let result = function.call({wasm_arg_names})?;
+    {raw_return_wrapper}Ok(result)
+}}"#
+    )
+    } else {
+        format!(
+            r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
     {serialize_args}
     let result = self.{name}_raw({arg_names});
     {return_wrapper}result
@@ -231,6 +256,7 @@ pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, Invoc
     {raw_return_wrapper}Ok(result)
 }}"#
     )
+    }
 }
 
 pub(crate) fn format_import_arg(name: &str, ty: &TypeIdent, types: &TypeMap) -> String {
@@ -272,15 +298,28 @@ pub(crate) fn format_import_function(function: &Function, types: &TypeMap) -> St
         .join(", ");
 
     let return_wrapper = if function.is_async {
+        let return_type = match &function.return_type {
+            None => "()".to_string(),
+            Some(ty) => format!("{}", ty),
+        };
         format!(
-            r#"let env = env.clone();
+            r#"let env_clone = env.clone();
     let async_ptr = create_future_value(&env);
-    let handle = tokio::runtime::Handle::current();
-    handle.spawn(async move {{
-        let result = super::{name}({arg_names}).await;
-        let result_ptr = export_to_guest(&env, &result);
-        env.guest_resolve_async_value(async_ptr, result_ptr);
+    let host_task = GLOBAL_HANDLER.get().unwrap().spawn_async(async move {{
+        super::{name}({arg_names}).await
     }});
+
+    let guest_task = async move {{
+        let mut result = host_task.await;
+        let res = match result.recv().await {{
+            Some(result) => *result.downcast::<{return_type}>().unwrap(),
+            None => panic!("FXIME: host_task return error"),
+        }};
+
+        let result_ptr = export_to_guest(&env_clone, &res);
+        env_clone.guest_resolve_async_value(async_ptr, result_ptr);
+    }};
+    CURRENT_SPAWNER.spawn(guest_task);
     async_ptr"#
         )
     } else {
@@ -350,8 +389,14 @@ use fp_bindgen_support::{{
         runtime::RuntimeInstanceData,
     }},
 }};
+use once_cell::sync::Lazy;
 use std::cell::RefCell;
 use wasmer::{{imports, Function, ImportObject, Instance, Module, Store, WasmerEnv}};
+use fp_bindgen_support::wasmer2_host::task_spawner::{{CurrentThreadSpawner, GlobalSpawner}};
+use fp_bindgen_support::wasmer2_host::task_spawner::GLOBAL_HANDLER;
+static CURRENT_SPAWNER: Lazy<CurrentThreadSpawner> = Lazy::new(|| {{
+    CurrentThreadSpawner::new()
+}});
 
 #[derive(Clone)]
 pub struct Runtime {{

@@ -71,11 +71,20 @@ fn format_export_function(function: &Function, types: &TypeMap) -> String {
         return_wrapper,
     } = generate_export_function_variables(function, types);
 
-    format!(
-        r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
-    {serialize_args}
-    let result = self.{name}_raw({arg_names});
-    {return_wrapper}result
+    if function.is_async {
+        format!(
+            r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+    let this = self.clone();
+    let task = async move {{
+        {serialize_args}
+        let result = this.{name}_raw({arg_names});
+        {return_wrapper}result.unwrap()
+    }};
+    let mut recv = CURRENT_SPAWNER.spawn_async(task).await;
+    match recv.recv().await {{
+        Some(result) => Ok(*result.downcast::<{return_type}>().unwrap()),
+        None => Err(InvocationError::UnexpectedReturnType),
+    }}
 }}
 pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
     {serialize_raw_args}let function = self.instance
@@ -86,6 +95,23 @@ pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, Invoc
     {raw_return_wrapper}Ok(result)
 }}"#
     )
+    } else {
+        format!(
+            r#"{doc}pub {modifiers}fn {name}(&self{args}) -> Result<{return_type}, InvocationError> {{
+        {serialize_args}
+        let result = self.{name}_raw({arg_names});
+        {return_wrapper}result
+}}
+pub {modifiers}fn {name}_raw(&self{raw_args}) -> Result<{raw_return_type}, InvocationError> {{
+    {serialize_raw_args}let function = self.instance
+        .exports
+        .get_native_function::<{wasm_args}, {wasm_return_type}>("__fp_gen_{name}")
+        .map_err(|_| InvocationError::FunctionNotExported("__fp_gen_{name}".to_owned()))?;
+    let result = function.call({wasm_arg_names})?;
+    {raw_return_wrapper}Ok(result)
+}}"#
+    )
+    }
 }
 
 fn generate_function_bindings(
